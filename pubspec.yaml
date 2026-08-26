@@ -46,6 +46,9 @@ dependencies:
   
   # Riverpod for state management
   flutter_riverpod: ^2.6.1
+  
+  # go_router for declarative navigation
+  go_router: ^18.0.0
 
 dev_dependencies:
   flutter_test:

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../providers/practice_provider.dart';
 
@@ -28,11 +29,20 @@ class PracticeListScreen extends ConsumerWidget {
               trailing: practice.target != null
                   ? Text('${(practice.progress * 100).toInt()}%')
                   : null,
+              onTap: () => context.push('/practice/${practice.id}'),
             );
           },
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stack) => Center(child: Text('Ошибка: $error')),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          await context.push('/create');
+          // Обновить список после возврата
+          ref.invalidate(practiceListProvider(traditionTag));
+        },
+        child: const Icon(Icons.add),
       ),
     );
   }
