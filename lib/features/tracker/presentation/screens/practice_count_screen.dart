@@ -1,54 +1,73 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/practice.dart';
+import '../providers/practice_provider.dart';
 
 /// Экран счёта для конкретной практики
-class PracticeCountScreen extends StatefulWidget {
-  final PracticeEntity practice;
+class PracticeCountScreen extends ConsumerStatefulWidget {
+  final int practiceId;
 
-  const PracticeCountScreen({super.key, required this.practice});
+  const PracticeCountScreen({super.key, required this.practiceId});
 
   @override
-  State<PracticeCountScreen> createState() => _PracticeCountScreenState();
+  ConsumerState<PracticeCountScreen> createState() => _PracticeCountScreenState();
 }
 
-class _PracticeCountScreenState extends State<PracticeCountScreen> {
-  late int _currentCount;
+class _PracticeCountScreenState extends ConsumerState<PracticeCountScreen> {
+  PracticeEntity? _practice;
+  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _currentCount = widget.practice.currentCount;
+    _loadPractice();
   }
 
-  void _increment(int amount) {
+  Future<void> _loadPractice() async {
+    final repository = ref.read(practiceRepositoryProvider);
+    final practice = await repository.getById(widget.practiceId);
     setState(() {
-      _currentCount += amount;
+      _practice = practice;
+      _loading = false;
     });
-    // TODO: сохранить в БД через repository
+  }
+
+  Future<void> _increment(int amount) async {
+    final repository = ref.read(practiceRepositoryProvider);
+    await repository.incrementCount(widget.practiceId, amount);
+    await _loadPractice();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_loading || _practice == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final practice = _practice!;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.practice.name),
+        title: Text(practice.name),
       ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              '$_currentCount',
+              '${practice.currentCount}',
               style: Theme.of(context).textTheme.displayLarge,
             ),
-            if (widget.practice.target != null) ...[
+            if (practice.target != null) ...[
               const SizedBox(height: 16),
               LinearProgressIndicator(
-                value: _currentCount / widget.practice.target!,
+                value: practice.progress,
               ),
               const SizedBox(height: 8),
-              Text('Цель: ${widget.practice.target}'),
+              Text('Цель: ${practice.target}'),
             ],
             const SizedBox(height: 32),
             Row(
