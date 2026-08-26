@@ -14,19 +14,18 @@ Future<void> main() async {
   final storageModule = StorageModule();
   final configModule = ConfigModule();
 
+  // PresetManager uses lazy access to database via callback
+  final presetManager = PresetManager(
+    () => databaseModule.database,
+    storageModule,
+  );
+
   registry.register(databaseModule);
   registry.register(storageModule);
   registry.register(configModule);
+  registry.register(presetManager);
 
   await registry.initAll();
-
-  // PresetManager depends on DatabaseModule and StorageModule
-  final presetManager = PresetManager(
-    databaseModule.database,
-    storageModule,
-  );
-  registry.register(presetManager);
-  await presetManager.init();
 
   runApp(const DharmaToolkitApp());
 }

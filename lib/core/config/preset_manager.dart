@@ -17,11 +17,13 @@ class PresetManager implements AppModule {
   @override
   String get version => '1.0.0';
 
-  final AppDatabase _database;
+  final AppDatabase Function() _databaseGetter;
   final StorageModule _storage;
   PresetSchema? _activePreset;
 
-  PresetManager(this._database, this._storage);
+  PresetManager(this._databaseGetter, this._storage);
+
+  AppDatabase get _database => _databaseGetter();
 
   @override
   Future<void> init() async {

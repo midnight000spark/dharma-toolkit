@@ -23,7 +23,7 @@ void main() {
     storageModule = StorageModule();
     await storageModule.init();
 
-    presetManager = PresetManager(database, storageModule);
+    presetManager = PresetManager(() => database, storageModule);
     await presetManager.init();
   });
 
@@ -171,7 +171,7 @@ void main() {
       await presetManager.applyPreset(preset);
 
       // Create new manager instance (simulating app restart)
-      final newManager = PresetManager(database, storageModule);
+      final newManager = PresetManager(() => database, storageModule);
       await newManager.init();
 
       expect(newManager.activePreset, isNotNull);
