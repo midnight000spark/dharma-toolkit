@@ -5,6 +5,8 @@ import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../../features/tracker/data/tracker_tables.dart';
+
 part 'app_database.g.dart';
 
 /// Row class for presets table.
@@ -41,7 +43,7 @@ class Presets extends Table {
 ///
 /// Handles all persistent data storage for the application.
 /// Migrations are managed through [MigrationStrategy].
-@DriftDatabase(tables: [Presets])
+@DriftDatabase(tables: [Presets, Practices, CountHistory])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
@@ -49,7 +51,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration {
@@ -58,7 +60,9 @@ class AppDatabase extends _$AppDatabase {
         await m.createAll();
       },
       onUpgrade: (Migrator m, int from, int to) async {
-        // Future migrations go here
+        if (from < 2) {
+          await m.createAll();
+        }
       },
     );
   }
