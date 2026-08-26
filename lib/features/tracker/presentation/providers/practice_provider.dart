@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/db/database_module.dart';
+import '../../../../core/module/module_registry.dart';
 import '../../data/practice_repository.dart';
 import '../../domain/practice.dart';
 
@@ -11,6 +13,9 @@ final practiceListProvider = FutureProvider.autoDispose.family<List<PracticeEnti
 );
 
 final practiceRepositoryProvider = Provider<PracticeRepository>((ref) {
-  // TODO: получить из registry в будущем
-  throw UnimplementedError('PracticeRepository not registered yet');
+  final module = ModuleRegistry.instance.get('database');
+  if (module is! DatabaseModule) {
+    throw StateError('DatabaseModule not registered');
+  }
+  return PracticeRepository(module.database);
 });
