@@ -1,0 +1,11 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "default_agent": "dharma",
+  "instructions": ["AGENT.md", "STATE.md", "CONTEXT.md"],
+  "agent": {
+    "dharma": {
+      "description": "Основной агент проекта Дхарма-тулкит. Автоматически перечитывает STATE.md и AGENT.md перед каждым шагом.",
+      "permission": "allow"
+    }
+  }
+}
