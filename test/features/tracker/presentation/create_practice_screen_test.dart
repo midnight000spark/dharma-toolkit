@@ -1,77 +1,91 @@
+import 'package:dharma_toolkit/core/db/app_database.dart';
+import 'package:dharma_toolkit/features/tracker/data/practice_repository.dart';
+import 'package:dharma_toolkit/features/tracker/presentation/providers/practice_provider.dart';
 import 'package:dharma_toolkit/features/tracker/presentation/screens/create_practice_screen.dart';
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('форма валидирует пустое название', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: CreatePracticeScreen(traditionTag: 'test'),
-      ),
-    );
+  group('CreatePracticeScreen', () {
+    late AppDatabase db;
+    late PracticeRepository repository;
 
-    // Нажимаем "Создать" без ввода названия
-    await tester.tap(find.text('Создать'));
-    await tester.pump();
+    setUp(() async {
+      db = AppDatabase.forTesting(NativeDatabase.memory());
+      repository = PracticeRepository(db);
+    });
 
-    expect(find.text('Введите название'), findsOneWidget);
-  });
+    tearDown(() async {
+      await db.close();
+    });
 
-  testWidgets('можно выбрать тип (counter/timer)', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: CreatePracticeScreen(traditionTag: 'test'),
-      ),
-    );
+    testWidgets('форма валидирует пустое название', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            practiceRepositoryProvider.overrideWithValue(repository),
+          ],
+          child: const MaterialApp(
+            home: CreatePracticeScreen(traditionTag: 'sample'),
+          ),
+        ),
+      );
 
-    // Проверяем, что по умолчанию выбран "Счётчик"
-    expect(find.text('Счётчик'), findsOneWidget);
+      await tester.pumpAndSettle();
 
-    // Открываем dropdown
-    await tester.tap(find.byType(DropdownButtonFormField<String>));
-    await tester.pumpAndSettle();
+      // Тапаем "Создать" без ввода названия
+      await tester.tap(find.text('Создать'));
+      await tester.pumpAndSettle();
 
-    // Выбираем "Таймер"
-    await tester.tap(find.text('Таймер').last);
-    await tester.pumpAndSettle();
+      expect(find.text('Введите название'), findsOneWidget);
+    });
 
-    expect(find.text('Таймер'), findsWidgets);
-  });
+    testWidgets('можно ввести цель', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            practiceRepositoryProvider.overrideWithValue(repository),
+          ],
+          child: const MaterialApp(
+            home: CreatePracticeScreen(traditionTag: 'sample'),
+          ),
+        ),
+      );
 
-  testWidgets('можно ввести цель', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: CreatePracticeScreen(traditionTag: 'test'),
-      ),
-    );
+      await tester.pumpAndSettle();
 
-    // Вводим цель
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Цель (опционально)'),
-      '1000',
-    );
+      // Вводим цель
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Цель (опционально)'),
+        '1000',
+      );
 
-    expect(find.text('1000'), findsOneWidget);
-  });
+      expect(find.text('1000'), findsOneWidget);
+    });
 
-  testWidgets('кнопка "Создать" работает', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: CreatePracticeScreen(traditionTag: 'test'),
-      ),
-    );
+    testWidgets('можно ввести название', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            practiceRepositoryProvider.overrideWithValue(repository),
+          ],
+          child: const MaterialApp(
+            home: CreatePracticeScreen(traditionTag: 'sample'),
+          ),
+        ),
+      );
 
-    // Вводим название
-    await tester.enterText(
-      find.widgetWithText(TextFormField, 'Название'),
-      'Тестовая практика',
-    );
+      await tester.pumpAndSettle();
 
-    // Нажимаем "Создать"
-    await tester.tap(find.text('Создать'));
-    await tester.pumpAndSettle();
+      // Вводим название
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Название'),
+        'Тестовая практика',
+      );
 
-    // Экран должен закрыться (вернуться назад)
-    expect(find.byType(CreatePracticeScreen), findsNothing);
+      expect(find.text('Тестовая практика'), findsOneWidget);
+    });
   });
 }

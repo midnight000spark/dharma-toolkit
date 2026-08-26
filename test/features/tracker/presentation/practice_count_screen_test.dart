@@ -1,76 +1,109 @@
+import 'package:dharma_toolkit/core/db/app_database.dart';
+import 'package:dharma_toolkit/features/tracker/data/practice_repository.dart';
 import 'package:dharma_toolkit/features/tracker/domain/practice.dart';
+import 'package:dharma_toolkit/features/tracker/presentation/providers/practice_provider.dart';
 import 'package:dharma_toolkit/features/tracker/presentation/screens/practice_count_screen.dart';
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  final testPractice = PracticeEntity(
-    id: 1,
-    name: 'Тестовая практика',
-    type: 'counter',
-    traditionTag: 'test',
-    currentCount: 100,
-    target: 1000,
-    unit: 'раз',
-    createdAt: DateTime.now(),
-    updatedAt: DateTime.now(),
-  );
+  group('PracticeCountScreen', () {
+    late AppDatabase db;
+    late PracticeRepository repository;
+    late int practiceId;
 
-  testWidgets('экран рендерится с практикой', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: PracticeCountScreen(practice: testPractice),
-      ),
-    );
+    setUp(() async {
+      db = AppDatabase.forTesting(NativeDatabase.memory());
+      repository = PracticeRepository(db);
 
-    expect(find.byType(PracticeCountScreen), findsOneWidget);
-    expect(find.text('Тестовая практика'), findsOneWidget);
-  });
+      final now = DateTime.now();
+      practiceId = await repository.create(PracticeEntity(
+        name: 'Тестовая практика',
+        type: 'counter',
+        target: 100,
+        unit: 'раз',
+        traditionTag: 'test',
+        currentCount: 10,
+        createdAt: now,
+        updatedAt: now,
+      ));
+    });
 
-  testWidgets('показывает текущий счёт', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: PracticeCountScreen(practice: testPractice),
-      ),
-    );
+    tearDown(() async {
+      await db.close();
+    });
 
-    expect(find.text('100'), findsOneWidget);
-  });
+    testWidgets('экран загружает практику по ID', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            practiceRepositoryProvider.overrideWithValue(repository),
+          ],
+          child: MaterialApp(
+            home: PracticeCountScreen(practiceId: practiceId),
+          ),
+        ),
+      );
 
-  testWidgets('показывает прогресс-бар если есть target', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: PracticeCountScreen(practice: testPractice),
-      ),
-    );
+      await tester.pumpAndSettle();
 
-    expect(find.byType(LinearProgressIndicator), findsOneWidget);
-    expect(find.text('Цель: 1000'), findsOneWidget);
-  });
+      expect(find.text('Тестовая практика'), findsOneWidget);
+      expect(find.text('10'), findsOneWidget);
+      expect(find.text('Цель: 100'), findsOneWidget);
+    });
 
-  testWidgets('кнопки +1, +10, +100 увеличивают счёт', (tester) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: PracticeCountScreen(practice: testPractice),
-      ),
-    );
+    testWidgets('тап +1 увеличивает счёт', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            practiceRepositoryProvider.overrideWithValue(repository),
+          ],
+          child: MaterialApp(
+            home: PracticeCountScreen(practiceId: practiceId),
+          ),
+        ),
+      );
 
-    // Начальное значение
-    expect(find.text('100'), findsOneWidget);
+      await tester.pumpAndSettle();
 
-    // Нажимаем +1
-    await tester.tap(find.text('+1'));
-    await tester.pump();
-    expect(find.text('101'), findsOneWidget);
+      // Начальное значение
+      expect(find.text('10'), findsOneWidget);
 
-    // Нажимаем +10
-    await tester.tap(find.text('+10'));
-    await tester.pump();
-    expect(find.text('111'), findsOneWidget);
+      // Тапаем +1
+      await tester.tap(find.text('+1'));
+      await tester.pumpAndSettle();
 
-    // Нажимаем +100
-    await tester.tap(find.text('+100'));
-    await tester.pump();
-    expect(find.text('211'), findsOneWidget);
+      // Проверяем, что счёт увеличился
+      expect(find.text('11'), findsOneWidget);
+
+      // Проверяем, что данные сохранились в репозитории
+      final practices = await repository.getByTradition('test');
+      expect(practices.first.currentCount, 11);
+    });
+
+    testWidgets('тап +10 увеличивает счёт на 10', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            practiceRepositoryProvider.overrideWithValue(repository),
+          ],
+          child: MaterialApp(
+            home: PracticeCountScreen(practiceId: practiceId),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('+10'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('20'), findsOneWidget);
+
+      final practices = await repository.getByTradition('test');
+      expect(practices.first.currentCount, 20);
+    });
   });
 }

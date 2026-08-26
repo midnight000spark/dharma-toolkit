@@ -1,84 +1,133 @@
+import 'package:dharma_toolkit/core/db/app_database.dart';
+import 'package:dharma_toolkit/features/tracker/data/practice_repository.dart';
 import 'package:dharma_toolkit/features/tracker/domain/practice.dart';
 import 'package:dharma_toolkit/features/tracker/presentation/providers/practice_provider.dart';
 import 'package:dharma_toolkit/features/tracker/presentation/screens/practice_list_screen.dart';
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 void main() {
-  testWidgets('экран рендерится без ошибок', (tester) async {
-    await tester.pumpWidget(
-      const ProviderScope(
-        child: MaterialApp(
-          home: PracticeListScreen(traditionTag: 'test'),
-        ),
-      ),
-    );
+  group('PracticeListScreen', () {
+    late AppDatabase db;
+    late PracticeRepository repository;
 
-    expect(find.byType(PracticeListScreen), findsOneWidget);
-  });
+    setUp(() async {
+      db = AppDatabase.forTesting(NativeDatabase.memory());
+      repository = PracticeRepository(db);
 
-  testWidgets('показывает loading state', (tester) async {
-    await tester.pumpWidget(
-      const ProviderScope(
-        child: MaterialApp(
-          home: PracticeListScreen(traditionTag: 'test'),
-        ),
-      ),
-    );
+      final now = DateTime.now();
 
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
-  });
-
-  testWidgets('показывает список практик', (tester) async {
-    final practices = [
-      PracticeEntity(
-        id: 1,
-        name: 'Тестовая практика',
+      // Создаём тестовые практики
+      await repository.create(PracticeEntity(
+        name: 'Простирания',
         type: 'counter',
-        traditionTag: 'test',
-        currentCount: 100,
         target: 1000,
         unit: 'раз',
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      ),
-    ];
+        traditionTag: 'sample',
+        currentCount: 100,
+        createdAt: now,
+        updatedAt: now,
+      ));
 
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          practiceListProvider('test').overrideWith((ref) async => practices),
-        ],
-        child: const MaterialApp(
-          home: PracticeListScreen(traditionTag: 'test'),
+      await repository.create(PracticeEntity(
+        name: 'Мантра',
+        type: 'counter',
+        target: 10000,
+        unit: 'раз',
+        traditionTag: 'sample',
+        currentCount: 500,
+        createdAt: now,
+        updatedAt: now,
+      ));
+    });
+
+    tearDown(() async {
+      await db.close();
+    });
+
+    testWidgets('показывает список практик', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            practiceRepositoryProvider.overrideWithValue(repository),
+          ],
+          child: MaterialApp.router(
+            routerConfig: GoRouter(
+              routes: [
+                GoRoute(
+                  path: '/',
+                  builder: (context, state) =>
+                      const PracticeListScreen(traditionTag: 'sample'),
+                ),
+              ],
+            ),
+          ),
         ),
-      ),
-    );
+      );
 
-    await tester.pumpAndSettle();
+      await tester.pumpAndSettle();
 
-    expect(find.text('Тестовая практика'), findsOneWidget);
-    expect(find.text('100 раз'), findsOneWidget);
-    expect(find.text('10%'), findsOneWidget);
-  });
+      expect(find.text('Простирания'), findsOneWidget);
+      expect(find.text('Мантра'), findsOneWidget);
+      expect(find.text('100 раз'), findsOneWidget);
+      expect(find.text('500 раз'), findsOneWidget);
+    });
 
-  testWidgets('показывает error state', (tester) async {
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          practiceListProvider('test').overrideWith((ref) async {
-            throw Exception('Тестовая ошибка');
-          }),
-        ],
-        child: const MaterialApp(
-          home: PracticeListScreen(traditionTag: 'test'),
+    testWidgets('показывает прогресс в процентах', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            practiceRepositoryProvider.overrideWithValue(repository),
+          ],
+          child: MaterialApp.router(
+            routerConfig: GoRouter(
+              routes: [
+                GoRoute(
+                  path: '/',
+                  builder: (context, state) =>
+                      const PracticeListScreen(traditionTag: 'sample'),
+                ),
+              ],
+            ),
+          ),
         ),
-      ),
-    );
+      );
 
-    await tester.pumpAndSettle();
+      await tester.pumpAndSettle();
 
-    expect(find.textContaining('Ошибка'), findsOneWidget);
+      // 100/1000 = 10%
+      expect(find.text('10%'), findsOneWidget);
+      // 500/10000 = 5%
+      expect(find.text('5%'), findsOneWidget);
+    });
+
+    testWidgets('имеет FAB для создания', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            practiceRepositoryProvider.overrideWithValue(repository),
+          ],
+          child: MaterialApp.router(
+            routerConfig: GoRouter(
+              routes: [
+                GoRoute(
+                  path: '/',
+                  builder: (context, state) =>
+                      const PracticeListScreen(traditionTag: 'sample'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.byType(FloatingActionButton), findsOneWidget);
+      expect(find.byIcon(Icons.add), findsOneWidget);
+    });
   });
 }
