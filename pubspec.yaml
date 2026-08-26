@@ -40,6 +40,9 @@ dependencies:
   sqlite3_flutter_libs: ^0.5.28
   path_provider: ^2.1.5
   path: ^1.9.1
+  
+  # SharedPreferences for simple key-value storage
+  shared_preferences: ^2.3.3
 
 dev_dependencies:
   flutter_test:
