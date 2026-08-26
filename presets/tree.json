@@ -1,0 +1,29 @@
+{
+  "traditions": [
+    {
+      "id": "theravada",
+      "name": "Тхеравада",
+      "presets": ["theravada_default"]
+    },
+    {
+      "id": "mahayana",
+      "name": "Махаяна",
+      "presets": ["zen_soto", "zen_rinzai"]
+    },
+    {
+      "id": "vajrayana",
+      "name": "Ваджраяна",
+      "presets": ["nyingma", "kagyu", "gelug", "sakya"]
+    },
+    {
+      "id": "bon",
+      "name": "Бон",
+      "presets": ["bon_default"]
+    }
+  ],
+  "custom": {
+    "id": "custom",
+    "name": "Собрать свой набор",
+    "presets": []
+  }
+}
