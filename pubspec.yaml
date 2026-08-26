@@ -43,6 +43,9 @@ dependencies:
   
   # SharedPreferences for simple key-value storage
   shared_preferences: ^2.3.3
+  
+  # Riverpod for state management
+  flutter_riverpod: ^2.6.1
 
 dev_dependencies:
   flutter_test:
