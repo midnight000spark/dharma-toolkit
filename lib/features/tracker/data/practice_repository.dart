@@ -19,6 +19,14 @@ class PracticeRepository {
     return rows.map((row) => PracticeEntity.fromRow(row)).toList();
   }
 
+  /// Получить практику по ID
+  Future<PracticeEntity> getById(int id) async {
+    final row = await (_database.select(_database.practices)
+          ..where((t) => t.id.equals(id)))
+        .getSingle();
+    return PracticeEntity.fromRow(row);
+  }
+
   /// Создать новую практику
   Future<int> create(PracticeEntity practice) async {
     return await _database.into(_database.practices).insert(
