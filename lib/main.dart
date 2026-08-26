@@ -1,10 +1,14 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/config/config_module.dart';
 import 'core/config/preset_manager.dart';
 import 'core/db/database_module.dart';
+import 'core/db/dev_seeder.dart';
 import 'core/module/module_registry.dart';
 import 'core/storage/storage_module.dart';
+import 'features/tracker/presentation/router.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,21 +31,22 @@ Future<void> main() async {
 
   await registry.initAll();
 
-  runApp(const DharmaToolkitApp());
+  // Seed test data in debug mode
+  if (kDebugMode) {
+    await DevSeeder.seedIfEmpty(databaseModule.database);
+  }
+
+  runApp(const ProviderScope(child: DharmaToolkitApp()));
 }
 
-class DharmaToolkitApp extends StatelessWidget {
+class DharmaToolkitApp extends ConsumerWidget {
   const DharmaToolkitApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
+  Widget build(BuildContext context, WidgetRef ref) {
+    return MaterialApp.router(
       title: 'Дхарма-тулкит',
-      home: const Scaffold(
-        body: Center(
-          child: Text('Дхарма-тулкит запущен'),
-        ),
-      ),
+      routerConfig: trackerRouter,
     );
   }
 }
