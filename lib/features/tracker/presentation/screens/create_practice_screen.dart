@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../domain/practice.dart';
+import '../providers/practice_provider.dart';
 
 /// Экран создания кастомной практики
-class CreatePracticeScreen extends StatefulWidget {
+class CreatePracticeScreen extends ConsumerStatefulWidget {
   final String traditionTag;
 
   const CreatePracticeScreen({super.key, required this.traditionTag});
 
   @override
-  State<CreatePracticeScreen> createState() => _CreatePracticeScreenState();
+  ConsumerState<CreatePracticeScreen> createState() => _CreatePracticeScreenState();
 }
 
-class _CreatePracticeScreenState extends State<CreatePracticeScreen> {
+class _CreatePracticeScreenState extends ConsumerState<CreatePracticeScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _targetController = TextEditingController();
@@ -24,10 +28,26 @@ class _CreatePracticeScreenState extends State<CreatePracticeScreen> {
     super.dispose();
   }
 
-  void _save() {
+  Future<void> _save() async {
     if (_formKey.currentState!.validate()) {
-      // TODO: сохранить через repository
-      Navigator.of(context).pop();
+      final repository = ref.read(practiceRepositoryProvider);
+      final now = DateTime.now();
+      
+      final practice = PracticeEntity(
+        name: _nameController.text,
+        type: _type,
+        target: _targetController.text.isEmpty ? null : int.tryParse(_targetController.text),
+        unit: _unit,
+        traditionTag: widget.traditionTag,
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      await repository.create(practice);
+      
+      if (mounted) {
+        Navigator.of(context).pop(true);
+      }
     }
   }
 
