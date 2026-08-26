@@ -2,6 +2,27 @@
   "id": "sample",
   "name": "Пример традиции",
   "version": "1.0.0",
-  "modules": [],
+  "tradition": "sample",
+  "modules": ["calendar", "tracker"],
+  "moduleConfigs": {
+    "calendar": {
+      "type": "tibetan",
+      "highlightDays": [10, 25]
+    },
+    "tracker": {
+      "isolationTag": "sample"
+    }
+  },
+  "practices": [
+    {
+      "id": "sample_practice",
+      "name": "Примерная практика",
+      "type": "counter",
+      "target": 100,
+      "unit": "повторений"
+    }
+  ],
+  "eventPacks": [],
+  "contentPacks": [],
   "description": "Заглушка для проверки загрузчика"
 }
