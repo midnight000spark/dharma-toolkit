@@ -54,6 +54,14 @@
 - **Источник**: Реализация в lib/core/module/module_registry.dart
 - **Дата**: 2026-08-26
 
+### F-7: sealed class в Dart запрещает расширение вне библиотеки. AppEvent сделан abstract class для поддержки модульной экстенсивности (D-5)
+- **Источник**: Реализация в lib/core/events/app_event.dart
+- **Дата**: 2026-08-26
+
+### F-8: Iterable не имеет .reversed, нужен .toList().reversed. ModuleRegistry.disposeAll() учитывает это
+- **Источник**: Реализация в lib/core/module/module_registry.dart
+- **Дата**: 2026-08-26
+
 ---
 
 ## РЕШЕНИЯ
@@ -133,6 +141,7 @@
 | 2026-08-26 | Этап 1: Архитектурные guard-тесты (features не импортируют друг друга) | Команда |
 | 2026-08-26 | Этап 1: Добавлена Linux platform | Команда |
 | 2026-08-26 | Этап 1 завершён: 12 тестов зелёных, analyze 0 проблем | Команда |
+| 2026-08-26 | Добавлены факты F-7, F-8 (sealed class, Iterable.reversed) | Команда |
 
 ---
 
