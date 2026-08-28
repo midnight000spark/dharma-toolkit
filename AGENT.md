@@ -25,7 +25,7 @@
 - **Framework**: Flutter (Dart)
 - **State Management**: Riverpod
 - **Local DB**: Drift (SQLite)
-- **Dependency Injection**: get_it
+- **Dependency Injection**: Riverpod (D-4)
 - **Routing**: go_router
 - **Testing**: flutter_test + mocktail
 
@@ -33,11 +33,10 @@
 ```
 lib/
   core/
-    modules/          # Plugin Manager, Module Interface
+    module/           # Plugin Manager, Module Interface
     events/           # Event Bus
     config/           # Config Loader, Preset Manager
-    database/         # Drift setup, migrations
-    di/               # Dependency Injection
+    db/               # Drift setup, migrations
   features/
     calendar/         # Calendar Module (абстрактный)
     tracker/          # Tracker Module (счетчики)
@@ -47,6 +46,7 @@ lib/
     widgets/          # Переиспользуемые UI компоненты
     utils/            # Общие утилиты
     theme/            # Темы и стили
+    l10n/             # Локализация
 test/
 docs/
 presets/              # JSON файлы пресетов
