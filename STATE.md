@@ -244,6 +244,11 @@
 - **Источник**: `flutter test`, `flutter analyze`, `dart run build_runner build` — 2026-09-01
 - **Дата**: 2026-09-01
 
+### F-41: инцидент — PAT был вшит в remote URL и скомпрометирован
+- **Описание**: при ручной приёмке 5.0.4 замечено, что GitHub Personal Access Token был вшит в URL remote (`.git/config`). Токен отозван пользователем; remote переведён на SSH-ключ ed25519 (`git@github.com:...`, проверено `git remote -v` в пакете 5.0.5 — токенов ghp_/gho_ нет). Правило: credentials никогда не впихивать в remote URL — только SSH или credential helper.
+- **Источник**: наблюдение пользователя (2026-09-01), проверка remote в блоке 0 пакета 5.0.5
+- **Дата**: 2026-09-01
+
 ---
 
 ## РЕШЕНИЯ
