@@ -15,7 +15,7 @@
 ## Стек
 Flutter 3.47.1 / Dart 3.13.1, Riverpod 2.6.1 (state + DI, service locator
 запрещён — D-4/D-22), Drift 2.34.3 (SQLite, сверять с pubspec.lock — F-24),
-go_router 18.0.0, flutter_test; локализация ru — план 5.0.5 (R-15).
+go_router 18.0.0, flutter_test; локализация ru подключена в 5.0.5 (intl 0.20.3).
 
 ## Текущий статус
 Пакет «Наведение порядка» завершён (тег order-1, 2026-09-01): конституция v2,
