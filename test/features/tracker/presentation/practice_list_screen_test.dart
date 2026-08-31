@@ -39,13 +39,16 @@ void main() {
         unit: 'раз',
         traditionTag: 'sample',
         currentCount: 500,
-        createdAt: now,
-        updatedAt: now,
+        createdAt: now.add(const Duration(seconds: 1)),
+        updatedAt: now.add(const Duration(seconds: 1)),
       ));
     });
 
     tearDown(() async {
-      await db.close();
+      // Закрываем БД, если ещё не закрыта (игнорируем ошибки повторного закрытия)
+      try {
+        await db.close();
+      } catch (_) {}
     });
 
     testWidgets('показывает список практик', (tester) async {
@@ -68,12 +71,17 @@ void main() {
         ),
       );
 
-      await tester.pumpAndSettle();
+      // Ждём эмиссии стрима (не pumpAndSettle — стримы не settling)
+      await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.text('Простирания'), findsOneWidget);
       expect(find.text('Мантра'), findsOneWidget);
       expect(find.text('100 раз'), findsOneWidget);
       expect(find.text('500 раз'), findsOneWidget);
+
+      // Закрываем БД и заменяем виджет, чтобы dispose прошёл без pending timers
+      await db.close();
+      await tester.pumpWidget(const SizedBox.shrink());
     });
 
     testWidgets('показывает прогресс в процентах', (tester) async {
@@ -96,12 +104,15 @@ void main() {
         ),
       );
 
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 100));
 
       // 100/1000 = 10%
       expect(find.text('10%'), findsOneWidget);
       // 500/10000 = 5%
       expect(find.text('5%'), findsOneWidget);
+
+      await db.close();
+      await tester.pumpWidget(const SizedBox.shrink());
     });
 
     testWidgets('имеет FAB для создания', (tester) async {
@@ -124,10 +135,13 @@ void main() {
         ),
       );
 
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.byType(FloatingActionButton), findsOneWidget);
       expect(find.byIcon(Icons.add), findsOneWidget);
+
+      await db.close();
+      await tester.pumpWidget(const SizedBox.shrink());
     });
   });
 }

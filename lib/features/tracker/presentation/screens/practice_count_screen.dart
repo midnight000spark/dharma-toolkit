@@ -1,95 +1,130 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../domain/practice.dart';
 import '../providers/practice_provider.dart';
 
-/// Экран счёта для конкретной практики
-class PracticeCountScreen extends ConsumerStatefulWidget {
+/// Экран счёта для конкретной практики (I-3, I-4).
+///
+/// ConsumerWidget на [practiceByIdProvider]: стрим сам обновляет UI при
+/// изменении БД — ручной `_loadPractice` и `setState` удалены (B-6 исчезает
+/// структурно). Loading показывает спиннер с AppBar и кнопкой «назад».
+/// Null из стрима = «практика не найдена» с кнопкой «назад» (B-6).
+///
+/// Дизайн по SCR-9: одна КРУПНАЯ центральная кнопка «+» (шаг 1); вторичные
+/// +10/+100 — меньшими кнопками ниже. Ввод произвольного числа — не сейчас
+/// (FR-TRK-9, Этап 8).
+class PracticeCountScreen extends ConsumerWidget {
   final int practiceId;
 
   const PracticeCountScreen({super.key, required this.practiceId});
 
-  @override
-  ConsumerState<PracticeCountScreen> createState() => _PracticeCountScreenState();
-}
-
-class _PracticeCountScreenState extends ConsumerState<PracticeCountScreen> {
-  PracticeEntity? _practice;
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadPractice();
-  }
-
-  Future<void> _loadPractice() async {
+  Future<void> _increment(WidgetRef ref, int amount) async {
     final repository = ref.read(practiceRepositoryProvider);
-    final practice = await repository.getById(widget.practiceId);
-    setState(() {
-      _practice = practice;
-      _loading = false;
-    });
-  }
-
-  Future<void> _increment(int amount) async {
-    final repository = ref.read(practiceRepositoryProvider);
-    await repository.incrementCount(widget.practiceId, amount);
-    await _loadPractice();
+    await repository.incrementCount(practiceId, amount);
+    // Стрим сам переэмитит новое значение — ничего больше делать не нужно.
   }
 
   @override
-  Widget build(BuildContext context) {
-    if (_loading || _practice == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
+  Widget build(BuildContext context, WidgetRef ref) {
+    final practiceAsync = ref.watch(practiceByIdProvider(practiceId));
 
-    final practice = _practice!;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(practice.name),
+    return practiceAsync.when(
+      loading: () => Scaffold(
+        appBar: AppBar(title: const Text('Практика')),
+        body: const Center(child: CircularProgressIndicator()),
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              '${practice.currentCount}',
-              style: Theme.of(context).textTheme.displayLarge,
-            ),
-            if (practice.target != null) ...[
+      error: (error, stack) => Scaffold(
+        appBar: AppBar(title: const Text('Практика')),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Ошибка загрузки'),
               const SizedBox(height: 16),
-              LinearProgressIndicator(
-                value: practice.progress,
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Назад'),
               ),
-              const SizedBox(height: 8),
-              Text('Цель: ${practice.target}'),
             ],
-            const SizedBox(height: 32),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          ),
+        ),
+      ),
+      data: (practice) {
+        if (practice == null) {
+          // Практика не найдена (удалена, deep link на несуществующую) —
+          // явное состояние вместо вечного спиннера (B-6).
+          return Scaffold(
+            appBar: AppBar(title: const Text('Практика')),
+            body: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Практика не найдена'),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Назад'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(practice.name),
+          ),
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                ElevatedButton(
-                  onPressed: () => _increment(1),
-                  child: const Text('+1'),
+                Text(
+                  '${practice.currentCount}',
+                  style: Theme.of(context).textTheme.displayLarge,
                 ),
-                ElevatedButton(
-                  onPressed: () => _increment(10),
-                  child: const Text('+10'),
+                if (practice.target != null) ...[
+                  const SizedBox(height: 16),
+                  LinearProgressIndicator(
+                    value: practice.progress,
+                  ),
+                  const SizedBox(height: 8),
+                  Text('Цель: ${practice.target}'),
+                ],
+                const SizedBox(height: 32),
+                // SCR-9: крупная центральная кнопка «+» (шаг 1).
+                SizedBox(
+                  width: 120,
+                  height: 120,
+                  child: ElevatedButton(
+                    onPressed: () => _increment(ref, 1),
+                    style: ElevatedButton.styleFrom(
+                      textStyle: const TextStyle(fontSize: 48),
+                    ),
+                    child: const Text('+'),
+                  ),
                 ),
-                ElevatedButton(
-                  onPressed: () => _increment(100),
-                  child: const Text('+100'),
+                const SizedBox(height: 16),
+                // Вторичные кнопки +10/+100 — меньшими кнопками ниже.
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ElevatedButton(
+                      onPressed: () => _increment(ref, 10),
+                      child: const Text('+10'),
+                    ),
+                    const SizedBox(width: 16),
+                    ElevatedButton(
+                      onPressed: () => _increment(ref, 100),
+                      child: const Text('+100'),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

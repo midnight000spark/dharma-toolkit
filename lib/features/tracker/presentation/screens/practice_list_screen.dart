@@ -59,11 +59,9 @@ class PracticeListScreen extends ConsumerWidget {
         error: (error, stack) => Center(child: Text('Ошибка: $error')),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          await context.push('/create');
-          // Обновить список после возврата
-          ref.invalidate(practiceListProvider(traditionTag));
-        },
+        // Стрим сам обновляет список при изменении БД — invalidate не нужен.
+        // Возврат из создания просто pop; данные придут через watch().
+        onPressed: () => context.push('/create'),
         child: const Icon(Icons.add),
       ),
     );

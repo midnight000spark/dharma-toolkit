@@ -32,7 +32,10 @@ void main() {
     });
 
     tearDown(() async {
-      await db.close();
+      // Закрываем БД, если ещё не закрыта
+      try {
+        await db.close();
+      } catch (_) {}
     });
 
     testWidgets('экран загружает практику по ID', (tester) async {
@@ -47,14 +50,19 @@ void main() {
         ),
       );
 
-      await tester.pumpAndSettle();
+      // Ждём эмиссии стрима
+      await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.text('Тестовая практика'), findsOneWidget);
       expect(find.text('10'), findsOneWidget);
       expect(find.text('Цель: 100'), findsOneWidget);
+
+      // Закрываем БД и заменяем виджет, чтобы dispose прошёл без pending timers
+      await db.close();
+      await tester.pumpWidget(const SizedBox.shrink());
     });
 
-    testWidgets('тап +1 увеличивает счёт', (tester) async {
+    testWidgets('тап + увеличивает счёт (SCR-9: крупная кнопка)', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -66,21 +74,24 @@ void main() {
         ),
       );
 
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 100));
 
       // Начальное значение
       expect(find.text('10'), findsOneWidget);
 
-      // Тапаем +1
-      await tester.tap(find.text('+1'));
-      await tester.pumpAndSettle();
+      // Тапаем крупную кнопку "+" (SCR-9)
+      await tester.tap(find.text('+'));
+      await tester.pump(const Duration(milliseconds: 100));
 
-      // Проверяем, что счёт увеличился
+      // Счёт увеличился на 1
       expect(find.text('11'), findsOneWidget);
 
       // Проверяем, что данные сохранились в репозитории
       final practices = await repository.getByTradition('test');
       expect(practices.first.currentCount, 11);
+
+      await db.close();
+      await tester.pumpWidget(const SizedBox.shrink());
     });
 
     testWidgets('тап +10 увеличивает счёт на 10', (tester) async {
@@ -95,15 +106,18 @@ void main() {
         ),
       );
 
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 100));
 
       await tester.tap(find.text('+10'));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 100));
 
       expect(find.text('20'), findsOneWidget);
 
       final practices = await repository.getByTradition('test');
       expect(practices.first.currentCount, 20);
+
+      await db.close();
+      await tester.pumpWidget(const SizedBox.shrink());
     });
   });
 }

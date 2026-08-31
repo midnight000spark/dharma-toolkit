@@ -45,8 +45,9 @@ class _CreatePracticeScreenState extends ConsumerState<CreatePracticeScreen> {
 
       await repository.create(practice);
       
+      // Стрим списка сам обновится после insert — просто pop без result.
       if (mounted) {
-        Navigator.of(context).pop(true);
+        Navigator.of(context).pop();
       }
     }
   }
