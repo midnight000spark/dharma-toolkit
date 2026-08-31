@@ -150,10 +150,14 @@ class AppDatabase extends _$AppDatabase {
 final DatabaseSetup enableForeignKeys =
     (db) => db.execute('PRAGMA foreign_keys = ON;');
 
+/// Имя файла локальной базы (папка документов приложения). Единый источник
+/// для [LazyDatabase] и аварийного стирания из `core/recovery` (B-5).
+const String kAppDatabaseFileName = 'dharma_toolkit.sqlite';
+
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();
-    final file = File(p.join(dbFolder.path, 'dharma_toolkit.sqlite'));
+    final file = File(p.join(dbFolder.path, kAppDatabaseFileName));
     return NativeDatabase.createInBackground(
       file,
       setup: enableForeignKeys,
