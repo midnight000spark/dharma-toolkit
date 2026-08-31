@@ -762,6 +762,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.7.12"
+  tibetan_calendar:
+    dependency: "direct dev"
+    description:
+      name: tibetan_calendar
+      sha256: ee3a83275347d25e1973d078d6203e82366608e1d772b63feed8727d4f323cc1
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.0"
   typed_data:
     dependency: transitive
     description:

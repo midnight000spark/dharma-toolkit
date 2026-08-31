@@ -71,6 +71,7 @@ dev_dependencies:
   # Drift code generation
   drift_dev: ^2.24.0
   build_runner: ^2.4.14
+  tibetan_calendar: ^2.0.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
