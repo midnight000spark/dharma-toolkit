@@ -247,7 +247,7 @@ Future<void> _pumpCreateScreen(
               key: const Key('open-create'),
               child: const Text('open'),
               onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(
+                MaterialPageRoute<void>(
                   builder: (_) =>
                       const CreatePracticeScreen(traditionTag: 'test'),
                 ),
