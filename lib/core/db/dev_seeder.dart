@@ -1,52 +1,23 @@
-import '../../features/tracker/data/practice_repository.dart';
-import '../../features/tracker/domain/practice.dart';
-import 'app_database.dart';
+import '../config/config_module.dart';
+import '../config/preset_manager.dart';
 
-/// Dev seeder для тестовых данных.
-/// 
-/// TODO: удалить в Этапе 8
+/// Dev-сидер: в отладочных сборках, если активный пресет ещё не выбран,
+/// применяет пресет «Ньингма» через реальный путь `PresetManager.applyPreset`
+/// (замена хардкода практик, 5.0.2).
+///
+/// Практик раньше сеял тип `'timer'`, которого не существует (R-17) — убрано:
+/// источник тестовых данных теперь сам продукт.
 class DevSeeder {
-  /// Заполняет БД тестовыми данными, если таблица practices пуста.
-  /// Вызывать ТОЛЬКО внутри `if (kDebugMode)`.
-  static Future<void> seedIfEmpty(AppDatabase db) async {
-    final repository = PracticeRepository(db);
-    final practices = await repository.getByTradition('sample');
-    
-    if (practices.isEmpty) {
-      final now = DateTime.now();
-      
-      // Простирания — 100000 повторений
-      await repository.create(PracticeEntity(
-        name: 'Простирания',
-        type: 'counter',
-        target: 100000,
-        unit: 'повторений',
-        traditionTag: 'sample',
-        createdAt: now,
-        updatedAt: now,
-      ));
-      
-      // Мантра Ваджрасаттвы — 100000 повторений
-      await repository.create(PracticeEntity(
-        name: 'Мантра Ваджрасаттвы',
-        type: 'counter',
-        target: 100000,
-        unit: 'повторений',
-        traditionTag: 'sample',
-        createdAt: now,
-        updatedAt: now,
-      ));
-      
-      // Чтение — 60 минут
-      await repository.create(PracticeEntity(
-        name: 'Чтение текстов',
-        type: 'timer',
-        target: 60,
-        unit: 'минут',
-        traditionTag: 'sample',
-        createdAt: now,
-        updatedAt: now,
-      ));
-    }
+  /// Идемпотентен: если пресет уже активен — ничего не делает.
+  static Future<void> seedIfEmpty({
+    required PresetManager presets,
+    required ConfigModule config,
+  }) async {
+    if (presets.activePreset != null) return;
+
+    final nyingma = config.getPreset('nyingma');
+    if (nyingma == null) return; // пресета нет в сборке — не выдумываем
+
+    await presets.applyPreset(nyingma);
   }
 }

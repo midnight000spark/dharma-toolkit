@@ -144,8 +144,11 @@ class AppDatabase extends _$AppDatabase {
 /// SQLite по умолчанию держит `foreign_keys = OFF`; без этого прикладного
 /// pragma каскад из объявления таблицы — только бумага. Используется в
 /// [_openConnection] и в тестах, где проверяется каскад.
-final DatabaseSetup enableForeignKeys = (db) =>
-    db.execute('PRAGMA foreign_keys = ON;');
+// Тип параметра Database не экспортируется из drift/native.dart: объявить
+// функцию с сигнатурой DatabaseSetup именованно нельзя, поэтому замыкание.
+// ignore: prefer_function_declarations_over_variables
+final DatabaseSetup enableForeignKeys =
+    (db) => db.execute('PRAGMA foreign_keys = ON;');
 
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {

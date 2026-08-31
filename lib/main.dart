@@ -2,13 +2,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'app_router.dart';
 import 'core/config/config_module.dart';
 import 'core/config/preset_manager.dart';
 import 'core/db/database_module.dart';
 import 'core/db/dev_seeder.dart';
 import 'core/module/module_registry.dart';
 import 'core/storage/storage_module.dart';
-import 'features/tracker/presentation/router.dart';
+import 'shared/providers/app_providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,12 +32,25 @@ Future<void> main() async {
 
   await registry.initAll();
 
-  // Seed test data in debug mode
+  // Dev-посев: вместо хардкода практик — применение реального пресета
+  // через реальный путь (B-3/3.4). Только debug, только если традиция ещё
+  // не выбрана.
   if (kDebugMode) {
-    await DevSeeder.seedIfEmpty(databaseModule.database);
+    await DevSeeder.seedIfEmpty(
+      presets: presetManager,
+      config: configModule,
+    );
   }
 
-  runApp(const ProviderScope(child: DharmaToolkitApp()));
+  runApp(
+    ProviderScope(
+      overrides: [
+        configModuleProvider.overrideWithValue(configModule),
+        presetManagerProvider.overrideWithValue(presetManager),
+      ],
+      child: const DharmaToolkitApp(),
+    ),
+  );
 }
 
 class DharmaToolkitApp extends ConsumerWidget {
@@ -46,7 +60,7 @@ class DharmaToolkitApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp.router(
       title: 'Дхарма-тулкит',
-      routerConfig: trackerRouter,
+      routerConfig: ref.watch(routerProvider),
     );
   }
 }

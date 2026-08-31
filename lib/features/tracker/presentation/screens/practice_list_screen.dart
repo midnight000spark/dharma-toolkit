@@ -19,20 +19,42 @@ class PracticeListScreen extends ConsumerWidget {
         title: const Text('Практики'),
       ),
       body: practicesAsync.when(
-        data: (practices) => ListView.builder(
-          itemCount: practices.length,
-          itemBuilder: (context, index) {
-            final practice = practices[index];
-            return ListTile(
-              title: Text(practice.name),
-              subtitle: Text('${practice.currentCount} ${practice.unit ?? ''}'),
-              trailing: practice.target != null
-                  ? Text('${(practice.progress * 100).toInt()}%')
-                  : null,
-              onTap: () => context.push('/practice/${practice.id}'),
-            );
-          },
-        ),
+        data: (practices) => practices.isEmpty
+            // Пустое состояние по SCR-8: объяснение + действие, а не пустой
+            // экран (мелочь аудита из D-24).
+            ? Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Пока нет практик'),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Добавьте первую — например, счёт мантр или простираний.',
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: () => context.push('/create'),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Создать'),
+                    ),
+                  ],
+                ),
+              )
+            : ListView.builder(
+                itemCount: practices.length,
+                itemBuilder: (context, index) {
+                  final practice = practices[index];
+                  return ListTile(
+                    title: Text(practice.name),
+                    subtitle: Text('${practice.currentCount} ${practice.unit ?? ''}'),
+                    trailing: practice.target != null
+                        ? Text('${(practice.progress * 100).toInt()}%')
+                        : null,
+                    onTap: () => context.push('/practice/${practice.id}'),
+                  );
+                },
+              ),
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stack) => Center(child: Text('Ошибка: $error')),
       ),
