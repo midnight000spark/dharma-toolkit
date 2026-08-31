@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../shared/utils/format.dart';
+import '../../domain/practice.dart';
 import '../providers/practice_provider.dart';
 
 /// Экран списка трекеров практик
@@ -10,6 +11,48 @@ class PracticeListScreen extends ConsumerWidget {
   final String traditionTag;
 
   const PracticeListScreen({super.key, required this.traditionTag});
+
+  /// Удаление трекера (FR-TRK-11, D-29): только долгое нажатие на карточку +
+  /// явное подтверждение в диалоге. Swipe-удаления нет намеренно — счёт
+  /// практики это духовный подвиг, а не черновик (I-2/D-26: удаление только
+  /// явное намеренное действие).
+  ///
+  /// Диалог обязан назвать практику, её текущий счёт и предупредить о
+  /// необратимом стирании истории. После подтверждения — repository.delete();
+  /// каскад стирает count_history (F-33, B-11), стрим сам убирает карточку
+  /// из списка (D-16) — ручной перерисовки нет.
+  Future<void> _confirmDelete(
+    BuildContext context,
+    WidgetRef ref,
+    PracticeEntity practice,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Удалить «${practice.name}»?'),
+        content: Text(
+          'Текущий счёт: ${formatCount(practice.currentCount, practice.unit)}.\n'
+          'История счёта будет стёрта. Действие необратимо.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Отмена'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(dialogContext).colorScheme.error,
+            ),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Удалить'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await ref.read(practiceRepositoryProvider).delete(practice.id!);
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -53,6 +96,8 @@ class PracticeListScreen extends ConsumerWidget {
                         ? Text('${(practice.progress * 100).toInt()}%')
                         : null,
                     onTap: () => context.push('/practice/${practice.id}'),
+                    // FR-TRK-11: единственная точка удаления — долгое нажатие.
+                    onLongPress: () => _confirmDelete(context, ref, practice),
                   );
                 },
               ),

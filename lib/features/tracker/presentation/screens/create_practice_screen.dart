@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../shared/utils/format.dart';
 import '../../domain/practice.dart';
 import '../providers/practice_provider.dart';
 
@@ -36,16 +37,13 @@ class _CreatePracticeScreenState extends ConsumerState<CreatePracticeScreen> {
 
   /// Разбор цели: «100 000» → 100000 (пробелы — группировка разрядов, а не
   /// данные); пусто → null; нечисловое или неположительное — ошибка под
-  /// полем, цель не теряется молча (B-9).
-  static int? parseTarget(String raw) {
-    final normalized = raw.trim().replaceAll(RegExp(r'\s+'), '');
-    if (normalized.isEmpty) return null;
-    final parsed = int.tryParse(normalized);
-    if (parsed == null || parsed <= 0) {
-      throw const FormatException('Цель должна быть целым числом больше нуля');
-    }
-    return parsed;
-  }
+  /// полем, цель не теряется молча (B-9). Правила — общая утилита
+  /// [parseGroupedPositiveInt] (урок 3: те же правила у диалога произвольного
+  /// инкремента, 5.0.5).
+  static int? parseTarget(String raw) => parseGroupedPositiveInt(
+        raw,
+        error: 'Цель должна быть целым числом больше нуля',
+      );
 
   String? _validateTarget(String? value) {
     try {
