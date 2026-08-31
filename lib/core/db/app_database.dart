@@ -61,7 +61,7 @@ class AppDatabase extends _$AppDatabase {
   /// Шаг 3 нельзя пропустить молча: без своей ветки миграция бросает
   /// [StateError] при первом же открытии базы (R-8).
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration {
@@ -104,6 +104,26 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(practices);
         await m.createTable(countHistory);
         break;
+      case 3:
+        // 5.0.2: B-3 — стабильный id практики из пресета + уникальный индекс
+        // по (tradition_tag, preset_practice_id); B-11 — каскад истории счёта.
+        //
+        // createTable в ветке 2 на цепочке 1→2→3 создаёт таблицы уже текущим
+        // DDL, поэтому additions защищены проверкой существования: ALTER TABLE
+        // ADD COLUMN на уже существующей колонке упал бы с «duplicate column».
+        if (!await _hasColumn('practices', 'preset_practice_id')) {
+          await m.addColumn(practices, practices.presetPracticeId);
+        }
+        await customStatement(
+          'CREATE UNIQUE INDEX IF NOT EXISTS idx_practices_tradition_preset '
+          'ON practices (tradition_tag, preset_practice_id)',
+        );
+        // SQLite не умеет добавлять FK/каскад в существующую таблицу —
+        // пересоздание по 12-шаговой процедуре (docs/MIGRATIONS.md).
+        // Данные переключает TableMigration: колонки не меняются, меняется
+        // только определение таблицы (ON DELETE CASCADE вместо RESTRICT).
+        await m.alterTable(TableMigration(countHistory));
+        break;
       default:
         throw StateError(
           'Нет миграции на версию $version схемы БД. '
@@ -112,12 +132,28 @@ class AppDatabase extends _$AppDatabase {
         );
     }
   }
+
+  Future<bool> _hasColumn(String table, String column) async {
+    final rows = await customSelect("PRAGMA table_info('$table')").get();
+    return rows.any((row) => row.read<String>('name') == column);
+  }
 }
+
+/// Включение внешних ключей на каждом соединении (B-11, I-2).
+///
+/// SQLite по умолчанию держит `foreign_keys = OFF`; без этого прикладного
+/// pragma каскад из объявления таблицы — только бумага. Используется в
+/// [_openConnection] и в тестах, где проверяется каскад.
+final DatabaseSetup enableForeignKeys = (db) =>
+    db.execute('PRAGMA foreign_keys = ON;');
 
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();
     final file = File(p.join(dbFolder.path, 'dharma_toolkit.sqlite'));
-    return NativeDatabase.createInBackground(file);
+    return NativeDatabase.createInBackground(
+      file,
+      setup: enableForeignKeys,
+    );
   });
 }

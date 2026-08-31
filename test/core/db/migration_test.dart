@@ -26,17 +26,71 @@ class _AppDatabaseV1 extends AppDatabase {
       );
 }
 
-/// База, объявляющая версию схемы 3, для которой миграции не написано.
+/// База, объявляющая версию схемы 4, для которой миграции не написано.
 ///
 /// Регрессия на R-8: прежняя реализация в такой ситуации молча ничего
 /// не делала, и ошибка всплывала у пользователя как «no such table».
 /// Теперь она обязана упасть на первом же открытии базы.
-class _AppDatabaseV3 extends AppDatabase {
+class _AppDatabaseV4 extends AppDatabase {
   // ignore: use_super_parameters — см. комментарий у _AppDatabaseV1
-  _AppDatabaseV3(QueryExecutor executor) : super.forTesting(executor);
+  _AppDatabaseV4(QueryExecutor executor) : super.forTesting(executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
+}
+
+/// База версии 2 со СТАРОЙ схемой практик и истории, воссозданной сырым SQL.
+///
+/// Использовать актуальные классы Drift-таблиц здесь нельзя: они генерируют
+/// уже v3-DDL (с колонкой preset_practice_id и каскадом). Сырой DDL фиксирует
+/// именно то состояние, в котором живут пользовательские базы до 5.0.2.
+class _AppDatabaseV2Raw extends AppDatabase {
+  // ignore: use_super_parameters — см. комментарий у _AppDatabaseV1
+  _AppDatabaseV2Raw(QueryExecutor executor) : super.forTesting(executor);
+
+  @override
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (Migrator m) async {
+          await customStatement('''
+            CREATE TABLE "presets" (
+              "id" TEXT NOT NULL PRIMARY KEY,
+              "name" TEXT NOT NULL,
+              "version" TEXT NOT NULL,
+              "tradition" TEXT NOT NULL,
+              "data" TEXT NOT NULL
+            )
+          ''');
+          // Старые practices: без preset_practice_id и без индекса.
+          await customStatement('''
+            CREATE TABLE "practices" (
+              "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+              "preset_id" TEXT,
+              "name" TEXT NOT NULL,
+              "type" TEXT NOT NULL,
+              "target" INTEGER,
+              "unit" TEXT,
+              "tradition_tag" TEXT NOT NULL,
+              "current_count" INTEGER NOT NULL DEFAULT 0,
+              "created_at" INTEGER NOT NULL DEFAULT 1725000000,
+              "updated_at" INTEGER NOT NULL DEFAULT 1725000000
+            )
+          ''');
+          // Старая count_history: RESTRICT вместо CASCADE (дефект B-11).
+          await customStatement('''
+            CREATE TABLE "count_history" (
+              "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+              "practice_id" INTEGER NOT NULL
+                REFERENCES "practices" ("id") ON DELETE RESTRICT,
+              "count" INTEGER NOT NULL,
+              "timestamp" INTEGER NOT NULL DEFAULT 1725000000,
+              "note" TEXT
+            )
+          ''');
+        },
+      );
 }
 
 Future<Set<String>> _tableNames(GeneratedDatabase db) async {
@@ -54,6 +108,13 @@ Future<int> _userVersion(GeneratedDatabase db) async {
 Future<Set<String>> _columnNames(GeneratedDatabase db, String table) async {
   final rows = await db.customSelect("PRAGMA table_info('$table')").get();
   return rows.map((row) => row.read<String>('name')).toSet();
+}
+
+Future<int> _columnCount(GeneratedDatabase db, String table) async {
+  final row = await db
+      .customSelect('SELECT COUNT(*) AS c FROM "$table"')
+      .getSingle();
+  return row.read<int>('c');
 }
 
 void main() {
@@ -78,6 +139,13 @@ void main() {
         containsAll(<String>['presets', 'practices', 'count_history']),
       );
       expect(await _userVersion(db), db.schemaVersion);
+
+      // Индекс B-3 на свежей установке получается из объявления таблицы.
+      final indexes = await db.customSelect(
+        "SELECT name FROM sqlite_master WHERE type = 'index' "
+        "AND name = 'idx_practices_tradition_preset'",
+      ).get();
+      expect(indexes, hasLength(1));
 
       await db.close();
     });
@@ -111,7 +179,8 @@ void main() {
           await _tableNames(db),
           containsAll(<String>['presets', 'practices', 'count_history']),
         );
-        expect(await _userVersion(db), 2);
+        // Цепочка 1→2→3: цепляется до актуальной версии.
+        expect(await _userVersion(db), db.schemaVersion);
 
         // Суть R-7: данные пользователя переживают миграцию.
         final rows = await db.select(db.presets).get();
@@ -169,6 +238,7 @@ void main() {
         containsAll(<String>[
           'id',
           'preset_id',
+          'preset_practice_id',
           'name',
           'type',
           'target',
@@ -183,30 +253,131 @@ void main() {
       await db.close();
     });
 
+    test('апгрейд 2 → 3: колонка, индекс и каскад истории при сохранности данных',
+        () async {
+      // Сессия 1: база версии 2 со СТАРЫМ DDL и пользовательскими данными.
+      {
+        final v2 = _AppDatabaseV2Raw(NativeDatabase(dbFile()));
+
+        await v2.customStatement(
+          "INSERT INTO presets VALUES "
+          "('nyingma', 'Ньингма', '1.0.0', 'vajrayana', '{}')",
+        );
+        await v2.customStatement(
+          "INSERT INTO practices (id, name, type, target, unit, "
+          "tradition_tag, current_count) VALUES "
+          "(1, 'Простирания', 'counter', 100000, 'повторений', 'nyingma', 42)",
+        );
+        await v2.customStatement(
+          'INSERT INTO count_history (practice_id, count) VALUES (1, 42)',
+        );
+
+        expect(await _userVersion(v2), 2);
+        await v2.close();
+      }
+
+      // Сессия 2: открываем актуальной версией с включёнными FK (I-2).
+      {
+        final db = AppDatabase.forTesting(
+          NativeDatabase(dbFile(), setup: enableForeignKeys),
+        );
+
+        expect(await _userVersion(db), db.schemaVersion);
+
+        // 1. Новая колонка появилась.
+        expect(
+          await _columnNames(db, 'practices'),
+          contains('preset_practice_id'),
+        );
+
+        // 2. Уникальный индекс создан переходом, а не только свежей установкой.
+        final indexes = await db.customSelect(
+          "SELECT name FROM sqlite_master WHERE type = 'index' "
+          "AND name = 'idx_practices_tradition_preset'",
+        ).get();
+        expect(indexes, hasLength(1));
+
+        // 3. Данные пользователя целы: и практика со счётом, и история.
+        final practices = await db.select(db.practices).get();
+        expect(practices, hasLength(1));
+        expect(practices.single.name, 'Простирания');
+        expect(practices.single.currentCount, 42);
+        expect(await _columnCount(db, 'count_history'), 1);
+        expect(await _columnCount(db, 'presets'), 1);
+
+        // 4. Существо B-11: после миграции удаление практики каскадно
+        //    убирает историю. Со старым DDL (RESTRICT) этот же delete упал бы
+        //    с ошибкой FK, а без FK история осиротела бы.
+        await (db.delete(db.practices)..where((t) => t.id.equals(1))).go();
+        expect(await _columnCount(db, 'count_history'), 0);
+
+        await db.close();
+      }
+    });
+
+    test('уникальный индекс не даёт дублей пресетных практик, но волен '
+        'для кастомных и других традиций (B-3)', () async {
+      final db = AppDatabase.forTesting(
+        NativeDatabase(dbFile(), setup: enableForeignKeys),
+      );
+
+      Future<int> insert(int id, String tag, String? presetPracticeId) =>
+          db.customInsert(
+            'INSERT INTO practices (id, name, type, tradition_tag, '
+            'preset_practice_id) VALUES (?, ?, ?, ?, ?)',
+            variables: [
+              Variable.withInt(id),
+              Variable.withString('практика'),
+              Variable.withString('counter'),
+              Variable.withString(tag),
+              Variable<String>(presetPracticeId),
+            ],
+          );
+
+      await insert(1, 'nyingma', 'ngondro_prostrations');
+
+      // Тот же (tradition_tag, preset_practice_id) — дубль запрещён.
+      await expectLater(
+        insert(2, 'nyingma', 'ngondro_prostrations'),
+        throwsA(isA<SqliteException>()),
+      );
+
+      // NULL preset_practice_id (кастомные трекеры) — не ограничены.
+      await insert(3, 'nyingma', null);
+      await insert(4, 'nyingma', null);
+
+      // Та же пресетная практика в другой традиции — законна (изоляция).
+      await insert(5, 'theravada', 'ngondro_prostrations');
+
+      expect(await _columnCount(db, 'practices'), 4);
+
+      await db.close();
+    });
+
     test('объявленная, но нереализованная версия падает громко (R-8)',
         () async {
-      // Готовим базу актуальной версии 2.
+      // Готовим базу актуальной версии 3.
       {
         final db = AppDatabase.forTesting(NativeDatabase(dbFile()));
         await _tableNames(db);
         await db.close();
       }
 
-      // Открываем базой, которая объявляет версию 3 без миграции на неё.
+      // Открываем базой, которая объявляет версию 4 без миграции на неё.
       // Раньше это тихо не делало ничего — теперь обязано упасть.
-      final v3 = _AppDatabaseV3(NativeDatabase(dbFile()));
+      final v4 = _AppDatabaseV4(NativeDatabase(dbFile()));
 
       await expectLater(
-        _tableNames(v3),
+        _tableNames(v4),
         throwsA(
           predicate<Object>(
-            (error) => error.toString().contains('Нет миграции на версию 3'),
+            (error) => error.toString().contains('Нет миграции на версию 4'),
             'ошибка называет отсутствующую версию миграции',
           ),
         ),
       );
 
-      // v3 намеренно не закрываем: соединение не открылось.
+      // v4 намеренно не закрываем: соединение не открылось.
     });
   });
 }

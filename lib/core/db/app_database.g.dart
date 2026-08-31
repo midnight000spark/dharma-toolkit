@@ -277,6 +277,17 @@ class $PracticesTable extends Practices
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _presetPracticeIdMeta = const VerificationMeta(
+    'presetPracticeId',
+  );
+  @override
+  late final GeneratedColumn<String> presetPracticeId = GeneratedColumn<String>(
+    'preset_practice_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
   late final GeneratedColumn<String> name = GeneratedColumn<String>(
@@ -364,6 +375,7 @@ class $PracticesTable extends Practices
   List<GeneratedColumn> get $columns => [
     id,
     presetId,
+    presetPracticeId,
     name,
     type,
     target,
@@ -392,6 +404,15 @@ class $PracticesTable extends Practices
       context.handle(
         _presetIdMeta,
         presetId.isAcceptableOrUnknown(data['preset_id']!, _presetIdMeta),
+      );
+    }
+    if (data.containsKey('preset_practice_id')) {
+      context.handle(
+        _presetPracticeIdMeta,
+        presetPracticeId.isAcceptableOrUnknown(
+          data['preset_practice_id']!,
+          _presetPracticeIdMeta,
+        ),
       );
     }
     if (data.containsKey('name')) {
@@ -471,6 +492,10 @@ class $PracticesTable extends Practices
         DriftSqlType.string,
         data['${effectivePrefix}preset_id'],
       ),
+      presetPracticeId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}preset_practice_id'],
+      ),
       name: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}name'],
@@ -515,6 +540,7 @@ class $PracticesTable extends Practices
 class Practice extends DataClass implements Insertable<Practice> {
   final int id;
   final String? presetId;
+  final String? presetPracticeId;
   final String name;
   final String type;
   final int? target;
@@ -526,6 +552,7 @@ class Practice extends DataClass implements Insertable<Practice> {
   const Practice({
     required this.id,
     this.presetId,
+    this.presetPracticeId,
     required this.name,
     required this.type,
     this.target,
@@ -541,6 +568,9 @@ class Practice extends DataClass implements Insertable<Practice> {
     map['id'] = Variable<int>(id);
     if (!nullToAbsent || presetId != null) {
       map['preset_id'] = Variable<String>(presetId);
+    }
+    if (!nullToAbsent || presetPracticeId != null) {
+      map['preset_practice_id'] = Variable<String>(presetPracticeId);
     }
     map['name'] = Variable<String>(name);
     map['type'] = Variable<String>(type);
@@ -563,6 +593,9 @@ class Practice extends DataClass implements Insertable<Practice> {
       presetId: presetId == null && nullToAbsent
           ? const Value.absent()
           : Value(presetId),
+      presetPracticeId: presetPracticeId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(presetPracticeId),
       name: Value(name),
       type: Value(type),
       target: target == null && nullToAbsent
@@ -584,6 +617,7 @@ class Practice extends DataClass implements Insertable<Practice> {
     return Practice(
       id: serializer.fromJson<int>(json['id']),
       presetId: serializer.fromJson<String?>(json['presetId']),
+      presetPracticeId: serializer.fromJson<String?>(json['presetPracticeId']),
       name: serializer.fromJson<String>(json['name']),
       type: serializer.fromJson<String>(json['type']),
       target: serializer.fromJson<int?>(json['target']),
@@ -600,6 +634,7 @@ class Practice extends DataClass implements Insertable<Practice> {
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
       'presetId': serializer.toJson<String?>(presetId),
+      'presetPracticeId': serializer.toJson<String?>(presetPracticeId),
       'name': serializer.toJson<String>(name),
       'type': serializer.toJson<String>(type),
       'target': serializer.toJson<int?>(target),
@@ -614,6 +649,7 @@ class Practice extends DataClass implements Insertable<Practice> {
   Practice copyWith({
     int? id,
     Value<String?> presetId = const Value.absent(),
+    Value<String?> presetPracticeId = const Value.absent(),
     String? name,
     String? type,
     Value<int?> target = const Value.absent(),
@@ -625,6 +661,9 @@ class Practice extends DataClass implements Insertable<Practice> {
   }) => Practice(
     id: id ?? this.id,
     presetId: presetId.present ? presetId.value : this.presetId,
+    presetPracticeId: presetPracticeId.present
+        ? presetPracticeId.value
+        : this.presetPracticeId,
     name: name ?? this.name,
     type: type ?? this.type,
     target: target.present ? target.value : this.target,
@@ -638,6 +677,9 @@ class Practice extends DataClass implements Insertable<Practice> {
     return Practice(
       id: data.id.present ? data.id.value : this.id,
       presetId: data.presetId.present ? data.presetId.value : this.presetId,
+      presetPracticeId: data.presetPracticeId.present
+          ? data.presetPracticeId.value
+          : this.presetPracticeId,
       name: data.name.present ? data.name.value : this.name,
       type: data.type.present ? data.type.value : this.type,
       target: data.target.present ? data.target.value : this.target,
@@ -658,6 +700,7 @@ class Practice extends DataClass implements Insertable<Practice> {
     return (StringBuffer('Practice(')
           ..write('id: $id, ')
           ..write('presetId: $presetId, ')
+          ..write('presetPracticeId: $presetPracticeId, ')
           ..write('name: $name, ')
           ..write('type: $type, ')
           ..write('target: $target, ')
@@ -674,6 +717,7 @@ class Practice extends DataClass implements Insertable<Practice> {
   int get hashCode => Object.hash(
     id,
     presetId,
+    presetPracticeId,
     name,
     type,
     target,
@@ -689,6 +733,7 @@ class Practice extends DataClass implements Insertable<Practice> {
       (other is Practice &&
           other.id == this.id &&
           other.presetId == this.presetId &&
+          other.presetPracticeId == this.presetPracticeId &&
           other.name == this.name &&
           other.type == this.type &&
           other.target == this.target &&
@@ -702,6 +747,7 @@ class Practice extends DataClass implements Insertable<Practice> {
 class PracticesCompanion extends UpdateCompanion<Practice> {
   final Value<int> id;
   final Value<String?> presetId;
+  final Value<String?> presetPracticeId;
   final Value<String> name;
   final Value<String> type;
   final Value<int?> target;
@@ -713,6 +759,7 @@ class PracticesCompanion extends UpdateCompanion<Practice> {
   const PracticesCompanion({
     this.id = const Value.absent(),
     this.presetId = const Value.absent(),
+    this.presetPracticeId = const Value.absent(),
     this.name = const Value.absent(),
     this.type = const Value.absent(),
     this.target = const Value.absent(),
@@ -725,6 +772,7 @@ class PracticesCompanion extends UpdateCompanion<Practice> {
   PracticesCompanion.insert({
     this.id = const Value.absent(),
     this.presetId = const Value.absent(),
+    this.presetPracticeId = const Value.absent(),
     required String name,
     required String type,
     this.target = const Value.absent(),
@@ -739,6 +787,7 @@ class PracticesCompanion extends UpdateCompanion<Practice> {
   static Insertable<Practice> custom({
     Expression<int>? id,
     Expression<String>? presetId,
+    Expression<String>? presetPracticeId,
     Expression<String>? name,
     Expression<String>? type,
     Expression<int>? target,
@@ -751,6 +800,7 @@ class PracticesCompanion extends UpdateCompanion<Practice> {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (presetId != null) 'preset_id': presetId,
+      if (presetPracticeId != null) 'preset_practice_id': presetPracticeId,
       if (name != null) 'name': name,
       if (type != null) 'type': type,
       if (target != null) 'target': target,
@@ -765,6 +815,7 @@ class PracticesCompanion extends UpdateCompanion<Practice> {
   PracticesCompanion copyWith({
     Value<int>? id,
     Value<String?>? presetId,
+    Value<String?>? presetPracticeId,
     Value<String>? name,
     Value<String>? type,
     Value<int?>? target,
@@ -777,6 +828,7 @@ class PracticesCompanion extends UpdateCompanion<Practice> {
     return PracticesCompanion(
       id: id ?? this.id,
       presetId: presetId ?? this.presetId,
+      presetPracticeId: presetPracticeId ?? this.presetPracticeId,
       name: name ?? this.name,
       type: type ?? this.type,
       target: target ?? this.target,
@@ -796,6 +848,9 @@ class PracticesCompanion extends UpdateCompanion<Practice> {
     }
     if (presetId.present) {
       map['preset_id'] = Variable<String>(presetId.value);
+    }
+    if (presetPracticeId.present) {
+      map['preset_practice_id'] = Variable<String>(presetPracticeId.value);
     }
     if (name.present) {
       map['name'] = Variable<String>(name.value);
@@ -829,6 +884,7 @@ class PracticesCompanion extends UpdateCompanion<Practice> {
     return (StringBuffer('PracticesCompanion(')
           ..write('id: $id, ')
           ..write('presetId: $presetId, ')
+          ..write('presetPracticeId: $presetPracticeId, ')
           ..write('name: $name, ')
           ..write('type: $type, ')
           ..write('target: $target, ')
@@ -872,7 +928,7 @@ class $CountHistoryTable extends CountHistory
     type: DriftSqlType.int,
     requiredDuringInsert: true,
     defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES practices (id)',
+      'REFERENCES practices (id) ON DELETE CASCADE',
     ),
   );
   static const VerificationMeta _countMeta = const VerificationMeta('count');
@@ -1199,6 +1255,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $PresetsTable presets = $PresetsTable(this);
   late final $PracticesTable practices = $PracticesTable(this);
   late final $CountHistoryTable countHistory = $CountHistoryTable(this);
+  late final Index idxPracticesTraditionPreset = Index(
+    'idx_practices_tradition_preset',
+    'CREATE UNIQUE INDEX idx_practices_tradition_preset ON practices (tradition_tag, preset_practice_id)',
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1207,7 +1267,18 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     presets,
     practices,
     countHistory,
+    idxPracticesTraditionPreset,
   ];
+  @override
+  StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'practices',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('count_history', kind: UpdateKind.delete)],
+    ),
+  ]);
 }
 
 typedef $$PresetsTableCreateCompanionBuilder = PresetsCompanion Function({
@@ -1405,6 +1476,7 @@ typedef $$PresetsTableProcessedTableManager =
 typedef $$PracticesTableCreateCompanionBuilder = PracticesCompanion Function({
   Value<int> id,
   Value<String?> presetId,
+  Value<String?> presetPracticeId,
   required String name,
   required String type,
   Value<int?> target,
@@ -1417,6 +1489,7 @@ typedef $$PracticesTableCreateCompanionBuilder = PracticesCompanion Function({
 typedef $$PracticesTableUpdateCompanionBuilder = PracticesCompanion Function({
   Value<int> id,
   Value<String?> presetId,
+  Value<String?> presetPracticeId,
   Value<String> name,
   Value<String> type,
   Value<int?> target,
@@ -1466,6 +1539,11 @@ class $$PracticesTableFilterComposer
 
   ColumnFilters<String> get presetId => $composableBuilder(
     column: $table.presetId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get presetPracticeId => $composableBuilder(
+    column: $table.presetPracticeId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1554,6 +1632,11 @@ class $$PracticesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get presetPracticeId => $composableBuilder(
+    column: $table.presetPracticeId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get name => $composableBuilder(
     column: $table.name,
     builder: (column) => ColumnOrderings(column),
@@ -1609,6 +1692,11 @@ class $$PracticesTableAnnotationComposer
 
   GeneratedColumn<String> get presetId =>
       $composableBuilder(column: $table.presetId, builder: (column) => column);
+
+  GeneratedColumn<String> get presetPracticeId => $composableBuilder(
+    column: $table.presetPracticeId,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
@@ -1694,6 +1782,7 @@ class $$PracticesTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 Value<String?> presetId = const Value.absent(),
+                Value<String?> presetPracticeId = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<String> type = const Value.absent(),
                 Value<int?> target = const Value.absent(),
@@ -1705,6 +1794,7 @@ class $$PracticesTableTableManager
               }) => PracticesCompanion(
                 id: id,
                 presetId: presetId,
+                presetPracticeId: presetPracticeId,
                 name: name,
                 type: type,
                 target: target,
@@ -1718,6 +1808,7 @@ class $$PracticesTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 Value<String?> presetId = const Value.absent(),
+                Value<String?> presetPracticeId = const Value.absent(),
                 required String name,
                 required String type,
                 Value<int?> target = const Value.absent(),
@@ -1729,6 +1820,7 @@ class $$PracticesTableTableManager
               }) => PracticesCompanion.insert(
                 id: id,
                 presetId: presetId,
+                presetPracticeId: presetPracticeId,
                 name: name,
                 type: type,
                 target: target,
