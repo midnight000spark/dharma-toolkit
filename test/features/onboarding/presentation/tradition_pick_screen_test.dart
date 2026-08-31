@@ -36,9 +36,9 @@ void main() {
         overrides: [
           configModuleProvider.overrideWithValue(config),
           presetManagerProvider.overrideWithValue(presetManager),
-          // Экран списка строит репозиторий через service locator (R-11,
-          // починка — 5.0.5). В тесте подменяем провайдер на тот же
-          // in-memory экземпляр — путь данных не меняется.
+          // Репозиторий собирается поверх appDatabaseProvider (D-22);
+          // в тесте подменяем провайдер на тот же in-memory экземпляр —
+          // путь данных не меняется.
           practiceRepositoryProvider
               .overrideWithValue(PracticeRepository(database)),
         ],

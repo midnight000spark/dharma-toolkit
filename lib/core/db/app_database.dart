@@ -47,8 +47,13 @@ class Presets extends Table {
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
+  /// Конструктор с инжектируемым исполнителем (R-13, D-22): тесты и composition
+  /// root передают конкретный [QueryExecutor] (например, `NativeDatabase.memory()`),
+  /// не открывая файл в ФС разработчика/CI.
+  AppDatabase.withExecutor(super.executor);
+
   /// Constructor for testing with in-memory database.
-  AppDatabase.forTesting(super.executor);
+  AppDatabase.forTesting(QueryExecutor executor) : this.withExecutor(executor);
 
   /// Текущая версия схемы БД.
   ///

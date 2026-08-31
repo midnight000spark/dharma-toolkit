@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/db/database_module.dart';
-import '../../../../core/module/module_registry.dart';
+import '../../../../shared/providers/app_providers.dart';
 import '../../data/practice_repository.dart';
 import '../../domain/practice.dart';
 
@@ -29,10 +28,13 @@ final practiceByIdProvider = StreamProvider.autoDispose.family<PracticeEntity?, 
   },
 );
 
+/// Репозиторий трекеров поверх единой БД приложения (D-22).
+///
+/// БД приходит через `appDatabaseProvider` — composition root переопределяет
+/// его единственным экземпляром (production) или in-memory базой (тесты).
+/// Service locator (`ModuleRegistry.instance.get('database')`) здесь запрещён:
+/// строковый ключ и приведение типа в рантайме — паттерн get_it, от которого
+/// отказались (R-11).
 final practiceRepositoryProvider = Provider<PracticeRepository>((ref) {
-  final module = ModuleRegistry.instance.get('database');
-  if (module is! DatabaseModule) {
-    throw StateError('DatabaseModule not registered');
-  }
-  return PracticeRepository(module.database);
+  return PracticeRepository(ref.watch(appDatabaseProvider));
 });

@@ -35,14 +35,16 @@ void main() {
       await module.dispose();
     });
 
-    test('dispose can be called multiple times safely', () async {
+    test('повторный dispose не бросает, после dispose база недоступна', () async {
       final module = DatabaseModule();
 
       await module.init();
       await module.dispose();
-      await module.dispose(); // Should not throw
+      await expectLater(module.dispose(), completes);
 
-      expect(true, isTrue);
+      // Поведенческая проверка (урок 1): после закрытия модуль обязан
+      // сбросить инстанс — доступ к базе снова бросает StateError.
+      expect(() => module.database, throwsStateError);
     });
   });
 }

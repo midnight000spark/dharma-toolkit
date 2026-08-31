@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app_router.dart';
 import 'core/config/config_module.dart';
 import 'core/config/preset_manager.dart';
+import 'core/db/app_database.dart';
 import 'core/db/database_module.dart';
 import 'core/db/dev_seeder.dart';
 import 'core/module/module_registry.dart';
@@ -20,7 +21,15 @@ class AppServices {
   final ConfigModule config;
   final PresetManager presetManager;
 
-  const AppServices({required this.config, required this.presetManager});
+  /// Единственный экземпляр БД в приложении (D-22): создан [DatabaseModule]
+  /// при инициализации; уходит в `appDatabaseProvider.overrideWithValue`.
+  final AppDatabase database;
+
+  const AppServices({
+    required this.config,
+    required this.presetManager,
+    required this.database,
+  });
 }
 
 /// Точка входа (B-5).
@@ -63,6 +72,7 @@ Future<void> main() async {
     mount(
       ProviderScope(
         overrides: [
+          appDatabaseProvider.overrideWithValue(services.database),
           configModuleProvider.overrideWithValue(services.config),
           presetManagerProvider.overrideWithValue(services.presetManager),
         ],
@@ -137,7 +147,11 @@ Future<(AppServices?, StartupOutcome)> bootstrapServices() async {
   }
 
   return (
-    AppServices(config: configModule, presetManager: presetManager),
+    AppServices(
+      config: configModule,
+      presetManager: presetManager,
+      database: databaseModule.database,
+    ),
     outcome,
   );
 }

@@ -1,3 +1,5 @@
+import 'package:drift/drift.dart' show QueryExecutor;
+
 import '../module/app_module.dart';
 import 'app_database.dart';
 
@@ -5,7 +7,17 @@ import 'app_database.dart';
 ///
 /// Provides [AppDatabase] instance to other modules after initialization.
 /// The database is created on [init] and closed on [dispose].
+///
+/// Инъекция [QueryExecutor] (R-13, D-22): без исполнителя модуль открывает
+/// production-соединение (ленивый файл из path_provider); с исполнителем
+/// (например, `NativeDatabase.memory()`) — тестовое соединение, и интеграционные
+/// тесты не пишут в реальную ФС. Инстанс [AppDatabase] создаётся один раз в
+/// [init] и живёт до [dispose].
 class DatabaseModule implements AppModule {
+  DatabaseModule({this._executor});
+
+  final QueryExecutor? _executor;
+
   @override
   String get id => 'database';
 
@@ -29,7 +41,9 @@ class DatabaseModule implements AppModule {
 
   @override
   Future<void> init() async {
-    _database = AppDatabase();
+    final executor = _executor;
+    _database =
+        executor == null ? AppDatabase() : AppDatabase.withExecutor(executor);
   }
 
   @override
