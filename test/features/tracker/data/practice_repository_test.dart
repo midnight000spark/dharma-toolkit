@@ -108,5 +108,98 @@ void main() {
 
       await db.close();
     });
+
+    test('watchByTradition эмитит список и реагирует на инкремент', () async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      final repo = PracticeRepository(db);
+
+      final now = DateTime.now();
+      final practiceId = await repo.create(PracticeEntity(
+        name: 'Тест',
+        type: 'counter',
+        traditionTag: 'test',
+        createdAt: now,
+        updatedAt: now,
+      ));
+
+      // Подписываемся на стрим
+      final stream = repo.watchByTradition('test');
+      final emissions = <List<PracticeEntity>>[];
+      final sub = stream.listen(emissions.add);
+
+      // Даём стриму эмитить начальное состояние
+      await Future<void>.delayed(Duration.zero);
+
+      // Инкремент должен вызвать новый эмиссий
+      await repo.incrementCount(practiceId, 7);
+      await Future<void>.delayed(Duration.zero);
+
+      await sub.cancel();
+      await db.close();
+
+      // Минимум два эмиссии: начальное состояние + после инкремента
+      expect(emissions.length, greaterThanOrEqualTo(2));
+      // Последний эмиссий показывает обновлённый счёт
+      expect(emissions.last.first.currentCount, 7);
+    });
+
+    test('watchById эмитит null после удаления практики (лекарство B-6)',
+        () async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      final repo = PracticeRepository(db);
+
+      final now = DateTime.now();
+      final practiceId = await repo.create(PracticeEntity(
+        name: 'Тест',
+        type: 'counter',
+        traditionTag: 'test',
+        createdAt: now,
+        updatedAt: now,
+      ));
+
+      final stream = repo.watchById(practiceId);
+      final emissions = <PracticeEntity?>[];
+      final sub = stream.listen(emissions.add);
+
+      await Future<void>.delayed(Duration.zero);
+
+      // Удаляем практику — стрим должен эмитить null
+      await repo.delete(practiceId);
+      await Future<void>.delayed(Duration.zero);
+
+      await sub.cancel();
+      await db.close();
+
+      // Последний эмиссий — null (практика не найдена)
+      expect(emissions.last, isNull);
+    });
+
+    test('два параллельных incrementCount дают строго +2 (атомарность, B-8)',
+        () async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      final repo = PracticeRepository(db);
+
+      final now = DateTime.now();
+      final practiceId = await repo.create(PracticeEntity(
+        name: 'Тест',
+        type: 'counter',
+        traditionTag: 'test',
+        createdAt: now,
+        updatedAt: now,
+      ));
+
+      // Запускаем два инкремента параллельно (без await между ними)
+      await Future.wait([
+        repo.incrementCount(practiceId, 1),
+        repo.incrementCount(practiceId, 1),
+      ]);
+
+      final practices = await repo.getByTradition('test');
+      // При read-modify-write гонка могла бы дать 1 вместо 2.
+      // Атомарный UPDATE гарантирует 2.
+      expect(practices.first.currentCount, 2);
+
+      await db.close();
+    });
   });
 }

@@ -19,12 +19,40 @@ class PracticeRepository {
     return rows.map((row) => PracticeEntity.fromRow(row)).toList();
   }
 
+  /// Стрим всех практик для конкретной традиции (D-16, I-1).
+  ///
+  /// Реактивный аналог [getByTradition]: Drift переэмитит список при любом
+  /// изменении таблицы `practices` (insert/update/delete). Используется
+  /// экраном списка для автоматического обновления без ручного invalidate.
+  Stream<List<PracticeEntity>> watchByTradition(String traditionTag) {
+    final query = _database.select(_database.practices)
+      ..where((t) => t.traditionTag.equals(traditionTag))
+      ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]);
+
+    return query.watch().map(
+          (rows) => rows.map((row) => PracticeEntity.fromRow(row)).toList(),
+        );
+  }
+
   /// Получить практику по ID
   Future<PracticeEntity> getById(int id) async {
     final row = await (_database.select(_database.practices)
           ..where((t) => t.id.equals(id)))
         .getSingle();
     return PracticeEntity.fromRow(row);
+  }
+
+  /// Стрим практики по ID (D-16, I-1).
+  ///
+  /// Реактивный аналог [getById]. Если практика удалена или не существует,
+  /// стрим эмитит `null` — это лекарство от B-6 (вечный спиннер): экран
+  /// получает явное состояние «не найдена» вместо неопределённого Future,
+  /// который мог упасть с исключением.
+  Stream<PracticeEntity?> watchById(int id) {
+    return (_database.select(_database.practices)
+          ..where((t) => t.id.equals(id)))
+        .watchSingleOrNull()
+        .map((row) => row == null ? null : PracticeEntity.fromRow(row));
   }
 
   /// Создать новую практику
@@ -42,21 +70,22 @@ class PracticeRepository {
         );
   }
 
-  /// Обновить счётчик практики
+  /// Атомарно увеличить счётчик практики на [amount] (I-2, B-8).
+  ///
+  /// Один `UPDATE ... SET current_count = current_count + ?` вместо
+  /// read-modify-write: нет гонки при быстром тапе (B-8), нет лишнего
+  /// чтения. Запись в историю — в той же транзакции.
   Future<void> incrementCount(int practiceId, int amount) async {
     await _database.transaction(() async {
-      // Получаем текущую практику
-      final current = await (_database.select(_database.practices)
-            ..where((t) => t.id.equals(practiceId)))
-          .getSingle();
-
-      // Увеличиваем currentCount
+      // Атомарный инкремент: current_count = current_count + amount.
+      // PracticesCompanion.custom принимает Expression<int>, что позволяет
+      // сослаться на колонку таблицы в правой части присваивания.
       await (_database.update(_database.practices)
             ..where((t) => t.id.equals(practiceId)))
           .write(
-        PracticesCompanion(
-          currentCount: Value(current.currentCount + amount),
-          updatedAt: Value(DateTime.now()),
+        PracticesCompanion.custom(
+          currentCount: _database.practices.currentCount + Variable(amount),
+          updatedAt: Variable(DateTime.now()),
         ),
       );
 
