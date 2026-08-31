@@ -10,6 +10,9 @@ import 'package:flutter_test/flutter_test.dart';
 /// Нужна, чтобы создать файл БД ровно в том виде, в котором он существовал
 /// до Этапа 4, и проверить настоящий переход 1 → 2, а не его имитацию.
 class _AppDatabaseV1 extends AppDatabase {
+  // Форму с super.executor подсказка use_super_parameters не принимает:
+  // super-параметр дженерика сопоставляется только с безымянным супер-конструктором.
+  // ignore: use_super_parameters
   _AppDatabaseV1(QueryExecutor executor) : super.forTesting(executor);
 
   @override
@@ -29,6 +32,7 @@ class _AppDatabaseV1 extends AppDatabase {
 /// не делала, и ошибка всплывала у пользователя как «no such table».
 /// Теперь она обязана упасть на первом же открытии базы.
 class _AppDatabaseV3 extends AppDatabase {
+  // ignore: use_super_parameters — см. комментарий у _AppDatabaseV1
   _AppDatabaseV3(QueryExecutor executor) : super.forTesting(executor);
 
   @override
