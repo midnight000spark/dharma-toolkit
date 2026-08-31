@@ -83,7 +83,7 @@
 - **State Management**: Riverpod (flutter_riverpod 2.6.1) — state + DI (D-4)
 - **Local DB**: Drift (фактически 2.34.3, F-24 — документацию сверять с pubspec.lock)
 - **Routing**: go_router 18.0.0
-- **Testing**: flutter_test (mocktail — не подключён: нет реальной потребности; добавить отдельным решением при появлении моков)
+- **Testing**: flutter_test
 - **Локализация**: flutter_localizations (SDK) + intl 0.20.3 (pubspec.lock, F-24), только `ru` — подключено в 5.0.5 (R-15, D-28)
 
 ## Структура проекта
