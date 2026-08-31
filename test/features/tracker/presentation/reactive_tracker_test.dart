@@ -79,7 +79,7 @@ void main() {
         'инкремент на экране счёта → список показывает новое значение без invalidate (B-1)',
         (tester) async {
       final now = DateTime.now();
-      final practiceId = await repository.create(PracticeEntity(
+      await repository.create(PracticeEntity(
         name: 'Тест',
         type: 'counter',
         traditionTag: 'test',
