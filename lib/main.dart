@@ -14,6 +14,7 @@ import 'core/module/module_registry.dart';
 import 'core/recovery/recovery_screen.dart';
 import 'core/recovery/startup.dart';
 import 'core/storage/storage_module.dart';
+import 'shared/l10n/l10n.dart';
 import 'shared/providers/app_providers.dart';
 
 /// Готовые сервисы, без которых не собрать ProviderScope.
@@ -163,6 +164,10 @@ class DharmaToolkitApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp.router(
       title: 'Дхарма-тулкит',
+      // ru-локаль: русские системные строки Material (R-15, D-28).
+      locale: appLocale,
+      supportedLocales: appSupportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
       routerConfig: ref.watch(routerProvider),
     );
   }

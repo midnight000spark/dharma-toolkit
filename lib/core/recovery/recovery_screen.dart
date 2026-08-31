@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../shared/l10n/l10n.dart';
 import '../db/app_database.dart' show kAppDatabaseFileName;
 
 /// Аварийное стирание локального состояния (B-5).
@@ -50,6 +51,12 @@ class RecoveryApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Дхарма-тулкит',
+      // Тот же ru-контур, что и у основного приложения (D-28): экран
+      // восстановления может показать системные строки — они обязаны быть
+      // русскими.
+      locale: appLocale,
+      supportedLocales: appSupportedLocales,
+      localizationsDelegates: appLocalizationsDelegates,
       home: RecoveryScreen(
         error: error,
         onRetry: onRetry,
