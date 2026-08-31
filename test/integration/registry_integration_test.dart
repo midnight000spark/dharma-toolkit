@@ -45,8 +45,16 @@ void main() {
       expect(() => storageModule.getString('test'), returnsNormally);
 
       final configModule = registry.get('config') as ConfigModule;
-      // ConfigModule should have loaded sample.json
-      expect(configModule.getPreset('sample'), isNotNull);
+      // ConfigModule читает манифест index.json и грузит перечисленные пресеты.
+      expect(configModule.getPreset('nyingma'), isNotNull);
+      expect(configModule.getPreset('theravada_default'), isNotNull);
+      expect(configModule.availablePresetIds,
+          containsAll(<String>['nyingma', 'theravada_default']));
+      // tree.json — не мёртвый ассет: дерево традиций прочитано (B-4).
+      expect(configModule.tree, isNotEmpty);
+      expect(configModule.tree.map((t) => t.id), contains('vajrayana'));
+      // Ньингма-пресет материализуем: четыре практики нёндро объявлены.
+      expect(configModule.getPreset('nyingma')!.practices, hasLength(4));
     });
 
     test('disposeAll completes without errors', () async {

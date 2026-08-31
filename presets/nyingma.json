@@ -1,0 +1,50 @@
+{
+  "id": "nyingma",
+  "name": "Ньингма",
+  "version": "1.0.0",
+  "tradition": "vajrayana",
+  "modules": ["calendar", "tracker"],
+  "moduleConfigs": {
+    "calendar": {
+      "type": "tibetan",
+      "school": "phugpa",
+      "highlightDays": [10, 25]
+    },
+    "tracker": {
+      "isolationTag": "nyingma"
+    }
+  },
+  "practices": [
+    {
+      "id": "ngondro_prostrations",
+      "name": "Простирания",
+      "type": "counter",
+      "target": 100000,
+      "unit": "повторений"
+    },
+    {
+      "id": "ngondro_vajrasattva",
+      "name": "Мантра Ваджрасаттвы",
+      "type": "counter",
+      "target": 100000,
+      "unit": "повторений"
+    },
+    {
+      "id": "ngondro_mandala",
+      "name": "Подношение мандал",
+      "type": "counter",
+      "target": 100000,
+      "unit": "повторений"
+    },
+    {
+      "id": "ngondro_guru_yoga",
+      "name": "Гуру-йога",
+      "type": "counter",
+      "target": 100000,
+      "unit": "повторений"
+    }
+  ],
+  "eventPacks": [],
+  "contentPacks": [],
+  "description": "Старейшая школа тибетского буддизма (Ньингма). Календарь Пхугпа, четыре практики нёндро по 100 000 повторений."
+}
