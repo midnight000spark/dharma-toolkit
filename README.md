@@ -1,17 +1,17 @@
-# dharma_toolkit
+# Дхарма-тулкит
 
-A new Flutter project.
+Универсальный мобильный тулкит буддийских практикующих: календарь особых дней,
+счётчики практик, тексты. MVP: Ньингма + Тхеравада. Русский язык, offline-first,
+без бэкенда и трекинга.
 
-## Getting Started
+## Статус
+Этапы 0–4.7 закрыты по коду. Этапы 3/4 переоткрыты (см. STATE.md).
+Этап 5 — в подэтапе 5.0 (миграции и долги аудита).
 
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Документация
+- `docs/BFT-v1.1.md` — бизнес-функциональные требования
+- `docs/REVIEW-2026-08-31.md` — внешний аудит
+- `docs/MIGRATIONS.md` — процедура миграций БД
+- `STATE.md` — текущее состояние
+- `ROADMAP.md` — план
+- `AGENT.md` — архитектурная конституция
