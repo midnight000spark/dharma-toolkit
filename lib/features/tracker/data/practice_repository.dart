@@ -55,7 +55,12 @@ class PracticeRepository {
         .map((row) => row == null ? null : PracticeEntity.fromRow(row));
   }
 
-  /// Создать новую практику
+  /// Создать новую практику.
+  ///
+  /// `createdAt`/`updatedAt` из entity передаются явно (B-10): при массовой
+  /// вставке из пресета порядок строк определяется именно ими (список
+  /// отсортирован по createdAt), а будущий импорт бэкапа обязан сохранять
+  /// чужие даты. Drift хранит DateTime с точностью до секунды (F-33).
   Future<int> create(PracticeEntity practice) async {
     return await _database.into(_database.practices).insert(
           PracticesCompanion.insert(
@@ -66,6 +71,8 @@ class PracticeRepository {
             unit: Value(practice.unit),
             traditionTag: practice.traditionTag,
             currentCount: Value(practice.currentCount),
+            createdAt: Value(practice.createdAt),
+            updatedAt: Value(practice.updatedAt),
           ),
         );
   }

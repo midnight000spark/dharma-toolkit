@@ -201,5 +201,63 @@ void main() {
 
       await db.close();
     });
+
+    // B-10: create() обязан сохранять переданные даты, а не дефолты БД.
+    test('create() сохраняет заданные createdAt/updatedAt (B-10)', () async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      final repo = PracticeRepository(db);
+
+      // Даты с точностью до секунды — Drift хранит DateTime без мисек (F-33).
+      final created = DateTime(2026, 3, 14, 1, 2, 3);
+      final updated = DateTime(2026, 3, 15, 4, 5, 6);
+      await repo.create(PracticeEntity(
+        name: 'Архивная',
+        type: 'counter',
+        traditionTag: 'test',
+        createdAt: created,
+        updatedAt: updated,
+      ));
+
+      final p = (await repo.getByTradition('test')).single;
+      expect(p.createdAt, created);
+      expect(p.updatedAt, updated);
+
+      await db.close();
+    });
+
+    test('порядок getByTradition по createdAt детерминирован (B-10)', () async {
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      final repo = PracticeRepository(db);
+
+      // I-6: разнос > 1 секунды — Drift усекает даты до секунд,
+      // вставки внутри одной секунды неупорядочены.
+      final base = DateTime(2026, 1, 1, 12, 0, 0);
+      for (var i = 0; i < 3; i++) {
+        await repo.create(PracticeEntity(
+          name: 'P$i',
+          type: 'counter',
+          traditionTag: 'test',
+          createdAt: base.add(Duration(seconds: i * 2)),
+          updatedAt: base.add(Duration(seconds: i * 2)),
+        ));
+      }
+      // Специально вставляем «старшую» четвёртой — порядок по датам, не по id.
+      await repo.create(PracticeEntity(
+        name: 'Late',
+        type: 'counter',
+        traditionTag: 'test',
+        createdAt: base.add(const Duration(seconds: 1)),
+        updatedAt: base.add(const Duration(seconds: 1)),
+      ));
+
+      final practices = await repo.getByTradition('test');
+      expect(
+        practices.map((p) => p.name).toList(),
+        ['P0', 'Late', 'P1', 'P2'],
+        reason: 'сортировка по createdAt, а не по id вставки',
+      );
+
+      await db.close();
+    });
   });
 }
