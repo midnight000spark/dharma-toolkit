@@ -23,7 +23,7 @@ final presetManagerProvider = Provider<PresetManager>(
 );
 
 /// Тег традиции активного пресета — единственный источник для фильтрации
-/// списков (I-4/B-4: литералов 'sample' в lib/ быть не должно).
+/// списков (I-4/B-4: захардкоженных тегов традиций в lib/ быть не должно).
 final activeTraditionTagProvider = Provider<String>((ref) {
   final preset = ref.watch(presetManagerProvider).activePreset;
   return preset?.id ?? '';
