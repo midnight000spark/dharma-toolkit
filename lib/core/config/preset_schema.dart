@@ -1,3 +1,17 @@
+/// Preset невалиден (6.3): валидная ошибка с именем проблемного поля вместо
+/// голого TypeError из недр декодирования JSON.
+class PresetValidationException implements Exception {
+  /// Имя поля (или путь вида `practices[0].id`), на котором споткнулась
+  /// валидация.
+  final String field;
+  final String reason;
+
+  const PresetValidationException(this.field, this.reason);
+
+  @override
+  String toString() => 'Пресет невалиден: поле "$field" — $reason';
+}
+
 /// Schema for JSON preset files v1. Describes configuration for a tradition.
 ///
 /// Validated when loading from assets. Contains module configurations,
@@ -47,21 +61,97 @@ class PresetSchema {
   });
 
   factory PresetSchema.fromJson(Map<String, dynamic> json) {
+    String reqString(String field) {
+      final value = json[field];
+      if (value is String) return value;
+      throw PresetValidationException(
+        field,
+        value == null
+            ? 'обязательное поле отсутствует'
+            : 'ожидалась строка, получен ${value.runtimeType}',
+      );
+    }
+
+    List<String> reqStringList(String field) {
+      final value = json[field];
+      if (value == null) {
+        throw PresetValidationException(field, 'обязательное поле отсутствует');
+      }
+      if (value is! List) {
+        throw PresetValidationException(field, 'ожидался список строк');
+      }
+      for (final item in value) {
+        if (item is! String) {
+          throw PresetValidationException(field, 'элементы списка — строки');
+        }
+      }
+      return List<String>.from(value);
+    }
+
+    // moduleConfigs: объект, значения — тоже объекты (свойства JSON-мапов
+    // в декодированном виде — dynamic, проверяем мягко, но с именем поля).
+    final moduleConfigsRaw = json['moduleConfigs'];
+    if (moduleConfigsRaw == null) {
+      throw const PresetValidationException(
+          'moduleConfigs', 'обязательное поле отсутствует');
+    }
+    if (moduleConfigsRaw is! Map) {
+      throw const PresetValidationException(
+          'moduleConfigs', 'ожидался объект конфигураций');
+    }
+    final moduleConfigs = <String, Map<String, dynamic>>{};
+    moduleConfigsRaw.forEach((key, value) {
+      if (key is! String) {
+        throw PresetValidationException('moduleConfigs', 'ключи — строки');
+      }
+      if (value is! Map) {
+        throw PresetValidationException(
+            'moduleConfigs.$key', 'ожидался объект параметров');
+      }
+      moduleConfigs[key] = Map<String, dynamic>.from(value);
+    });
+
+    final practicesRaw = json['practices'];
+    if (practicesRaw == null) {
+      throw const PresetValidationException(
+          'practices', 'обязательное поле отсутствует');
+    }
+    if (practicesRaw is! List) {
+      throw const PresetValidationException(
+          'practices', 'ожидался список практик');
+    }
+    final practices = <PresetPractice>[];
+    for (var i = 0; i < practicesRaw.length; i++) {
+      final entry = practicesRaw[i];
+      if (entry is! Map) {
+        throw PresetValidationException(
+            'practices[$i]', 'ожидался объект практики');
+      }
+      try {
+        practices.add(
+            PresetPractice.fromJson(Map<String, dynamic>.from(entry)));
+      } on PresetValidationException catch (e) {
+        throw PresetValidationException('practices[$i].${e.field}', e.reason);
+      }
+    }
+
+    final description = json['description'];
+    if (description != null && description is! String) {
+      throw const PresetValidationException(
+          'description', 'ожидалась строка или null');
+    }
+
     return PresetSchema(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      version: json['version'] as String,
-      modules: (json['modules'] as List).cast<String>(),
-      tradition: json['tradition'] as String,
-      moduleConfigs: (json['moduleConfigs'] as Map<String, dynamic>).map(
-        (k, v) => MapEntry(k, v as Map<String, dynamic>),
-      ),
-      practices: (json['practices'] as List)
-          .map((e) => PresetPractice.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      eventPacks: (json['eventPacks'] as List).cast<String>(),
-      contentPacks: (json['contentPacks'] as List).cast<String>(),
-      description: json['description'] as String?,
+      id: reqString('id'),
+      name: reqString('name'),
+      version: reqString('version'),
+      modules: reqStringList('modules'),
+      tradition: reqString('tradition'),
+      moduleConfigs: moduleConfigs,
+      practices: practices,
+      eventPacks: reqStringList('eventPacks'),
+      contentPacks: reqStringList('contentPacks'),
+      description: description as String?,
     );
   }
 
@@ -107,12 +197,34 @@ class PresetPractice {
   });
 
   factory PresetPractice.fromJson(Map<String, dynamic> json) {
+    String reqString(String field) {
+      final value = json[field];
+      if (value is String) return value;
+      throw PresetValidationException(
+        field,
+        value == null
+            ? 'обязательное поле отсутствует'
+            : 'ожидалась строка, получен ${value.runtimeType}',
+      );
+    }
+
+    final target = json['target'];
+    if (target != null && target is! int) {
+      throw const PresetValidationException(
+          'target', 'ожидалось целое число или null');
+    }
+    final unit = json['unit'];
+    if (unit != null && unit is! String) {
+      throw const PresetValidationException(
+          'unit', 'ожидалась строка или null');
+    }
+
     return PresetPractice(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      type: json['type'] as String,
-      target: json['target'] as int?,
-      unit: json['unit'] as String?,
+      id: reqString('id'),
+      name: reqString('name'),
+      type: reqString('type'),
+      target: target as int?,
+      unit: unit as String?,
     );
   }
 

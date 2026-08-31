@@ -9,6 +9,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 void main() {
   group('CreatePracticeScreen', () {
@@ -231,33 +232,39 @@ class _GatedRepository extends PracticeRepository {
   }
 }
 
-/// Открывает экран создания внутри реального маршрута Navigator
-/// (pop после сохранения обязан быть куда.pop).
+/// Открывает экран создания через реальный GoRouter (экран после сохранения
+/// зовёт context.pop() — навигация приложения одна, go_router API, 6.5).
 Future<void> _pumpCreateScreen(
     WidgetTester tester, _GatedRepository repo) async {
+  final router = GoRouter(
+    routes: [
+      GoRoute(
+        path: '/',
+        builder: (context, state) => Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              key: const Key('home'),
+              child: const Text('home'),
+              onPressed: () {},
+            ),
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/create',
+        builder: (context, state) =>
+            const CreatePracticeScreen(traditionTag: 'test'),
+      ),
+    ],
+  );
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
         practiceRepositoryProvider.overrideWithValue(repo),
       ],
-      child: MaterialApp(
-        home: Scaffold(
-          body: Builder(
-            builder: (context) => TextButton(
-              key: const Key('open-create'),
-              child: const Text('open'),
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) =>
-                      const CreatePracticeScreen(traditionTag: 'test'),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
+      child: MaterialApp.router(routerConfig: router),
     ),
   );
-  await tester.tap(find.byKey(const Key('open-create')));
+  router.push('/create');
   await tester.pumpAndSettle();
 }

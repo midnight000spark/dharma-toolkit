@@ -126,7 +126,54 @@ void main() {
       // Should be disposed in reverse: third, second, first
       expect(disposeOrder, ['third', 'second', 'first']);
     });
+
+    test('disposeAll доводит очистку до конца, даже если dispose упал (6.2)',
+        () async {
+      final registry = ModuleRegistry.instance;
+      final disposeOrder = <String>[];
+
+      registry.register(_OrderTrackingModule('a', disposeOrder));
+      registry.register(_DisposeFailingModule(disposeOrder));
+      registry.register(_OrderTrackingModule('c', disposeOrder));
+      await registry.initAll();
+
+      // Первая ошибка переподнимается — отказ не должен тонуть молча.
+      await expectLater(registry.disposeAll(), throwsStateError);
+
+      // Но остальные модули диспожены, а реестр очищен: повторный bootstrap
+      // (retry на экране восстановления) возможен.
+      expect(disposeOrder, containsAllInOrder(['c', 'a']));
+      expect(registry.all, isEmpty);
+      // Реестр снова пригоден к регистрации.
+      registry.register(_StubModule(id: 'after'));
+      expect(registry.get('after'), isNotNull);
+    });
   });
+}
+
+/// Модуль, у которого [dispose] всегда бросает (тест 6.2).
+class _DisposeFailingModule implements AppModule {
+  _DisposeFailingModule(this.disposeOrder);
+
+  final List<String> disposeOrder;
+
+  @override
+  String get id => 'boom';
+
+  @override
+  String get name => 'Boom';
+
+  @override
+  String get version => '1.0.0';
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<void> dispose() async {
+    disposeOrder.add(id);
+    throw StateError('dispose упал');
+  }
 }
 
 /// Helper module that tracks disposal order.

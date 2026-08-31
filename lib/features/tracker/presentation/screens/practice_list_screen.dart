@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../shared/utils/format.dart';
 import '../providers/practice_provider.dart';
 
 /// Экран списка трекеров практик
@@ -47,7 +48,7 @@ class PracticeListScreen extends ConsumerWidget {
                   final practice = practices[index];
                   return ListTile(
                     title: Text(practice.name),
-                    subtitle: Text('${practice.currentCount} ${practice.unit ?? ''}'),
+                    subtitle: Text(formatCount(practice.currentCount, practice.unit)),
                     trailing: practice.target != null
                         ? Text('${(practice.progress * 100).toInt()}%')
                         : null,

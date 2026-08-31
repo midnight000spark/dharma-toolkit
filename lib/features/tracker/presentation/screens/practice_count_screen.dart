@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../providers/practice_provider.dart';
 
 /// Экран счёта для конкретной практики (I-3, I-4).
 ///
 /// ConsumerWidget на [practiceByIdProvider]: стрим сам обновляет UI при
-/// изменении БД — ручной `_loadPractice` и `setState` удалены (B-6 исчезает
+/// изменении БД, ручная перезагрузка состояния отсутствует (B-6 решён
 /// структурно). Loading показывает спиннер с AppBar и кнопкой «назад».
 /// Null из стрима = «практика не найдена» с кнопкой «назад» (B-6).
 ///
@@ -42,7 +43,7 @@ class PracticeCountScreen extends ConsumerWidget {
               const Text('Ошибка загрузки'),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: () => context.pop(),
                 child: const Text('Назад'),
               ),
             ],
@@ -62,7 +63,7 @@ class PracticeCountScreen extends ConsumerWidget {
                   const Text('Практика не найдена'),
                   const SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: () => context.pop(),
                     child: const Text('Назад'),
                   ),
                 ],

@@ -86,7 +86,90 @@ void main() {
         // Missing: name, version, tradition, modules, etc.
       };
 
-      expect(() => PresetSchema.fromJson(json), throwsA(isA<TypeError>()));
+      expect(() => PresetSchema.fromJson(json),
+          throwsA(isA<PresetValidationException>()));
+    });
+
+    // 6.3: имя проблемного поля обязано быть в сообщении — по нему чинят
+    // кривой JSON-пресет.
+    group('PresetSchema.fromJson: валидация с именем поля (6.3)', () {
+      PresetSchema valid() => PresetSchema(
+            id: 'x',
+            name: 'X',
+            version: '1.0.0',
+            modules: const [],
+            tradition: 'vajrayana',
+            moduleConfigs: const {},
+            practices: const [],
+            eventPacks: const [],
+            contentPacks: const [],
+          );
+
+      Map<String, dynamic> broken(void Function(Map<String, dynamic>) tweak) {
+        final json = valid().toJson();
+        tweak(json);
+        return json;
+      }
+
+      void expectField(void Function() action, String field) {
+        expect(
+          action,
+          throwsA(
+            isA<PresetValidationException>().having(
+                (e) => e.field, 'в сообщении имя поля', field),
+          ),
+        );
+      }
+
+      test('отсутствующий name → поле name', () {
+        expectField(
+          () => PresetSchema.fromJson(broken((j) => j.remove('name'))),
+          'name',
+        );
+      });
+
+      test('немассивный modules → поле modules', () {
+        expectField(
+          () => PresetSchema.fromJson(broken((j) => j['modules'] = 5)),
+          'modules',
+        );
+      });
+
+      test('мусор вместо практики → practices[0]', () {
+        expectField(
+          () => PresetSchema.fromJson(
+              broken((j) => j['practices'] = ['не объект'])),
+          'practices[0]',
+        );
+      });
+
+      test('практика без id → practices[0].id', () {
+        expectField(
+          () => PresetSchema.fromJson(broken((j) => j['practices'] = [
+                {'name': 'Без айди', 'type': 'counter'}
+              ])),
+          'practices[0].id',
+        );
+      });
+
+      test('некорректная цель практики → practices[0].target', () {
+        expectField(
+          () => PresetSchema.fromJson(broken((j) => j['practices'] = [
+                {
+                  'id': 'p',
+                  'name': 'П',
+                  'type': 'counter',
+                  'target': 'сто'
+                }
+              ])),
+          'practices[0].target',
+        );
+      });
+
+      test('валидный сериализованный пресет проходит валидацию', () {
+        final restored = PresetSchema.fromJson(valid().toJson());
+        expect(restored.id, 'x');
+      });
     });
 
     test('PresetPractice fromJson/toJson works correctly', () {

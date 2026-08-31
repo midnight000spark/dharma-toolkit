@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../domain/practice.dart';
 import '../providers/practice_provider.dart';
@@ -78,8 +79,9 @@ class _CreatePracticeScreenState extends ConsumerState<CreatePracticeScreen> {
       await repository.create(practice);
 
       // Стрим списка сам обновится после insert — просто pop без result.
+      // go_router API, а не Navigator (6.5): навигация в приложении одна.
       if (mounted) {
-        Navigator.of(context).pop();
+        context.pop();
       }
     } finally {
       if (mounted) setState(() => _saving = false);
