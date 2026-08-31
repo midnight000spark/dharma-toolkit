@@ -1,5 +1,9 @@
 name: CI
 
+# Пин версии — воспроизводимость (R-16): релиз апстрима Flutter не должен
+# молча ломать сборку и выглядеть как регресс проекта. Версия сверена с F-4;
+# при обновлении тулчейна — менять здесь и в CONTEXT/AGENT.
+
 on:
   push:
     branches: [main]
@@ -14,10 +18,24 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          flutter-version: 3.47.1
+          cache: true # ~/.pub-cache с ключом по hash pubspec.lock
 
-      - run: flutter pub get
+      - name: Pub get
+        run: flutter pub get
 
-      - run: flutter analyze
+      # Infos тоже блокируют (R-16): деградация стиля ловится сразу,
+      # а не копится до «починим потом».
+      - name: Analyze (fatal-infos)
+        run: flutter analyze --fatal-infos
 
-      - run: flutter test
+      # Дрейф сгенерированного кода со схемой = красный CI (R-16):
+      # перегенерация обязана давать идентичное дерево.
+      - name: Build runner
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Check generated drift
+        run: git diff --exit-code
+
+      - name: Test
+        run: flutter test
