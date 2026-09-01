@@ -1,0 +1,902 @@
+{
+ "generatedBy": "scripts/gen_uposatha_vectors.mjs",
+ "reference": "astronomia 4.1.1 (MIT), Meeus ch.49 exact phase times; the same package date-tibetan (F-19/F-44) depends on",
+ "convention": "utcDate = Gregorian UTC day of the exact phase moment (JDE minus polynomial deltaT)",
+ "count": 149,
+ "events": [
+  {
+   "type": "last",
+   "jde": 2460313.646930144,
+   "utcDate": "2024-01-04",
+   "utcHour": 3
+  },
+  {
+   "type": "new",
+   "jde": 2460320.998979454,
+   "utcDate": "2024-01-11",
+   "utcHour": 11
+  },
+  {
+   "type": "first",
+   "jde": 2460327.662342745,
+   "utcDate": "2024-01-18",
+   "utcHour": 3
+  },
+  {
+   "type": "full",
+   "jde": 2460335.246641947,
+   "utcDate": "2024-01-25",
+   "utcHour": 17
+  },
+  {
+   "type": "last",
+   "jde": 2460343.471662186,
+   "utcDate": "2024-02-02",
+   "utcHour": 23
+  },
+  {
+   "type": "new",
+   "jde": 2460350.4585144664,
+   "utcDate": "2024-02-09",
+   "utcHour": 22
+  },
+  {
+   "type": "first",
+   "jde": 2460357.126458637,
+   "utcDate": "2024-02-16",
+   "utcHour": 15
+  },
+  {
+   "type": "full",
+   "jde": 2460365.0219274093,
+   "utcDate": "2024-02-24",
+   "utcHour": 12
+  },
+  {
+   "type": "last",
+   "jde": 2460373.142229282,
+   "utcDate": "2024-03-03",
+   "utcHour": 15
+  },
+  {
+   "type": "new",
+   "jde": 2460379.876072177,
+   "utcDate": "2024-03-10",
+   "utcHour": 9
+  },
+  {
+   "type": "first",
+   "jde": 2460386.674932897,
+   "utcDate": "2024-03-17",
+   "utcHour": 4
+  },
+  {
+   "type": "full",
+   "jde": 2460394.792711821,
+   "utcDate": "2024-03-25",
+   "utcHour": 7
+  },
+  {
+   "type": "last",
+   "jde": 2460402.63606142,
+   "utcDate": "2024-04-02",
+   "utcHour": 3
+  },
+  {
+   "type": "new",
+   "jde": 2460409.265301423,
+   "utcDate": "2024-04-08",
+   "utcHour": 18
+  },
+  {
+   "type": "first",
+   "jde": 2460416.301581423,
+   "utcDate": "2024-04-15",
+   "utcHour": 19
+  },
+  {
+   "type": "full",
+   "jde": 2460424.4932090184,
+   "utcDate": "2024-04-23",
+   "utcHour": 23
+  },
+  {
+   "type": "last",
+   "jde": 2460431.9780668253,
+   "utcDate": "2024-05-01",
+   "utcHour": 11
+  },
+  {
+   "type": "new",
+   "jde": 2460438.6410295106,
+   "utcDate": "2024-05-08",
+   "utcHour": 3
+  },
+  {
+   "type": "first",
+   "jde": 2460445.992485405,
+   "utcDate": "2024-05-15",
+   "utcHour": 11
+  },
+  {
+   "type": "full",
+   "jde": 2460454.079406609,
+   "utcDate": "2024-05-23",
+   "utcHour": 13
+  },
+  {
+   "type": "last",
+   "jde": 2460461.2179628196,
+   "utcDate": "2024-05-30",
+   "utcHour": 17
+  },
+  {
+   "type": "new",
+   "jde": 2460468.0269705635,
+   "utcDate": "2024-06-06",
+   "utcHour": 12
+  },
+  {
+   "type": "first",
+   "jde": 2460475.72194873,
+   "utcDate": "2024-06-14",
+   "utcHour": 5
+  },
+  {
+   "type": "full",
+   "jde": 2460483.547934697,
+   "utcDate": "2024-06-22",
+   "utcHour": 1
+  },
+  {
+   "type": "last",
+   "jde": 2460490.41289503,
+   "utcDate": "2024-06-28",
+   "utcHour": 21
+  },
+  {
+   "type": "new",
+   "jde": 2460497.457309236,
+   "utcDate": "2024-07-05",
+   "utcHour": 22
+  },
+  {
+   "type": "first",
+   "jde": 2460505.451301754,
+   "utcDate": "2024-07-13",
+   "utcHour": 22
+  },
+  {
+   "type": "full",
+   "jde": 2460512.929349773,
+   "utcDate": "2024-07-21",
+   "utcHour": 10
+  },
+  {
+   "type": "last",
+   "jde": 2460519.619915883,
+   "utcDate": "2024-07-28",
+   "utcHour": 2
+  },
+  {
+   "type": "new",
+   "jde": 2460526.968175374,
+   "utcDate": "2024-08-04",
+   "utcHour": 11
+  },
+  {
+   "type": "first",
+   "jde": 2460535.138815709,
+   "utcDate": "2024-08-12",
+   "utcHour": 15
+  },
+  {
+   "type": "full",
+   "jde": 2460542.2686470877,
+   "utcDate": "2024-08-19",
+   "utcHour": 18
+  },
+  {
+   "type": "last",
+   "jde": 2460548.8938058913,
+   "utcDate": "2024-08-26",
+   "utcHour": 9
+  },
+  {
+   "type": "new",
+   "jde": 2460556.581055651,
+   "utcDate": "2024-09-03",
+   "utcHour": 1
+  },
+  {
+   "type": "first",
+   "jde": 2460564.7547561303,
+   "utcDate": "2024-09-11",
+   "utcHour": 6
+  },
+  {
+   "type": "full",
+   "jde": 2460571.6080195457,
+   "utcDate": "2024-09-18",
+   "utcHour": 2
+  },
+  {
+   "type": "last",
+   "jde": 2460578.285500402,
+   "utcDate": "2024-09-24",
+   "utcHour": 18
+  },
+  {
+   "type": "new",
+   "jde": 2460586.285101383,
+   "utcDate": "2024-10-02",
+   "utcHour": 18
+  },
+  {
+   "type": "first",
+   "jde": 2460594.289126923,
+   "utcDate": "2024-10-10",
+   "utcHour": 18
+  },
+  {
+   "type": "full",
+   "jde": 2460600.9775241376,
+   "utcDate": "2024-10-17",
+   "utcHour": 11
+  },
+  {
+   "type": "last",
+   "jde": 2460607.836271316,
+   "utcDate": "2024-10-24",
+   "utcHour": 8
+  },
+  {
+   "type": "new",
+   "jde": 2460616.033669385,
+   "utcDate": "2024-11-01",
+   "utcHour": 12
+  },
+  {
+   "type": "first",
+   "jde": 2460623.7477562614,
+   "utcDate": "2024-11-09",
+   "utcHour": 5
+  },
+  {
+   "type": "full",
+   "jde": 2460630.39568484,
+   "utcDate": "2024-11-15",
+   "utcHour": 21
+  },
+  {
+   "type": "last",
+   "jde": 2460637.561926576,
+   "utcDate": "2024-11-23",
+   "utcHour": 1
+  },
+  {
+   "type": "new",
+   "jde": 2460645.7657684153,
+   "utcDate": "2024-12-01",
+   "utcHour": 6
+  },
+  {
+   "type": "first",
+   "jde": 2460653.144438133,
+   "utcDate": "2024-12-08",
+   "utcHour": 15
+  },
+  {
+   "type": "full",
+   "jde": 2460659.8770046877,
+   "utcDate": "2024-12-15",
+   "utcHour": 9
+  },
+  {
+   "type": "last",
+   "jde": 2460667.430175425,
+   "utcDate": "2024-12-22",
+   "utcHour": 22
+  },
+  {
+   "type": "new",
+   "jde": 2460675.436114201,
+   "utcDate": "2024-12-30",
+   "utcHour": 22
+  },
+  {
+   "type": "first",
+   "jde": 2460682.49830856,
+   "utcDate": "2025-01-06",
+   "utcHour": 23
+  },
+  {
+   "type": "full",
+   "jde": 2460689.4361700807,
+   "utcDate": "2025-01-13",
+   "utcHour": 22
+  },
+  {
+   "type": "last",
+   "jde": 2460697.355507024,
+   "utcDate": "2025-01-21",
+   "utcHour": 20
+  },
+  {
+   "type": "new",
+   "jde": 2460705.0257918816,
+   "utcDate": "2025-01-29",
+   "utcHour": 12
+  },
+  {
+   "type": "first",
+   "jde": 2460711.8356457455,
+   "utcDate": "2025-02-05",
+   "utcHour": 8
+  },
+  {
+   "type": "full",
+   "jde": 2460719.0795660354,
+   "utcDate": "2025-02-12",
+   "utcHour": 13
+  },
+  {
+   "type": "last",
+   "jde": 2460727.23181274,
+   "utcDate": "2025-02-20",
+   "utcHour": 17
+  },
+  {
+   "type": "new",
+   "jde": 2460734.531875833,
+   "utcDate": "2025-02-28",
+   "utcHour": 0
+  },
+  {
+   "type": "first",
+   "jde": 2460741.189433874,
+   "utcDate": "2025-03-06",
+   "utcHour": 16
+  },
+  {
+   "type": "full",
+   "jde": 2460748.788742885,
+   "utcDate": "2025-03-14",
+   "utcHour": 6
+  },
+  {
+   "type": "last",
+   "jde": 2460756.979694249,
+   "utcDate": "2025-03-22",
+   "utcHour": 11
+  },
+  {
+   "type": "new",
+   "jde": 2460763.9575658725,
+   "utcDate": "2025-03-29",
+   "utcHour": 10
+  },
+  {
+   "type": "first",
+   "jde": 2460770.5943128704,
+   "utcDate": "2025-04-05",
+   "utcHour": 2
+  },
+  {
+   "type": "full",
+   "jde": 2460778.5162910796,
+   "utcDate": "2025-04-13",
+   "utcHour": 0
+  },
+  {
+   "type": "last",
+   "jde": 2460786.567205003,
+   "utcDate": "2025-04-21",
+   "utcHour": 1
+  },
+  {
+   "type": "new",
+   "jde": 2460793.314111826,
+   "utcDate": "2025-04-27",
+   "utcHour": 19
+  },
+  {
+   "type": "first",
+   "jde": 2460800.0784173184,
+   "utcDate": "2025-05-04",
+   "utcHour": 13
+  },
+  {
+   "type": "full",
+   "jde": 2460808.2063885503,
+   "utcDate": "2025-05-12",
+   "utcHour": 16
+  },
+  {
+   "type": "last",
+   "jde": 2460815.999939335,
+   "utcDate": "2025-05-20",
+   "utcHour": 11
+  },
+  {
+   "type": "new",
+   "jde": 2460822.6274356763,
+   "utcDate": "2025-05-27",
+   "utcHour": 3
+  },
+  {
+   "type": "first",
+   "jde": 2460829.6542951143,
+   "utcDate": "2025-06-03",
+   "utcHour": 3
+  },
+  {
+   "type": "full",
+   "jde": 2460837.822920219,
+   "utcDate": "2025-06-11",
+   "utcHour": 7
+  },
+  {
+   "type": "last",
+   "jde": 2460845.3057137188,
+   "utcDate": "2025-06-18",
+   "utcHour": 19
+  },
+  {
+   "type": "new",
+   "jde": 2460851.9393704887,
+   "utcDate": "2025-06-25",
+   "utcHour": 10
+  },
+  {
+   "type": "first",
+   "jde": 2460859.313458074,
+   "utcDate": "2025-07-02",
+   "utcHour": 19
+  },
+  {
+   "type": "full",
+   "jde": 2460867.3596635615,
+   "utcDate": "2025-07-10",
+   "utcHour": 20
+  },
+  {
+   "type": "last",
+   "jde": 2460874.5269520804,
+   "utcDate": "2025-07-18",
+   "utcHour": 0
+  },
+  {
+   "type": "new",
+   "jde": 2460881.300200388,
+   "utcDate": "2025-07-24",
+   "utcHour": 19
+  },
+  {
+   "type": "first",
+   "jde": 2460889.029474373,
+   "utcDate": "2025-08-01",
+   "utcHour": 12
+  },
+  {
+   "type": "full",
+   "jde": 2460896.830711861,
+   "utcDate": "2025-08-09",
+   "utcHour": 7
+  },
+  {
+   "type": "last",
+   "jde": 2460903.7176654553,
+   "utcDate": "2025-08-16",
+   "utcHour": 5
+  },
+  {
+   "type": "new",
+   "jde": 2460910.7552972487,
+   "utcDate": "2025-08-23",
+   "utcHour": 6
+  },
+  {
+   "type": "first",
+   "jde": 2460918.7682183147,
+   "utcDate": "2025-08-31",
+   "utcHour": 6
+  },
+  {
+   "type": "full",
+   "jde": 2460926.256949521,
+   "utcDate": "2025-09-07",
+   "utcHour": 18
+  },
+  {
+   "type": "last",
+   "jde": 2460932.9403939415,
+   "utcDate": "2025-09-14",
+   "utcHour": 10
+  },
+  {
+   "type": "new",
+   "jde": 2460940.329988956,
+   "utcDate": "2025-09-21",
+   "utcHour": 19
+  },
+  {
+   "type": "first",
+   "jde": 2460948.496431811,
+   "utcDate": "2025-09-29",
+   "utcHour": 23
+  },
+  {
+   "type": "full",
+   "jde": 2460955.6588377343,
+   "utcDate": "2025-10-07",
+   "utcHour": 3
+  },
+  {
+   "type": "last",
+   "jde": 2460962.259630397,
+   "utcDate": "2025-10-13",
+   "utcHour": 18
+  },
+  {
+   "type": "new",
+   "jde": 2460970.018268755,
+   "utcDate": "2025-10-21",
+   "utcHour": 12
+  },
+  {
+   "type": "first",
+   "jde": 2460978.1819371986,
+   "utcDate": "2025-10-29",
+   "utcHour": 16
+  },
+  {
+   "type": "full",
+   "jde": 2460985.0558979795,
+   "utcDate": "2025-11-05",
+   "utcHour": 13
+  },
+  {
+   "type": "last",
+   "jde": 2460991.7286849194,
+   "utcDate": "2025-11-12",
+   "utcHour": 5
+  },
+  {
+   "type": "new",
+   "jde": 2460999.7836746527,
+   "utcDate": "2025-11-20",
+   "utcHour": 6
+  },
+  {
+   "type": "first",
+   "jde": 2461007.7916968525,
+   "utcDate": "2025-11-28",
+   "utcHour": 6
+  },
+  {
+   "type": "full",
+   "jde": 2461014.4689327246,
+   "utcDate": "2025-12-04",
+   "utcHour": 23
+  },
+  {
+   "type": "last",
+   "jde": 2461021.3700607237,
+   "utcDate": "2025-12-11",
+   "utcHour": 20
+  },
+  {
+   "type": "new",
+   "jde": 2461029.5726448838,
+   "utcDate": "2025-12-20",
+   "utcHour": 1
+  },
+  {
+   "type": "first",
+   "jde": 2461037.299383454,
+   "utcDate": "2025-12-27",
+   "utcHour": 19
+  },
+  {
+   "type": "full",
+   "jde": 2461043.919503149,
+   "utcDate": "2026-01-03",
+   "utcHour": 10
+  },
+  {
+   "type": "last",
+   "jde": 2461051.159473873,
+   "utcDate": "2026-01-10",
+   "utcHour": 15
+  },
+  {
+   "type": "new",
+   "jde": 2461059.3286571503,
+   "utcDate": "2026-01-18",
+   "utcHour": 19
+  },
+  {
+   "type": "first",
+   "jde": 2461066.700496912,
+   "utcDate": "2026-01-26",
+   "utcHour": 4
+  },
+  {
+   "type": "full",
+   "jde": 2461073.4239275795,
+   "utcDate": "2026-02-01",
+   "utcHour": 22
+  },
+  {
+   "type": "last",
+   "jde": 2461081.0308406283,
+   "utcDate": "2026-02-09",
+   "utcHour": 12
+  },
+  {
+   "type": "new",
+   "jde": 2461089.0016640862,
+   "utcDate": "2026-02-17",
+   "utcHour": 12
+  },
+  {
+   "type": "first",
+   "jde": 2461096.020057584,
+   "utcDate": "2026-02-24",
+   "utcHour": 12
+  },
+  {
+   "type": "full",
+   "jde": 2461102.985492242,
+   "utcDate": "2026-03-03",
+   "utcHour": 11
+  },
+  {
+   "type": "last",
+   "jde": 2461110.902640057,
+   "utcDate": "2026-03-11",
+   "utcHour": 9
+  },
+  {
+   "type": "new",
+   "jde": 2461118.5587874074,
+   "utcDate": "2026-03-19",
+   "utcHour": 1
+  },
+  {
+   "type": "first",
+   "jde": 2461125.304757085,
+   "utcDate": "2026-03-25",
+   "utcHour": 19
+  },
+  {
+   "type": "full",
+   "jde": 2461132.5924916533,
+   "utcDate": "2026-04-02",
+   "utcHour": 2
+  },
+  {
+   "type": "last",
+   "jde": 2461140.7034233194,
+   "utcDate": "2026-04-10",
+   "utcHour": 4
+  },
+  {
+   "type": "new",
+   "jde": 2461147.995105297,
+   "utcDate": "2026-04-17",
+   "utcHour": 11
+  },
+  {
+   "type": "first",
+   "jde": 2461154.6061880547,
+   "utcDate": "2026-04-24",
+   "utcHour": 2
+  },
+  {
+   "type": "full",
+   "jde": 2461162.225297028,
+   "utcDate": "2026-05-01",
+   "utcHour": 17
+  },
+  {
+   "type": "last",
+   "jde": 2461170.383151026,
+   "utcDate": "2026-05-09",
+   "utcHour": 21
+  },
+  {
+   "type": "new",
+   "jde": 2461177.3348543406,
+   "utcDate": "2026-05-16",
+   "utcHour": 20
+  },
+  {
+   "type": "first",
+   "jde": 2461183.9667526963,
+   "utcDate": "2026-05-23",
+   "utcHour": 11
+  },
+  {
+   "type": "full",
+   "jde": 2461191.8655851334,
+   "utcDate": "2026-05-31",
+   "utcHour": 8
+  },
+  {
+   "type": "last",
+   "jde": 2461199.917853059,
+   "utcDate": "2026-06-08",
+   "utcHour": 10
+  },
+  {
+   "type": "new",
+   "jde": 2461206.6217392636,
+   "utcDate": "2026-06-15",
+   "utcHour": 2
+  },
+  {
+   "type": "first",
+   "jde": 2461213.4142492274,
+   "utcDate": "2026-06-21",
+   "utcHour": 21
+  },
+  {
+   "type": "full",
+   "jde": 2461221.4985360755,
+   "utcDate": "2026-06-29",
+   "utcHour": 23
+  },
+  {
+   "type": "last",
+   "jde": 2461229.312610835,
+   "utcDate": "2026-07-07",
+   "utcHour": 19
+  },
+  {
+   "type": "new",
+   "jde": 2461235.906069777,
+   "utcDate": "2026-07-14",
+   "utcHour": 9
+  },
+  {
+   "type": "first",
+   "jde": 2461242.9630322084,
+   "utcDate": "2026-07-21",
+   "utcHour": 11
+  },
+  {
+   "type": "full",
+   "jde": 2461251.108950746,
+   "utcDate": "2026-07-29",
+   "utcHour": 14
+  },
+  {
+   "type": "last",
+   "jde": 2461258.5991123887,
+   "utcDate": "2026-08-06",
+   "utcHour": 2
+  },
+  {
+   "type": "new",
+   "jde": 2461265.2346139406,
+   "utcDate": "2026-08-12",
+   "utcHour": 17
+  },
+  {
+   "type": "first",
+   "jde": 2461272.616327231,
+   "utcDate": "2026-08-20",
+   "utcHour": 2
+  },
+  {
+   "type": "full",
+   "jde": 2461280.680331683,
+   "utcDate": "2026-08-28",
+   "utcHour": 4
+  },
+  {
+   "type": "last",
+   "jde": 2461287.828074371,
+   "utcDate": "2026-09-04",
+   "utcHour": 7
+  },
+  {
+   "type": "new",
+   "jde": 2461294.6445080945,
+   "utcDate": "2026-09-11",
+   "utcHour": 3
+  },
+  {
+   "type": "first",
+   "jde": 2461302.3644643077,
+   "utcDate": "2026-09-18",
+   "utcHour": 20
+  },
+  {
+   "type": "full",
+   "jde": 2461310.20153749,
+   "utcDate": "2026-09-26",
+   "utcHour": 16
+  },
+  {
+   "type": "last",
+   "jde": 2461317.0598674873,
+   "utcDate": "2026-10-03",
+   "utcHour": 13
+  },
+  {
+   "type": "new",
+   "jde": 2461324.160550847,
+   "utcDate": "2026-10-10",
+   "utcHour": 15
+  },
+  {
+   "type": "first",
+   "jde": 2461332.1762309633,
+   "utcDate": "2026-10-18",
+   "utcHour": 16
+  },
+  {
+   "type": "full",
+   "jde": 2461339.6756757614,
+   "utcDate": "2026-10-26",
+   "utcHour": 4
+  },
+  {
+   "type": "last",
+   "jde": 2461346.3539057537,
+   "utcDate": "2026-11-01",
+   "utcHour": 20
+  },
+  {
+   "type": "new",
+   "jde": 2461353.793891182,
+   "utcDate": "2026-11-09",
+   "utcHour": 7
+  },
+  {
+   "type": "first",
+   "jde": 2461361.9923612177,
+   "utcDate": "2026-11-17",
+   "utcHour": 11
+  },
+  {
+   "type": "full",
+   "jde": 2461369.121313449,
+   "utcDate": "2026-11-24",
+   "utcHour": 14
+  },
+  {
+   "type": "last",
+   "jde": 2461375.756854274,
+   "utcDate": "2026-12-01",
+   "utcHour": 6
+  },
+  {
+   "type": "new",
+   "jde": 2461383.536821402,
+   "utcDate": "2026-12-09",
+   "utcHour": 0
+  },
+  {
+   "type": "first",
+   "jde": 2461391.7387804375,
+   "utcDate": "2026-12-17",
+   "utcHour": 5
+  },
+  {
+   "type": "full",
+   "jde": 2461398.5620791162,
+   "utcDate": "2026-12-24",
+   "utcHour": 1
+  },
+  {
+   "type": "last",
+   "jde": 2461405.292180104,
+   "utcDate": "2026-12-30",
+   "utcHour": 18
+  }
+ ]
+}
