@@ -11,6 +11,7 @@ import 'dart:io';
 
 import 'package:dharma_toolkit/features/calendar/data/tibetan/tibetan_calendar.dart';
 import 'package:dharma_toolkit/features/calendar/data/tibetan/tibetan_calendar_provider.dart';
+import 'package:dharma_toolkit/features/calendar/data/tibetan/tibetan_date.dart';
 import 'package:dharma_toolkit/features/calendar/domain/special_day.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -192,6 +193,110 @@ void main() {
           DateTime(2027, 6, 10), DateTime(2027, 6, 17));
       expect(days.where((d) => d.type == SpecialDayType.tibetan10), isEmpty,
           reason: 'фантомная подсветка пропущенного 10-го запрещена (4.1)');
+    });
+  });
+
+  group('Лосар в годы с удвоенным 1-м месяцем (блок B)', () {
+    // Даты и существование инстансов 1/1 сверены ПРЯМЫМ прогоном tibcal
+    // 01591b5 (MIT, тот же источник, что F-45), а не портом:
+    // 1935: leap 1/1 = 04.02, regular 1/1 — SKIP;
+    // 2019: leap 1/1 = 05.02, regular 1/1 = 07.03 (оба существуют);
+    // 2084: leap 1/1 — SKIP, regular 1/1 = 07.03.
+    // Конвенция «только обычный месяц» теряла Лосар в 1935 и давала
+    // неверный день в 2019 — эти кейсы её и ломают (мутация ниже).
+    test('1935: обычный 1/1 пропущен — Лосар на вставном 04.02', () {
+      // Порт обязан различать аномалию (иначе тест самообслуживается).
+      expect(gregorianToTibetan(DateTime(1935, 2, 4)).isLeapMonth, isTrue);
+      expect(() => tibetanToGregorian(TibetanDate(
+          year: 1935, month: 1, isLeapMonth: false, day: 1, isLeapDay: false)),
+          throwsA(isA<NoSuchTibetanDayException>()));
+      expect(TibetanCalendarProvider.losarDate(1935), DateTime(1935, 2, 4));
+      final days = provider.getSpecialDays(
+          DateTime(1935, 2, 1), DateTime(1935, 2, 10));
+      final losar =
+          days.where((d) => d.type == SpecialDayType.festival).toList();
+      expect(losar, hasLength(1), reason: 'Лосар обязан найтись: ${_summary(days)}');
+      expect(losar.single.date, DateTime(1935, 2, 4));
+    });
+
+    test('2019: Лосар — вставной 1/1 (05.02), обычный 1/1 не дублирует', () {
+      expect(gregorianToTibetan(DateTime(2019, 2, 5)).isLeapMonth, isTrue);
+      // Обычный 1/1 существует (07.03) и НЕ является праздником —
+      // широкий окно ловит мутацию «отметить оба инстанса».
+      expect(gregorianToTibetan(DateTime(2019, 3, 7)).isLeapMonth, isFalse);
+      expect(TibetanCalendarProvider.losarDate(2019), DateTime(2019, 2, 5));
+      final narrow = provider.getSpecialDays(
+          DateTime(2019, 2, 1), DateTime(2019, 2, 10));
+      expect(
+          narrow.where((d) => d.type == SpecialDayType.festival).map(
+              (d) => d.date), [DateTime(2019, 2, 5)]);
+      final wide = provider.getSpecialDays(
+          DateTime(2019, 2, 1), DateTime(2019, 3, 10));
+      expect(wide.where((d) => d.type == SpecialDayType.festival),
+          hasLength(1),
+          reason: 'заведомо один festival на тибетский год, а не по инстансу');
+    });
+
+    test('2084: вставной 1/1 пропущен — эстафету берёт обычный 07.03', () {
+      expect(() => tibetanToGregorian(TibetanDate(
+          year: 2084, month: 1, isLeapMonth: true, day: 1, isLeapDay: false)),
+          throwsA(isA<NoSuchTibetanDayException>()));
+      expect(TibetanCalendarProvider.losarDate(2084), DateTime(2084, 3, 7));
+      final days = provider.getSpecialDays(
+          DateTime(2084, 3, 1), DateTime(2084, 3, 10));
+      final losar =
+          days.where((d) => d.type == SpecialDayType.festival).toList();
+      expect(losar, hasLength(1));
+      expect(losar.single.date, DateTime(2084, 3, 7));
+    });
+
+    test('1901/1977: год без 1/1 — getSpecialDays не бросает, Лосара нет', () {
+      // Дыра конвенции (tibcal ground truth): 1/1 не существует ни в одном
+      // инстансе. Predicate обязан коротить на month/day и НЕ звать
+      // losarDate на несуществующем дне — иначе StateError пробился бы в
+      // обход диапазона. 10/25 при этом живут — цикл полный.
+      for (final y in [1901, 1977]) {
+        final days =
+            provider.getSpecialDays(DateTime(y, 1, 1), DateTime(y, 12, 31));
+        expect(days.where((d) => d.type == SpecialDayType.festival), isEmpty,
+            reason: '$y: год без 1/1 — Лосар не отмечается, но и не кидается');
+        expect(
+            days.where((d) => d.type == SpecialDayType.tibetan10).length,
+            greaterThan(10),
+            reason: '$y: обход 10/25 не пострадал');
+      }
+    });
+
+    test('sweep 1900–2100: losarDate landing-ит на 1/1; набор лет без Лосара точен', () {
+      // Инвариант конвенции: первая существующая 1/1 landing-ится прямым
+      // ходом g2t обратно в 1/1 того же года. Дыры конвенции известны и
+      // точны: в 1901 и 1977 1/1 не существует ни в одном из инстансов
+      // 1-го месяца (сверено прогоном tibcal 01591b5, не портом) — там
+      // Лосар бросает StateError. Любой ДРУГОЙ год с дырой или пропажа
+      // дыры — красный тест (защита от дрейфа порта за границами ручных
+      // векторов).
+      final expectedHoles = {1901, 1977};
+      final actualHoles = <int>{};
+      var doubledLosarYears = 0;
+      for (var y = 1900; y <= 2100; y++) {
+        DateTime? l;
+        try {
+          l = TibetanCalendarProvider.losarDate(y);
+        } on StateError {
+          actualHoles.add(y);
+          continue;
+        }
+        final back = gregorianToTibetan(l);
+        expect(back.month, 1, reason: 'losarDate($y) вне 1-го месяца');
+        expect(back.day, 1, reason: 'losarDate($y) вне 1-го дня');
+        expect(back.year, y, reason: 'losarDate($y) уехал в год ${back.year}');
+        if (back.isLeapMonth) doubledLosarYears++;
+      }
+      expect(actualHoles, expectedHoles,
+          reason: 'набор лет без 1/1 обязан быть точным');
+      // Нетривиальность: удвоенные 1-е месяцы в окне есть (иначе sweep не
+      // проверяет новую конвенцию против старой — пустой прогон).
+      expect(doubledLosarYears, greaterThan(0));
     });
   });
 
