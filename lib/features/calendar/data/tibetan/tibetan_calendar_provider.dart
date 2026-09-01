@@ -20,6 +20,7 @@ library;
 import '../../domain/calendar_provider.dart';
 import '../../domain/special_day.dart';
 import 'tibetan_calendar.dart';
+import 'tibetan_date.dart';
 
 class TibetanCalendarProvider implements CalendarProvider {
   /// [traditionTag] — тег активного пресета (`preset.id`, принцип №3/B-4):
@@ -36,6 +37,26 @@ class TibetanCalendarProvider implements CalendarProvider {
   /// показывать «дата пока не проверена» вне вычисляемых дней (UX-A-4),
   /// а не «праздников нет».
   static const bool festivalsPackComplete = false;
+
+  /// Лосар тибетского года [tibetanYear] — григорианская дата 1/1 обычного
+  /// (не вставного) первого месяца, вычисленная прямым ходом порта
+  /// [tibetanToGregorian] (Пхугпа; не путать с удвоенным месяцем: вставной
+  /// 1-й месяц Лосаром не является). Фикстура F-45 (Лосары 2023–2027,
+  /// сверенные с публичными датами) — эталон точности; вне проверенного
+  /// окна дата остаётся корректной математикой порта, но не сверялась
+  /// вручную (UX-A-4).
+  static DateTime losarDate(int tibetanYear) {
+    // Порт отдаёт DateTime.utc — время не значимо, нормализуем к локальной
+    // полночи (контракт SpecialDay.date).
+    final g = tibetanToGregorian(TibetanDate(
+      year: tibetanYear,
+      month: 1,
+      isLeapMonth: false,
+      day: 1,
+      isLeapDay: false,
+    ));
+    return DateTime(g.year, g.month, g.day);
+  }
 
   @override
   List<SpecialDay> getSpecialDays(DateTime from, DateTime to) {
@@ -69,6 +90,21 @@ class TibetanCalendarProvider implements CalendarProvider {
           type: SpecialDayType.tibetan25,
           name: '25-й день тибетского месяца',
           description: 'Полусамоцветный день (лунный день 25), календарь Пхугпа',
+        ));
+      }
+      // Лосар (блок 2, FR-CAL-5): 1/1 обычного месяца. Совпадение с
+      // [losarDate] обеспечивается round-trip-consistency порта
+      // (t2g/g2t сверены векторами F-45).
+      if (td.month == 1 &&
+          td.day == 1 &&
+          !td.isLeapMonth &&
+          !td.isLeapDay) {
+        result.add(SpecialDay(
+          date: d,
+          type: SpecialDayType.festival,
+          name: 'Лосар — тибетский Новый год',
+          description:
+              '1-й день 1-го месяца тибетского года ${td.year} (календарь Пхугпа)',
         ));
       }
     }

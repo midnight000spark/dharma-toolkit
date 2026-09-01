@@ -75,3 +75,26 @@ List<MoonVector> loadMoonVectors() {
       ),
   ];
 }
+
+/// Лосар из фикстуры tibcal (F-45): тибетский год (западный год Лосара) и
+/// григорианская дата 1/1.
+class LosarVector {
+  const LosarVector(this.tibetanYear, this.gregorian);
+  final int tibetanYear;
+  final DateTime gregorian; // полночь локальная, дата из вектора
+}
+
+/// Лосары 2023–2027 из test/fixtures/tibcal_vectors.json (F-45; сверены с
+/// публичными датами в 5a).
+List<LosarVector> loadLosarVectors() {
+  final raw =
+      jsonDecode(File('test/fixtures/tibcal_vectors.json').readAsStringSync())
+          as Map<String, dynamic>;
+  return [
+    for (final e in raw['losar'] as List)
+      LosarVector(
+        (e as Map<String, dynamic>)['tibetanYear'] as int,
+        DateTime.parse('${e['gregorian']}T00:00:00'),
+      ),
+  ];
+}

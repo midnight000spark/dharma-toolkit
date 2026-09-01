@@ -10,6 +10,8 @@ import 'package:dharma_toolkit/features/calendar/data/tibetan/tibetan_calendar_p
 import 'package:dharma_toolkit/features/calendar/domain/special_day.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'contract_harness.dart';
+
 List<String> _summary(List<SpecialDay> days) => days
     .map((d) => '${d.date.year}-${d.date.month}-${d.date.day} ${d.type.name}')
     .toList();
@@ -47,6 +49,52 @@ void main() {
       expect(t10.description, contains('Пхугпа'));
       final t25 = sep.firstWhere((d) => d.type == SpecialDayType.tibetan25);
       expect(t25.name, '25-й день тибетского месяца');
+    });
+  });
+
+  group('Лосар (FR-CAL-5, фикстура F-45)', () {
+    final losars = loadLosarVectors();
+
+    test('фикстура на месте: 5 Лосаров 2023–2027', () {
+      expect(losars.map((l) => l.tibetanYear),
+          [2023, 2024, 2025, 2026, 2027]);
+    });
+
+    test('losarDate(y) == григорианская дата из фикстуры tibcal', () {
+      // 2.3: сверка вычисления порта с фикстурой F-45 (публичные даты).
+      final expected = {
+        2023: DateTime(2023, 2, 21),
+        2024: DateTime(2024, 2, 10),
+        2025: DateTime(2025, 2, 28),
+        2026: DateTime(2026, 2, 18),
+        2027: DateTime(2027, 2, 7),
+      };
+      for (final e in expected.entries) {
+        expect(TibetanCalendarProvider.losarDate(e.key), e.value,
+            reason: 'Лосар ${e.key}');
+      }
+      // Перекрёстно: те же даты отдает фикстура.
+      for (final l in losars) {
+        expect(TibetanCalendarProvider.losarDate(l.tibetanYear), l.gregorian,
+            reason: 'Лосар ${l.tibetanYear} vs фикстура');
+      }
+    });
+
+    test('getSpecialDays помечает Лосар festival-днём', () {
+      final l2026 = losars.firstWhere((l) => l.tibetanYear == 2026);
+      final days = provider.getSpecialDays(
+          DateTime(2026, 2, 15), DateTime(2026, 2, 21));
+      final losar =
+          days.where((d) => d.type == SpecialDayType.festival).toList();
+      expect(losar, hasLength(1));
+      expect(losar.single.date, DateTime(2026, 2, 18));
+      expect(losar.single.name, 'Лосар — тибетский Новый год');
+    });
+
+    test('в сентябре 2026 Лосара нет (не каждый месяц — праздник)', () {
+      final sep = provider.getSpecialDays(
+          DateTime(2026, 9, 1), DateTime(2026, 9, 30));
+      expect(sep.where((d) => d.type == SpecialDayType.festival), isEmpty);
     });
   });
 
