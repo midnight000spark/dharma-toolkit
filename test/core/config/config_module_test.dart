@@ -5,17 +5,13 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('PresetSchema', () {
-    test('fromJson parses valid JSON with all v1 fields', () {
+    test('fromJson parses valid JSON without moduleConfigs (R-20)', () {
       final json = {
         'id': 'nyingma',
         'name': 'Ньингма',
         'version': '1.0.0',
         'tradition': 'vajrayana',
         'modules': ['calendar', 'tracker'],
-        'moduleConfigs': {
-          'calendar': {'type': 'tibetan', 'highlightDays': [10, 25]},
-          'tracker': {'isolationTag': 'nyingma'},
-        },
         'practices': [
           {
             'id': 'prostrations',
@@ -37,14 +33,39 @@ void main() {
       expect(preset.version, '1.0.0');
       expect(preset.tradition, 'vajrayana');
       expect(preset.modules, ['calendar', 'tracker']);
-      expect(preset.moduleConfigs['calendar']?['type'], 'tibetan');
-      expect(preset.moduleConfigs['tracker']?['isolationTag'], 'nyingma');
       expect(preset.practices, hasLength(1));
       expect(preset.practices.first.id, 'prostrations');
       expect(preset.practices.first.target, 100000);
       expect(preset.eventPacks, ['vajrayana_holidays']);
       expect(preset.contentPacks, ['nyingma_quotes']);
       expect(preset.description, 'Школа Ньингма');
+    });
+
+    // R-20 (D-32): легаси-строки в таблице presets хранят JSON, записанный
+    // до 5b.4, — с ключом moduleConfigs. Разбор обязан игнорировать
+    // неизвестные поля, иначе сохранённые пресеты перестанут читаться.
+    test('легаси-JSON с moduleConfigs парсится — неизвестный ключ игнорируется',
+        () {
+      final json = {
+        'id': 'nyingma',
+        'name': 'Ньингма',
+        'version': '1.0.0',
+        'tradition': 'vajrayana',
+        'modules': ['calendar', 'tracker'],
+        'moduleConfigs': {
+          'calendar': {'type': 'tibetan', 'highlightDays': [10, 25]},
+          'tracker': {'isolationTag': 'nyingma'},
+        },
+        'practices': <Object>[],
+        'eventPacks': <String>[],
+        'contentPacks': <String>[],
+      };
+
+      final preset = PresetSchema.fromJson(json);
+      expect(preset.id, 'nyingma');
+      expect(preset.tradition, 'vajrayana');
+      // toJson() нового поля не отдаёт — второй источник истины не возродится.
+      expect(preset.toJson().containsKey('moduleConfigs'), isFalse);
     });
 
     test('toJson roundtrip preserves data', () {
@@ -54,9 +75,6 @@ void main() {
         version: '2.0.0',
         tradition: 'theravada',
         modules: ['calendar'],
-        moduleConfigs: {
-          'calendar': {'type': 'lunar'},
-        },
         practices: [
           PresetPractice(
             id: 'meditation',
@@ -99,7 +117,6 @@ void main() {
             version: '1.0.0',
             modules: const [],
             tradition: 'vajrayana',
-            moduleConfigs: const {},
             practices: const [],
             eventPacks: const [],
             contentPacks: const [],

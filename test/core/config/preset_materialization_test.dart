@@ -25,7 +25,6 @@ void main() {
     version: '1.0.0',
     tradition: 'vajrayana',
     modules: ['tracker'],
-    moduleConfigs: {},
     practices: [
       PresetPractice(
         id: 'ngondro_prostrations',
@@ -66,7 +65,6 @@ void main() {
     version: '1.0.0',
     tradition: 'theravada',
     modules: ['tracker'],
-    moduleConfigs: {},
     practices: [],
     eventPacks: [],
     contentPacks: [],

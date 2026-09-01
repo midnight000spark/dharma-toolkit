@@ -28,7 +28,6 @@ void main() {
     version: '1.0.0',
     modules: ['tracker'],
     tradition: 'vajrayana',
-    moduleConfigs: const {},
     practices: [
       PresetPractice(
           id: 'prostrations', name: 'Простирания', type: 'counter',

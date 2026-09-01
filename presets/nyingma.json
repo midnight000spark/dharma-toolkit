@@ -4,16 +4,6 @@
   "version": "1.0.0",
   "tradition": "vajrayana",
   "modules": ["calendar", "tracker"],
-  "moduleConfigs": {
-    "calendar": {
-      "type": "tibetan",
-      "school": "phugpa",
-      "highlightDays": [10, 25]
-    },
-    "tracker": {
-      "isolationTag": "nyingma"
-    }
-  },
   "practices": [
     {
       "id": "ngondro_prostrations",

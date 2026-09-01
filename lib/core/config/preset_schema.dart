@@ -14,8 +14,18 @@ class PresetValidationException implements Exception {
 
 /// Schema for JSON preset files v1. Describes configuration for a tradition.
 ///
-/// Validated when loading from assets. Contains module configurations,
-/// preset practices, event packs, and content packs.
+/// Validated when loading from assets. Contains preset practices, event packs,
+/// and content packs.
+///
+/// **moduleConfigs исключён из схемы (R-20, пакет 5b.4, решение D-32).**
+/// Поля `calendar.type/school/highlightDays/uposatha` и `tracker.isolationTag`
+/// не читались нигде в `lib/` — мёртвая конфигурация, второй источник истины
+/// (сродни B-4 и R-14). Выбор календаря идёт по `tradition` активного пресета
+/// (реестр в `features/calendar/presentation/providers/calendar_providers.dart`),
+/// изоляция данных — по `id` (принцип №3). Параметры модулей вернутся вместе
+/// с первыми живыми потребителями (бэклог v1.1). Неизвестные поля в JSON
+/// (легаси-строки `moduleConfigs`, сохранённые в таблице presets до 5b.4)
+/// молча игнорируются при разборе — обратной совместимости это не ломает.
 class PresetSchema {
   /// Unique identifier (snake_case, e.g. 'nyingma', 'theravada')
   final String id;
@@ -29,11 +39,10 @@ class PresetSchema {
   /// Which modules to activate
   final List<String> modules;
 
-  /// Parent tradition: 'theravada', 'mahayana', 'vajrayana', 'bon'
+  /// Parent tradition family (see tree.json): stable machine key from preset
+  /// data. Drives calendar-implementation selection (D-32); never hardcoded
+  /// in code.
   final String tradition;
-
-  /// Module configurations (key = module id, value = parameters)
-  final Map<String, Map<String, dynamic>> moduleConfigs;
 
   /// Preset practices from this tradition
   final List<PresetPractice> practices;
@@ -53,7 +62,6 @@ class PresetSchema {
     required this.version,
     required this.modules,
     required this.tradition,
-    required this.moduleConfigs,
     required this.practices,
     required this.eventPacks,
     required this.contentPacks,
@@ -87,29 +95,6 @@ class PresetSchema {
       }
       return List<String>.from(value);
     }
-
-    // moduleConfigs: объект, значения — тоже объекты (свойства JSON-мапов
-    // в декодированном виде — dynamic, проверяем мягко, но с именем поля).
-    final moduleConfigsRaw = json['moduleConfigs'];
-    if (moduleConfigsRaw == null) {
-      throw const PresetValidationException(
-          'moduleConfigs', 'обязательное поле отсутствует');
-    }
-    if (moduleConfigsRaw is! Map) {
-      throw const PresetValidationException(
-          'moduleConfigs', 'ожидался объект конфигураций');
-    }
-    final moduleConfigs = <String, Map<String, dynamic>>{};
-    moduleConfigsRaw.forEach((key, value) {
-      if (key is! String) {
-        throw PresetValidationException('moduleConfigs', 'ключи — строки');
-      }
-      if (value is! Map) {
-        throw PresetValidationException(
-            'moduleConfigs.$key', 'ожидался объект параметров');
-      }
-      moduleConfigs[key] = Map<String, dynamic>.from(value);
-    });
 
     final practicesRaw = json['practices'];
     if (practicesRaw == null) {
@@ -147,7 +132,6 @@ class PresetSchema {
       version: reqString('version'),
       modules: reqStringList('modules'),
       tradition: reqString('tradition'),
-      moduleConfigs: moduleConfigs,
       practices: practices,
       eventPacks: reqStringList('eventPacks'),
       contentPacks: reqStringList('contentPacks'),
@@ -162,7 +146,6 @@ class PresetSchema {
       'version': version,
       'modules': modules,
       'tradition': tradition,
-      'moduleConfigs': moduleConfigs,
       'practices': practices.map((p) => p.toJson()).toList(),
       'eventPacks': eventPacks,
       'contentPacks': contentPacks,
