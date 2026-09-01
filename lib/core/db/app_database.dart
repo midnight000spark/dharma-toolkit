@@ -27,6 +27,16 @@ class PresetRow {
 }
 
 /// Presets table — stores applied presets as JSON.
+///
+/// Контракт денормализации (R-14, выбран вариант 4.2 пакета 5b.5): поля
+/// `name`/`version`/`tradition` — **только для отладки и SQL-запросов**,
+/// источником истины остаётся полный JSON в `data` (его читает
+/// `PresetManager._loadPresetFromDb`, его же материализует UI). Колонки
+/// пишутся из того же объекта `PresetSchema` в `applyPreset`; расходиться
+/// они не вправе — это сторожит
+/// `test/core/config/preset_denormalization_test.dart` (мутация рассинхрона
+/// на записи краснит страж). Молча «второй источник истины» оставлять
+/// нельзя (урок B-4).
 @UseRowClass(PresetRow)
 class Presets extends Table {
   TextColumn get id => text()();
