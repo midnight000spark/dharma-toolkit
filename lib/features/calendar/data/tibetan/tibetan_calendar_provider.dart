@@ -38,24 +38,37 @@ class TibetanCalendarProvider implements CalendarProvider {
   /// а не «праздников нет».
   static const bool festivalsPackComplete = false;
 
-  /// Лосар тибетского года [tibetanYear] — григорианская дата 1/1 обычного
-  /// (не вставного) первого месяца, вычисленная прямым ходом порта
-  /// [tibetanToGregorian] (Пхугпа; не путать с удвоенным месяцем: вставной
-  /// 1-й месяц Лосаром не является). Фикстура F-45 (Лосары 2023–2027,
-  /// сверенные с публичными датами) — эталон точности; вне проверенного
-  /// окна дата остаётся корректной математикой порта, но не сверялась
-  /// вручную (UX-A-4).
+  /// Лосар тибетского года [tibetanYear] — **первая существующая** григорианская
+  /// дата 1/1 года, вычисленная обратным ходом порта [tibetanToGregorian]
+  /// (Пхугпа). Год с удвоенным 1-м месяцем (1935, 1954, 2000, 2019, 2065…)
+  /// начинается вставным месяцем раньше обычного: Лосар — 1/1 вставного;
+  /// в 1935/1954 обычный 1/1 вовсе пропущен, а в 2084 пропущен вставной —
+  /// эстафету берёт следующий инстанс. Конвенция «только обычный месяц»
+  /// теряла Лосар в этих годах; в проверенном окне F-45 (2023–2027)
+  /// удвоенных 1-х месяцев нет и конвенции неразличимы. Дублированная
+  /// половина 1/1 (isLeapDay) праздником не считается — отметина стоит на
+  /// обычном дне пары. Вне проверенного окна дата — корректная математика
+  /// порта, но не сверялась вручную (UX-A-4).
   static DateTime losarDate(int tibetanYear) {
-    // Порт отдаёт DateTime.utc — время не значимо, нормализуем к локальной
-    // полночи (контракт SpecialDay.date).
-    final g = tibetanToGregorian(TibetanDate(
-      year: tibetanYear,
-      month: 1,
-      isLeapMonth: false,
-      day: 1,
-      isLeapDay: false,
-    ));
-    return DateTime(g.year, g.month, g.day);
+    for (final leapMonth in [true, false]) {
+      try {
+        final g = tibetanToGregorian(TibetanDate(
+          year: tibetanYear,
+          month: 1,
+          isLeapMonth: leapMonth,
+          day: 1,
+          isLeapDay: false,
+        ));
+        // Порт отдаёт DateTime.utc — время не значимо, нормализуем к
+        // локальной полночи (контракт SpecialDay.date).
+        return DateTime(g.year, g.month, g.day);
+      } on NoSuchTibetanDayException {
+        // Инстанса нет (месяц не удвоен) или 1/1 пропущен — следующий ход.
+        continue;
+      }
+    }
+    throw StateError(
+        'тибетский год $tibetanYear: ни одна дата 1/1 не существует');
   }
 
   @override
@@ -92,13 +105,13 @@ class TibetanCalendarProvider implements CalendarProvider {
           description: 'Полусамоцветный день (лунный день 25), календарь Пхугпа',
         ));
       }
-      // Лосар (блок 2, FR-CAL-5): 1/1 обычного месяца. Совпадение с
-      // [losarDate] обеспечивается round-trip-consistency порта
-      // (t2g/g2t сверены векторами F-45).
-      if (td.month == 1 &&
-          td.day == 1 &&
-          !td.isLeapMonth &&
-          !td.isLeapDay) {
+      // Лосар (блок 2, FR-CAL-5): первая существующая дата 1/1 года по
+      // [losarDate] — в год с удвоенным 1-м месяцем это 1/1 вставного, а не
+      // обычного месяца. Совпадение с round-trip порта (t2g/g2t сверены
+      // векторами F-45): среди инстансов 1/1 года ровно один равен losarDate,
+      // поэтому заведомо один festival на тибетский год — без явного
+      // подавления второго (обычного) 1/1 удвоенного года.
+      if (td.month == 1 && td.day == 1 && d == losarDate(td.year)) {
         result.add(SpecialDay(
           date: d,
           type: SpecialDayType.festival,
