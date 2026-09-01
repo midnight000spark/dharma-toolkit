@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/config/config_module.dart';
 import '../../core/config/preset_manager.dart';
+import '../../core/config/preset_schema.dart';
 import '../../core/db/app_database.dart';
 import '../../core/db/database_module.dart';
 
@@ -41,9 +42,25 @@ final presetManagerProvider = Provider<PresetManager>(
   ),
 );
 
+/// Активный пресет как поток (D-16-подход, R-21): единственный реактивный
+/// источник «какой пресет выбран». Все производные провайдеры (тег традиции,
+/// активный календарь) подписаны на [PresetManager.activePresetStream], а не
+/// читают plain-поле `activePreset` — иначе смена пресета из настроек
+/// (Этап 8, FR-ONB-4) оставит UI на старых данных (существо R-21).
+/// Первый эвент — текущее значение сразу.
+final activePresetStreamProvider = StreamProvider<PresetSchema?>(
+  (ref) => ref.watch(presetManagerProvider).activePresetStream,
+);
+
 /// Тег традиции активного пресета — единственный источник для фильтрации
 /// списков (I-4/B-4: захардкоженных тегов традиций в lib/ быть не должно).
-final activeTraditionTagProvider = Provider<String>((ref) {
-  final preset = ref.watch(presetManagerProvider).activePreset;
-  return preset?.id ?? '';
-});
+///
+/// **Реактивен (R-21, 5b.4):** StreamProvider поверх потока пресетов;
+/// `applyPreset`/`switchPreset`/`resetPreset` меняют тег без перезапуска.
+/// До первого эвента и при сброшенном пресете — пустая строка.
+final activeTraditionTagProvider = StreamProvider<String>(
+  (ref) => ref
+      .watch(presetManagerProvider)
+      .activePresetStream
+      .map((preset) => preset?.id ?? ''),
+);

@@ -49,7 +49,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/',
         builder: (context, state) => Consumer(
           builder: (context, ref, _) => PracticeListScreen(
-            traditionTag: ref.watch(activeTraditionTagProvider),
+            // Тег реактивен (R-21): до первого эвента потока — пустая строка,
+            // список перестроится сам, когда придёт активный пресет.
+            traditionTag: ref.watch(activeTraditionTagProvider).value ?? '',
           ),
         ),
       ),
@@ -57,7 +59,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/create',
         builder: (context, state) => Consumer(
           builder: (context, ref, _) => CreatePracticeScreen(
-            traditionTag: ref.watch(activeTraditionTagProvider),
+            // Реактивный тег (R-21) — см. комментарий в маршруте '/'.
+            traditionTag: ref.watch(activeTraditionTagProvider).value ?? '',
           ),
         ),
       ),
