@@ -98,6 +98,31 @@ void main() {
     });
   });
 
+  group('пакет праздников — опция B (5b.3): только вычисляемое', () {
+    test('флаг честности: пак праздников ещё не верифицирован', () {
+      // UX-A-4: UI обязан показывать «дата пока не проверена» для прочих
+      // праздников, а не «праздников нет». Фикс-таблица дючен добавится
+      // отдельным пакетом с верифицированным источником.
+      expect(TibetanCalendarProvider.festivalsPackComplete, isFalse);
+    });
+
+    test('трап: за 2024–2027 из festival-дней только Лосары', () {
+      // Tripwire на случайную «молчаливую» добавку неверифицированных дат:
+      // любой новый festival вне Лосара красит тест до появления своего
+      // пакета с источником.
+      final days = provider.getSpecialDays(
+          DateTime(2024, 1, 1), DateTime(2027, 12, 31));
+      final festivals =
+          days.where((d) => d.type == SpecialDayType.festival).toList();
+      expect(festivals.map((d) => d.name).toSet(),
+          {'Лосар — тибетский Новый год'});
+      // Ровно четыре Лосара окна 2024–2027 (Ф-45): 10.02, 28.02, 18.02, 07.02.
+      expect(festivals, hasLength(4));
+      expect(festivals.map((d) => '${d.date.month}-${d.date.day}').toList(),
+          ['2-10', '2-28', '2-18', '2-7']);
+    });
+  });
+
   group('контракт реализации', () {
     test('traditionTag из конструктора, не литерал внутри', () {
       expect(TibetanCalendarProvider(traditionTag: 'custom_tag').traditionTag,
