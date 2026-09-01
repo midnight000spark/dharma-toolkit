@@ -6,11 +6,24 @@
 /// прогоном tibcal 01591b5 (2027) — порт не самообслуживается.
 library;
 
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:dharma_toolkit/features/calendar/data/tibetan/tibetan_calendar.dart';
 import 'package:dharma_toolkit/features/calendar/data/tibetan/tibetan_calendar_provider.dart';
 import 'package:dharma_toolkit/features/calendar/domain/special_day.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'contract_harness.dart';
+
+Map<String, dynamic> _vectors() => jsonDecode(
+    File('test/fixtures/tibcal_vectors.json').readAsStringSync())
+    as Map<String, dynamic>;
+
+DateTime _localDate(String iso) {
+  final p = iso.split('-');
+  return DateTime(int.parse(p[0]), int.parse(p[1]), int.parse(p[2]));
+}
 
 List<String> _summary(List<SpecialDay> days) => days
     .map((d) => '${d.date.year}-${d.date.month}-${d.date.day} ${d.type.name}')
@@ -88,6 +101,7 @@ void main() {
           days.where((d) => d.type == SpecialDayType.festival).toList();
       expect(losar, hasLength(1));
       expect(losar.single.date, DateTime(2026, 2, 18));
+      expect(losar.single.date, l2026.gregorian);
       expect(losar.single.name, 'Лосар — тибетский Новый год');
     });
 
@@ -120,6 +134,64 @@ void main() {
       expect(festivals, hasLength(4));
       expect(festivals.map((d) => '${d.date.month}-${d.date.day}').toList(),
           ['2-10', '2-28', '2-18', '2-7']);
+    });
+  });
+
+  group('пропущенные и двойные дни (блок 4, F-2/F-45)', () {
+    test('пропущенный 25-й: фикстурные месяцы без подсветки 25-го', () {
+      // Фикстура F-45: тибетские 25-е пропущены в 2024-4 и 2026-5 —
+      // у лунного дня нет григорианской даты. Обход по григорианским
+      // дням даёт структурный имунитет к фантомной подсветке: ни один
+      // день окна не конвертируется в 25-е.
+      final skipped = (_vectors()['skipped_days'] as List)
+          .cast<Map<String, dynamic>>()
+          .where((e) => (e['missingDays'] as List).contains(25));
+      expect(skipped, isNotEmpty, reason: 'фикстура обязана содержать кейс');
+      for (final e in skipped) {
+        final before = _localDate(e['before']['gregorian'] as String);
+        final after = _localDate(e['after']['gregorian'] as String);
+        final days = provider.getSpecialDays(before, after);
+        expect(
+            days.where((d) => d.type == SpecialDayType.tibetan25), isEmpty,
+            reason: '${e['year']}-${e['month']}: 25-й пропущен, '
+                'окно $before..$after не обязан подсвечиваться');
+        // Якоря потока (port == tibcal, F-45): соседние дни — 24 и 26.
+        expect(gregorianToTibetan(before).day, 24);
+        expect(gregorianToTibetan(after).day, 26);
+      }
+    });
+
+    test('двойной 25-й (2026-02-11/12): обе половины подсвечены', () {
+      // Фикстура F-45: тибетский 2025-12-25 удвоен; вставная половина
+      // идёт первой (leapDate 11.02), обычная — 12.02.
+      final doubled = (_vectors()['doubled_days'] as List)
+          .cast<Map<String, dynamic>>()
+          .where((e) => e['day'] == 25);
+      expect(doubled, isNotEmpty, reason: 'фикстура обязана содержать кейс');
+      for (final e in doubled) {
+        final leap = _localDate(e['leapDate'] as String);
+        final regular = _localDate(e['regularDate'] as String);
+        final days = provider.getSpecialDays(leap, regular);
+        final t25 =
+            days.where((d) => d.type == SpecialDayType.tibetan25).toList();
+        expect(t25.map((d) => d.date), [leap, regular],
+            reason: 'двойной 25-й обязан дать ровно два SpecialDay');
+        // Различимость половин на уровне порта (для UI-подписей при нужде).
+        expect(gregorianToTibetan(leap).isLeapDay, isTrue);
+        expect(gregorianToTibetan(regular).isLeapDay, isFalse);
+      }
+    });
+
+    test('пропущенный 10-й (tibcal ground truth): июнь 2027 без 10-го дня', () {
+      // Тибетский 2027-4-10 пропущен (прогон tibcal 01591b5, MIT — тот же
+      // источник, что F-45): 13.06.2027 — 9-й день, 14.06 — 11-й. Векторы
+      // фикстуры 2027 не покрывают, якорь получен прямым прогоном tibcal.
+      expect(gregorianToTibetan(DateTime(2027, 6, 13)).day, 9);
+      expect(gregorianToTibetan(DateTime(2027, 6, 14)).day, 11);
+      final days = provider.getSpecialDays(
+          DateTime(2027, 6, 10), DateTime(2027, 6, 17));
+      expect(days.where((d) => d.type == SpecialDayType.tibetan10), isEmpty,
+          reason: 'фантомная подсветка пропущенного 10-го запрещена (4.1)');
     });
   });
 
