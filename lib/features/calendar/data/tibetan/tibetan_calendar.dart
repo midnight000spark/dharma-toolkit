@@ -185,16 +185,51 @@ List<(int, bool)> _monthInstances(int year, int month) {
   return [(n, false)];
 }
 
-/// Кэш [_buildMonth]: чистая функция, переиспользуется окном g2t в ±1 год.
-final Map<(int, int, int, bool), List<TibetanDate>> _monthCache = {};
+/// Мемоизация [_buildMonth] на инстанс (B-16, пакет 5b.4).
+///
+/// Кэш **не является источником истины**: [_buildMonth] — чистая функция,
+/// корректность порта от кэша не зависит (проверено тестом двух независимых
+/// инстансов). Глобальной разделяемой карты больше нет — состояние живёт
+/// у владельца (обычно это [TibetanCalendarProvider]), и его размер ограничен
+/// [limit]: при переполнении выбрасывается самый старый месяц (FIFO; порядок
+/// вставки Dart-`Map` гарантирован). На практических окнах (годы) лимит
+/// практически не достигается; при прокрутке календаря на века кэш
+/// перестаёт расти.
+class TibetanMonthCache {
+  TibetanMonthCache({this.limit = defaultLimit});
+
+  /// ~24 тибетских лет по 12 месяцев с запасом на двойные.
+  static const int defaultLimit = 300;
+
+  /// Максимум хранимых месяцев; меньше — неэкономно, больше — рост без
+  /// верху (урок B-16 про вечный static-кэш). `limit <= 0` — кэш отключён
+  /// (no-store), каждый вызов пересчитывается.
+  final int limit;
+
+  final Map<(int, int, int, bool), List<TibetanDate>> _months = {};
+
+  /// Число закешированных месяцев (для тестов инкапсуляции).
+  int get length => _months.length;
+
+  List<TibetanDate> buildMonth(int year, int month, int n, bool isLeap) {
+    final key = (year, month, n, isLeap);
+    final cached = _months[key];
+    if (cached != null) return cached;
+
+    final days = _buildMonth(year, month, n, isLeap);
+    if (limit <= 0) return days; // no-store: limit=0 — каждый раз пересчёт.
+    while (_months.length >= limit) {
+      _months.remove(_months.keys.first);
+    }
+    _months[key] = days;
+    return days;
+  }
+}
 
 /// Все лунные дни 1–30 месяца `(year, month)` с разрешением пропусков и
-/// дублирований (порт `_build_month`, L216–242).
+/// дублирований (порт `_build_month`, L216–242). Чистая функция: без кэша
+/// вызывается напрямую, с кэшем — через [TibetanMonthCache.buildMonth].
 List<TibetanDate> _buildMonth(int year, int month, int n, bool isLeap) {
-  final key = (year, month, n, isLeap);
-  final cached = _monthCache[key];
-  if (cached != null) return cached;
-
   // JDN календарного дня, оканчивающего каждый лунный день 0..30
   // (0 = конец предыдущего месяца).
   final jdn = List<int>.generate(31, (d) => _trueJdn(d, n));
@@ -238,11 +273,18 @@ List<TibetanDate> _buildMonth(int year, int month, int n, bool isLeap) {
         gregorian: _dateFromOrdinal(cur - _jdnGregorianOffset),
         julianDay: cur));
   }
-  _monthCache[key] = days;
   return days;
 }
 
 // --- Публичные конверсии (tibetan_calendar.py L279–337) ----------------------
+
+/// Лунные дни месяца: из кэша [cache], если передан, иначе пересчёт
+/// чистой функцией [_buildMonth].
+List<TibetanDate> _monthDays(
+    int year, int month, int n, bool isLeap, TibetanMonthCache? cache) {
+  if (cache != null) return cache.buildMonth(year, month, n, isLeap);
+  return _buildMonth(year, month, n, isLeap);
+}
 
 /// Григорианская дата -> тибетский календарный день (Пхугпа).
 ///
@@ -251,13 +293,13 @@ List<TibetanDate> _buildMonth(int year, int month, int n, bool isLeap) {
 /// Пропущенных лунных дней в результате не бывает (у них нет календарного
 /// дня); бросает [StateError], если день не найден (в источнике —
 /// «should not occur»).
-TibetanDate gregorianToTibetan(DateTime g) {
+TibetanDate gregorianToTibetan(DateTime g, {TibetanMonthCache? cache}) {
   final target = _ordinalFromDate(g.year, g.month, g.day) +
       _jdnGregorianOffset;
   for (final y in [g.year - 1, g.year, g.year + 1]) {
     for (var m = 1; m <= 12; m++) {
       for (final (n, isLeap) in _monthInstances(y, m)) {
-        for (final td in _buildMonth(y, m, n, isLeap)) {
+        for (final td in _monthDays(y, m, n, isLeap, cache)) {
           if (td.julianDay == target && !td.isSkipped) {
             return td;
           }
@@ -276,7 +318,7 @@ TibetanDate gregorianToTibetan(DateTime g) {
 /// несуществующая комбинация (например, leapDay=true на nonduplicated дне)
 /// бросают [NoSuchTibetanDayException]. Двойной день: `isLeapDay` false/true
 /// различаются и дают две разные григорианские даты (F-2).
-DateTime tibetanToGregorian(TibetanDate t) {
+DateTime tibetanToGregorian(TibetanDate t, {TibetanMonthCache? cache}) {
   if (t.isSkipped) {
     throw NoSuchTibetanDayException(
         'skipped Tibetan day ${t.year}-${t.month}-${t.day} has no Gregorian '
@@ -284,7 +326,7 @@ DateTime tibetanToGregorian(TibetanDate t) {
   }
   for (final (n, isLeap) in _monthInstances(t.year, t.month)) {
     if (isLeap != t.isLeapMonth) continue;
-    for (final td in _buildMonth(t.year, t.month, n, isLeap)) {
+    for (final td in _monthDays(t.year, t.month, n, isLeap, cache)) {
       if (td.day == t.day &&
           td.isLeapDay == t.isLeapDay &&
           td.gregorian != null) {

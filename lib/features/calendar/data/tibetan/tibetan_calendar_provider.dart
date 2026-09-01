@@ -27,10 +27,25 @@ class TibetanCalendarProvider implements CalendarProvider {
   /// приходит из конструктора, как у `UposathaCalendarProvider`; литералом
   /// внутри класса не захардкоживается (скелет пакета 5b.3 с `'nyingma'`
   /// заменён параметром — контракт 5b.1 прямо требует тег из пресета).
-  TibetanCalendarProvider({required this.traditionTag});
+  ///
+  /// Экземпляр владеет собственным [TibetanMonthCache] (B-16, 5b.4):
+  /// общая статическая карта порта упразднена, кэш инкапсулирован и
+  /// ограничен; корректность от него не зависит (чистая функция).
+  /// [monthCache] открывается тестам и composition root (шаринг кэша между
+  /// инстансами — по явным причинам, не молча).
+  TibetanCalendarProvider({
+    required this.traditionTag,
+    TibetanMonthCache? monthCache,
+  }) : _months = monthCache ?? TibetanMonthCache();
 
   @override
   final String traditionTag;
+
+  /// Кэш месяцев уровня инстанса (B-16); публичный геттер — чтобы тесты
+  /// видели фактическое использование (мутация «кэш не передаётся» — красная).
+  TibetanMonthCache get monthCache => _months;
+
+  final TibetanMonthCache _months;
 
   /// Полнота пака праздников (опция B 5b.3): false — верифицированная
   /// фикс-таблица дючен и прочих дат добавится отдельным пакетом. UI обязан
@@ -89,7 +104,7 @@ class TibetanCalendarProvider implements CalendarProvider {
     // (урок B-17: difference().inDays уязвим к DST).
     for (var d = a; !d.isAfter(b);
         d = DateTime(d.year, d.month, d.day + 1)) {
-      final td = gregorianToTibetan(d);
+      final td = gregorianToTibetan(d, cache: _months);
       // Дни 10/25 (FR-CAL-3): подсветка по номеру лунного дня. Двойной день
       // (isLeapDay) — обе половины несут номер, обе размечаются; пропущенный
       // лунный день не имеет григорианской даты и в цикл не попадает —

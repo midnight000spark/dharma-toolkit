@@ -51,6 +51,12 @@ String isoOf(DateTime g) =>
     '${g.day.toString().padLeft(2, '0')}';
 
 void main() {
+  // Общий кэш на файл (B-16): глобальной карты порта больше нет, тесты 5a
+  // используют штатный механизм — инстанс TibetanMonthCache. Кэш чист по
+  // построению (мемоизация), равенство «plain vs cached» покрыто отдельным
+  // тестом в tibetan_month_cache_test.dart — расхождений с фикстурой F-45
+  // это не вносит.
+  final sharedCache = TibetanMonthCache(limit: 400);
   group('gregorianToTibetan: полный поток против tibcal', () {
     test('все g2t-векторы совпадают (731 день 2024 и 2026)', () {
       final list = vectors['g2t'] as List<dynamic>;
@@ -59,7 +65,7 @@ void main() {
       for (final e in list) {
         final m = e as Map<String, dynamic>;
         final (y, mo, d) = parseIso(m['gregorian'] as String);
-        final got = tibToJson(gregorianToTibetan(DateTime.utc(y, mo, d)));
+        final got = tibToJson(gregorianToTibetan(DateTime.utc(y, mo, d), cache: sharedCache));
         final exp = m['tibetan'] as Map<String, dynamic>;
         // Сравнение по 5 полям представления (ISO/ординал покрыты t2g-ходом).
         if (got['year'] != exp['year'] ||
@@ -81,7 +87,7 @@ void main() {
       for (final e in list) {
         final m = e as Map<String, dynamic>;
         final (y, mo, d) = parseIso(m['gregorian'] as String);
-        final td = gregorianToTibetan(DateTime.utc(y, mo, d));
+        final td = gregorianToTibetan(DateTime.utc(y, mo, d), cache: sharedCache);
         expect(td.isSkipped, isFalse, reason: m['gregorian'] as String);
         expect(td.gregorian, isNotNull);
         expect(isoOf(td.gregorian!), m['gregorian'],
@@ -99,7 +105,7 @@ void main() {
       for (final e in list) {
         final m = e as Map<String, dynamic>;
         final got = tibetanToGregorian(tibFromJson(
-            m['tibetan'] as Map<String, dynamic>));
+            m['tibetan'] as Map<String, dynamic>), cache: sharedCache);
         if (isoOf(got) != m['gregorian']) {
           mismatches.add('${m['tibetan']}: tibcal=${m['gregorian']} '
               'port=${isoOf(got)}');
@@ -116,9 +122,9 @@ void main() {
         final m = e as Map<String, dynamic>;
         final y = m['tibetanYear'] as int;
         final got = tibetanToGregorian(TibetanDate(
-            year: y, month: 1, isLeapMonth: false, day: 1, isLeapDay: false));
+            year: y, month: 1, isLeapMonth: false, day: 1, isLeapDay: false), cache: sharedCache);
         expect(isoOf(got), m['gregorian'], reason: 'Лосар $y');
-        final back = gregorianToTibetan(got);
+        final back = gregorianToTibetan(got, cache: sharedCache);
         expect(tibToJson(back), m['g2tBack'], reason: 'Лосар $y обратно');
       }
     });
@@ -140,7 +146,7 @@ void main() {
                 month: mo,
                 isLeapMonth: lm,
                 day: missing,
-                isLeapDay: false)),
+                isLeapDay: false), cache: sharedCache),
             throwsA(isA<NoSuchTibetanDayException>().having(
                 (o) => o.toString(), 'сообщение о пропуске', contains('not found'))),
             reason: 'пропущенный день $y-$mo-$missing (lm=$lm)',
@@ -149,11 +155,11 @@ void main() {
         // Якоря потока: дни до и после разрыва существуют и граничат пропуск.
         final bp =
             parseIso((m['before'] as Map<String, dynamic>)['gregorian'] as String);
-        final bt = gregorianToTibetan(DateTime.utc(bp.$1, bp.$2, bp.$3));
+        final bt = gregorianToTibetan(DateTime.utc(bp.$1, bp.$2, bp.$3), cache: sharedCache);
         expect(bt.day, (m['before'] as Map<String, dynamic>)['day']);
         final ap =
             parseIso((m['after'] as Map<String, dynamic>)['gregorian'] as String);
-        final at = gregorianToTibetan(DateTime.utc(ap.$1, ap.$2, ap.$3));
+        final at = gregorianToTibetan(DateTime.utc(ap.$1, ap.$2, ap.$3), cache: sharedCache);
         expect(at.day, (m['after'] as Map<String, dynamic>)['day']);
       }
     });
@@ -169,8 +175,8 @@ void main() {
             isLeapMonth: m['leapMonth'] as bool,
             day: m['day'] as int,
             isLeapDay: false);
-        final regular = tibetanToGregorian(base);
-        final leap = tibetanToGregorian(base.copyWith(isLeapDay: true));
+        final regular = tibetanToGregorian(base, cache: sharedCache);
+        final leap = tibetanToGregorian(base.copyWith(isLeapDay: true), cache: sharedCache);
         expect(isoOf(leap), m['leapDate'], reason: 'вставной день');
         expect(isoOf(regular), m['regularDate'], reason: 'обычный день');
         expect(leap.isBefore(regular), isTrue,
