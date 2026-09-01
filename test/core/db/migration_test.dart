@@ -39,6 +39,23 @@ class _AppDatabaseV4 extends AppDatabase {
   int get schemaVersion => 4;
 }
 
+/// База «старого приложения» — версия схемы на 1 ниже текущей.
+///
+/// Миграционную стратегию **наследует** от [AppDatabase] (в отличие от
+/// `_AppDatabaseV1`/`_AppDatabaseV2Raw`, которые переопределяют её целиком):
+/// нужен именно downgrade-проверочный путь `onUpgrade` актуального кода —
+/// переход 3 → 2 обязан упасть на ветке `from > to` (B-12, хвост R-8).
+/// Значение 2 согласовано с тестом ниже: тест проверяет, что это ровно
+/// `schemaVersion - 1`, и краснеет, если версия схемы уедет без обновления
+/// препосылки.
+class _AppDatabaseDowngrade extends AppDatabase {
+  // ignore: use_super_parameters — см. комментарий у _AppDatabaseV1
+  _AppDatabaseDowngrade(QueryExecutor executor) : super.forTesting(executor);
+
+  @override
+  int get schemaVersion => 2;
+}
+
 /// База версии 2 со СТАРОЙ схемой практик и истории, воссозданной сырым SQL.
 ///
 /// Использовать актуальные классы Drift-таблиц здесь нельзя: они генерируют
@@ -378,6 +395,89 @@ void main() {
       );
 
       // v4 намеренно не закрываем: соединение не открылось.
+    });
+
+    test('препосылка downgrade-теста: старая версия ровно на 1 ниже текущей',
+        () {
+      // Держит _AppDatabaseDowngrade в согласии со схемой: если версия
+      // уедет, downgrade-тест ниже должен быть обновлён, а не протхнуть
+      // проверку «на 1 ниже» молча.
+      final current = AppDatabase.forTesting(NativeDatabase.memory());
+      final older = _AppDatabaseDowngrade(NativeDatabase.memory());
+      expect(older.schemaVersion, current.schemaVersion - 1);
+    });
+
+    test('downgrade не поддерживается: открытие старой версией бросает '
+        'StateError и не трогает данные (R-8/B-12)', () async {
+      final current = AppDatabase.forTesting(NativeDatabase.memory())
+          .schemaVersion;
+      final older = _AppDatabaseDowngrade(NativeDatabase.memory()).schemaVersion;
+      expect(older, current - 1); // согласовано с тестом-препосылкой выше
+
+      // Сессия 1: пользовательская база текущей версии с данными.
+      {
+        final db = AppDatabase.forTesting(NativeDatabase(dbFile()));
+        await db.into(db.presets).insert(
+              PresetsCompanion.insert(
+                id: 'nyingma',
+                name: 'Ньингма',
+                version: '1.0.0',
+                tradition: 'vajrayana',
+                data: '{"id":"nyingma"}',
+              ),
+            );
+        await db.into(db.practices).insert(
+              PracticesCompanion.insert(
+                name: 'Простирания',
+                type: 'counter',
+                traditionTag: 'nyingma',
+                target: const Value(100000),
+                currentCount: const Value(42),
+              ),
+            );
+        expect(await _userVersion(db), current);
+        await db.close();
+      }
+
+      // Сессия 2: тот же файл открывает «старое приложение» (версия на 1
+      // ниже). Поведение Drift при downgrade раньше не проверялось ничем
+      // (B-12): тихое понижение user_version означало бы, что следующее
+      // открытие актуальной версией пойдёт по миграционной ветке поверх
+      // уже новой схемы. Ветка `from > to` обязана бросить StateError с
+      // направлением «фактическая версия файла → версия приложения».
+      {
+        final stale = _AppDatabaseDowngrade(NativeDatabase(dbFile()));
+        await expectLater(
+          _tableNames(stale),
+          throwsA(
+            allOf(
+              isA<StateError>(),
+              predicate<Object>(
+                (error) =>
+                    error.toString().contains('Понижение версии') &&
+                    error.toString().contains('$current → $older'),
+                'ошибка называет переход (версия файла → версия приложения)',
+              ),
+            ),
+          ),
+        );
+        // Соединение не открылось — close не вызываем (как в R-8 тесте выше).
+      }
+
+      // Сессия 3: файл не испорчен неудачной попыткой — те же данные и та
+      // же версия схемы. Это суть митигации R-8: падение у разработчика,
+      // а не порча пользовательских данных.
+      {
+        final db = AppDatabase.forTesting(NativeDatabase(dbFile()));
+        expect(await _userVersion(db), current);
+
+        final presets = await db.select(db.presets).get();
+        expect(presets.single.name, 'Ньингма');
+        final practices = await db.select(db.practices).get();
+        expect(practices.single.currentCount, 42);
+
+        await db.close();
+      }
     });
   });
 }
