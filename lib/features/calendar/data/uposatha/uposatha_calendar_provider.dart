@@ -51,7 +51,11 @@ class UposathaCalendarProvider implements CalendarProvider {
 
   List<SpecialDay> _uposathaDays(DateTime a, DateTime b) {
     final result = <SpecialDay>[];
-    final span = b.difference(a).inDays + 1; // a, b уже нормализованы к полночи
+    // Ход по календарным дням сравнением `!d.isAfter(b)`, а не счётчиком
+    // `difference().inDays + 1`: в DST-таймзоне spring-forward урезает
+    // длительность окна на час и последний день молча выпадал из скана
+    // (B-17); DateTime(y, m, d + 1) — календарная арифметика, переходами
+    // не искажается (детерминированный тест — uposatha_dst_test).
     // Для каждого целевой фазы сканируем дни окна и из непрерывной серии
     // дней-кандидатов берём ближайший к моменту фазы.
     for (final (target, label) in _targets) {
@@ -71,8 +75,7 @@ class UposathaCalendarProvider implements CalendarProvider {
         }
       }
 
-      for (var i = 0; i < span; i++) {
-        final d = DateTime(a.year, a.month, a.day + i);
+      for (var d = a; !d.isAfter(b); d = DateTime(d.year, d.month, d.day + 1)) {
         final phase = moonPhase(DateTime.utc(d.year, d.month, d.day, 12));
         final dist = (phase - target + 0.5) % 1.0 - 0.5; // знаковое, [-0.5;0.5)
         final abs = dist.abs();
