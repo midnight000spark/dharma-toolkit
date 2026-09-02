@@ -57,6 +57,17 @@ dependencies:
   # go_router for declarative navigation
   go_router: ^18.0.0
 
+  # Уведомления (Этап 6, D-34): кросс-платформенный плагин локальных
+  # уведомлений с планированием; точное время — через TZDateTime (timezone),
+  # IANA-имя таймзоны устройства — через flutter_timezone (timezone не умеет
+  # читать таймзону устройства, это documented-разрыв между плагинами).
+  flutter_local_notifications: ^22.3.0
+  # Прямая зависимость по рекомендации README flutter_local_notifications:
+  # tz-арифметика планирования (initializeTimeZones, TZDateTime, setLocalLocation).
+  timezone: ^0.11.1
+  # Чтение IANA-имени таймзоны устройства (FlutterTimezone.getLocalTimezone()).
+  flutter_timezone: ^5.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
