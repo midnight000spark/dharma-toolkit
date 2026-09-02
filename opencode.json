@@ -1,7 +1,22 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "default_agent": "dharma",
-  "instructions": ["AGENT.md", "STATE.md", "CONTEXT.md"],
+  "instructions": [
+    "AGENT.md",
+    "STATE.md",
+    "CONTEXT.md",
+    "https://raw.githubusercontent.com/JRedeker/opencode-shell-strategy/trunk/shell_strategy.md"
+  ],
+  "plugin": [
+    "@tarquinen/opencode-dcp@latest",
+    "opencode-vibeguard"
+  ],
+  "mcp": {
+    "dart": {
+      "type": "local",
+      "command": ["dart", "mcp-server"]
+    }
+  },
   "agent": {
     "dharma": {
       "description": "Основной агент проекта Дхарма-тулкит. Автоматически перечитывает STATE.md и AGENT.md перед каждым шагом.",

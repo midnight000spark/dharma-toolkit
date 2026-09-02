@@ -1,0 +1,21 @@
+{
+  "enabled": true,
+  "debug": false,
+  "placeholder_prefix": "__VG_",
+  "session": {
+    "ttl": "1h",
+    "max_mappings": 100000
+  },
+  "patterns": {
+    "keywords": [],
+    "regex": [
+      { "pattern": "(ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{36,255}", "category": "GITHUB_TOKEN" },
+      { "pattern": "github_pat_[A-Za-z0-9_]{20,}", "category": "GITHUB_PAT" },
+      { "pattern": "\\b[0-9]{8,10}:[A-Za-z0-9_-]{30,}\\b", "category": "TELEGRAM_BOT_TOKEN" },
+      { "pattern": "-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----", "category": "SSH_PRIVATE_KEY_BLOCK" },
+      { "pattern": "AKIA[0-9A-Z]{16}", "category": "AWS_ACCESS_KEY" }
+    ],
+    "builtin": ["email", "uuid", "ipv4", "mac"],
+    "exclude": ["example.com", "localhost", "127.0.0.1", "0.0.0.0"]
+  }
+}

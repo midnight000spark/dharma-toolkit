@@ -49,3 +49,9 @@ app.*.map.json
 
 # Secrets
 gittoken.md
+
+# OpenCode / plugin artifacts
+.omo/
+node_modules/
+package.json
+package-lock.json
