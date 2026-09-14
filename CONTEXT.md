@@ -65,10 +65,12 @@ Phugpa-движка (F-47).
 - pub.dev tibetan_calendar — только атрибуты года, проверить (H-3) — F-21
 
 ## Ключевые файлы
-STATE.md — статус; ROADMAP.md — план; AGENT.md — конституция v2;
+STATE.md — статус; ROADMAP.md — план; AGENT.md — конституция v2.13; docs/README.md — индекс документации;
 docs/BFT-v1.8.md — требования (актуальная версия БФТ — файл с наибольшим номером);
-docs/REVIEW-2026-08-31.md — аудит;
-docs/MIGRATIONS.md — процедура миграций; .opencode/agent/dharma.md — инструкции агента.
+docs/archive/ — read-only (хроника фаз 0–5, закрытые R-/B-, история конституции);
+docs/reference/ — read-only (тела D-/F-, адресно по якорю);
+docs/REVIEW-2026-08-31.md — аудит; docs/MIGRATIONS.md — процедура миграций;
+scripts/check_docs.sh — linkcheck; .opencode/agent/dharma.md — инструкции агента.
 
 ## Команда
 Пользователь — разработка и ревью с оркестратором;
