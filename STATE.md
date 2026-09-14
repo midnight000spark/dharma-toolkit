@@ -296,7 +296,7 @@
 | 2026-09-02 | Ручная приёмка 5b.6: прогон SCR-11 дословно (F-54); обрыв #16 (сессия умерла на финальном отчёте, работа цела), урок — короткое резюме; ран #39 GREEN | Команда/Пользователь |
 | 2026-09-02 | Пакет stage-5b (закрытие Этапа 5, docs-only): README/ROADMAP v1.11/STATE/БФТ v1.8/AGENT v2.12; тег stage-5b на финальном коммите, CI зелёный (D-33); детали — `docs/archive/state-journal-phases-0-5.md` и ROADMAP | Команда |
 | 2026-09-15 | docs-arch-1 начат: D-38 (hot/cold-архитектура документов), D-39 (модель docs-пакетов, DeepSeek V4.1 Flash reasoning max); далее linkcheck → сплит STATE → AGENT v2.13 → ссылки → docs/README → синхронизация | Команда |
-| 2026-09-15 | docs-arch-1 завершён: linkcheck аттестован (посадка нарушений), STATE 206 КБ→39.5 КБ (сплит по D-38), AGENT v2.13, docs/README traffic cop, repoint ссылок (BFT v1.8); analyze 0 / 229 тестов / check_docs PASSED | Команда |
+| 2026-09-15 | docs-arch-1 завершён: linkcheck аттестован, STATE 206 КБ→39.5 КБ (D-38), AGENT v2.13, docs/README, repoint (BFT v1.8); analyze 0 / 229 / check_docs PASSED | Команда |
 
 ---
 
