@@ -1,6 +1,6 @@
 # ROADMAP — Дхарма-тулкит
 
-> _Freshness — owner: пользователь · reviewed: 2026-09-16 · verified-by: `flutter analyze --fatal-infos` (0) / `flutter test` (255/255) / `./scripts/check_docs.sh` (PASSED)._
+> _Freshness — owner: пользователь · reviewed: 2026-09-15 · verified-by: `flutter analyze --fatal-infos` (0) / `flutter test` (255/255) / `./scripts/check_docs.sh` (PASSED)._
 
 > План проекта. STATE.md = где мы сейчас. Этот документ = куда идём.
 > dharma читает в начале каждого этапа. Изменения — только с записью в «Changelog плана».
@@ -273,7 +273,7 @@ g2t-векторе + round-trip + Лосары 2023–2027 + пропущенн�
     traffic cop; `scripts/check_docs.sh` — linkcheck (аттестован посадкой нарушений)
   - номера не переиспользованы (R-6, D-31, H-2 остаются незанятыми); 229 тестов зелёных, analyze --fatal-infos 0
   - далее — Этап 6 (события + уведомления), старт по инструкции оркестратора
-- 2026-09-16 — v1.13: синхронизация статусов после review-fixes-1; **план не менялся**
+- 2026-09-15 — v1.13: синхронизация статусов после review-fixes-1; **план не менялся**
   - закрыты хвосты ревью 2026-09-01: R-19/R-22/R-23/R-24, B-13/B-14/B-18/B-19/B-20/B-23/B-24;
     B-21 (мёртвый скрипт) удалён; B-15 — наблюдение, открыто; R-18/R-25 — открыты (процесс)
   - freshness-шапки AGENT/ROADMAP/STATE → 255 тестов, analyze 0, linkcheck PASSED;

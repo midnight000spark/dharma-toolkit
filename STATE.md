@@ -1,6 +1,6 @@
 # Состояние проекта "Дхарма-тулкит"
 
-> _Freshness — owner: пользователь · reviewed: 2026-09-16 · verified-by: `flutter analyze --fatal-infos` (0) / `flutter test` (255/255) / `./scripts/check_docs.sh` (PASSED)._
+> _Freshness — owner: пользователь · reviewed: 2026-09-15 · verified-by: `flutter analyze --fatal-infos` (0) / `flutter test` (255/255) / `./scripts/check_docs.sh` (PASSED)._
 
 ## Текущий статус
 **Этап**: 6 — События + уведомления (начат 2026-09-02; пакет 6.0 ✅ — Tier-0 F-55…F-57, зависимости D-34, решения D-35…D-37).
@@ -101,9 +101,9 @@
 - **D-37**: контракт календаря извлекается… — принято 2026-09-02; `docs/reference/decisions.md#d-37`
 - **D-38**: hot/cold-архитектура документов… — принято 2026-09-15; `docs/reference/decisions.md#d-38`
 - **D-39**: docs-пакеты — DeepSeek V4.1 Fla… — принято 2026-09-15; `docs/reference/decisions.md#d-39`
-- **D-40**: F-58 закреплён за фактом rootBundle…; новые факты — с F-59 — принято 2026-09-16; `docs/reference/decisions.md#d-40`
-- **D-41**: удаление файлов агентом допустимо при флаге в отчёте и пути отката; граница — push — принято 2026-09-16; `docs/reference/decisions.md#d-41`
-- **D-42**: кодовые пакеты — DeepSeek V4.1 Flash (reasoning high) до фикса опенкод-бага — принято 2026-09-16; `docs/reference/decisions.md#d-42`
+- **D-40**: F-58 закреплён за фактом rootBundle…; новые факты — с F-59 — принято 2026-09-15; `docs/reference/decisions.md#d-40`
+- **D-41**: удаление файлов агентом допустимо при флаге в отчёте и пути отката; граница — push — принято 2026-09-15; `docs/reference/decisions.md#d-41`
+- **D-42**: кодовые пакеты — DeepSeek V4.1 Flash (reasoning high) до фикса опенкод-бага — принято 2026-09-15; `docs/reference/decisions.md#d-42`
 
 ## УГРОЗЫ
 
@@ -225,7 +225,7 @@
 - **B-18**: узел "custom" в tree.json не читается — закрыт (2026-09-15, review-fixes-1); `docs/archive/state-closed-bugs.md#b-18`
 - **B-19**: сырой '$error' показывается пользователю — закрыт (2026-09-15, review-fixes-1); `docs/archive/state-closed-bugs.md#b-19`
 - **B-20**: ядро хардкодит школу в дев-сиде — закрыт (2026-09-15, review-fixes-1); `docs/archive/state-closed-bugs.md#b-20`
-- **B-21**: scripts/update-state.sh — мёртвый скрипт — закрыт (2026-09-16, review-fixes-1-close, удалён); `docs/archive/state-closed-bugs.md#b-21`
+- **B-21**: scripts/update-state.sh — мёртвый скрипт — закрыт (2026-09-15, review-fixes-1-close, удалён); `docs/archive/state-closed-bugs.md#b-21`
 - **B-22**: notify.sh собирает JSON без э… — закрыт (2026-09-01); `docs/archive/state-closed-bugs.md#b-22`
 - **B-23**: повторный initAll() возвращает пустой «allOk»-репорт — закрыт (2026-09-15, review-fixes-1); `docs/archive/state-closed-bugs.md#b-23`
 - **B-24**: target пресета не валидировался на >0; EventBus on<T> — закрыт (2026-09-15, review-fixes-1); `docs/archive/state-closed-bugs.md#b-24`
@@ -242,8 +242,8 @@
 | 2026-09-15 | docs-arch-1 завершён: linkcheck аттестован, STATE 206 КБ→39.5 КБ (D-38), AGENT v2.13, docs/README, repoint (BFT v1.8); analyze 0 / 229 / check_docs PASSED | Команда |
 | 2026-09-15 | DCP-регресс compress устранён (serve+auth → 401); разбор — `docs/dcp.md`; артефакты отладки заигнорены | Команда |
 | 2026-09-15 | Пакет review-fixes-1 (пилот DeepSeek V4.1 Flash, reasoning max; надзор dharma): закрыты R-19/R-22/R-23/R-24 и B-13/B-14/B-18/B-19/B-20/B-23/B-24 (тела — в архиве, коммиты `fd5e010`/`df6234c`/`c8ace7d`/`6222986`/`8c9768f`); B-21 оставлен владельцу (owner-gated), B-15 — наблюдение; 229→255 тестов, analyze 0 | Команда/Пользователь |
-| 2026-09-16 | Закрытие review-fixes-1 (пакет review-fixes-1-close): гейт сверки отчёта с деревом пройден (analyze 0, 255/255, getById=0, `_plan` в tree.json, Table 47.A/47.B, linkcheck PASSED); B-21 закрыт удалением `scripts/update-state.sh`; dharma.md — тонкий указатель (согласован); freshness 255 в AGENT/ROADMAP/CONTEXT/STATE, БФТ v1.9 (§13 и NFR-TEST-1), README-статус, ROADMAP changelog v1.13 | Команда/Пользователь |
-| 2026-09-16 | Решения пакета: D-40 (F-58 закреплён за фактом rf1, новые факты с F-59), D-41 (удаления агентом допустимы при флаге в отчёте и пути отката; граница — push), D-42 (кодовые пакеты на DeepSeek V4.1 Flash reasoning high до фикса опенкод-бага); amendment'ы D-19 (указатель на D-42) и D-39 (reasoning max → high, область действия по D-42) | Команда/Пользователь |
+| 2026-09-15 | Закрытие review-fixes-1 (пакет review-fixes-1-close): гейт сверки отчёта с деревом пройден (analyze 0, 255/255, getById=0, `_plan` в tree.json, Table 47.A/47.B, linkcheck PASSED); B-21 закрыт удалением `scripts/update-state.sh`; dharma.md — тонкий указатель (согласован); freshness 255 в AGENT/ROADMAP/CONTEXT/STATE, БФТ v1.9 (§13 и NFR-TEST-1), README-статус, ROADMAP changelog v1.13 | Команда/Пользователь |
+| 2026-09-15 | Решения пакета: D-40 (F-58 закреплён за фактом rf1, новые факты с F-59), D-41 (удаления агентом допустимы при флаге в отчёте и пути отката; граница — push), D-42 (кодовые пакеты на DeepSeek V4.1 Flash reasoning high до фикса опенкод-бага); amendment'ы D-19 (указатель на D-42) и D-39 (reasoning max → high, область действия по D-42) | Команда/Пользователь |
 
 ---
 
@@ -254,7 +254,7 @@
 JSON-паки событий (FR-EVT-1), уведомления в упосатху/10-25 (FR-EVT-2/3, ru-проводка D-28).
 Хвосты ревью 2026-09-01 закрыты пакетом **review-fixes-1 ✅** (R-19/R-22/R-23/R-24,
 B-13/B-14/B-18/B-19/B-20/B-23/B-24) — **следующий пакет: 6.1** (Этап 6, события).
-Гейт сверки отчёта rf1 с деревом пройден 2026-09-16 (analyze 0, 255/255, linkcheck PASSED,
+Гейт сверки отчёта rf1 с деревом пройден 2026-09-15 (analyze 0, 255/255, linkcheck PASSED,
 `getById` в `lib/` = 0, узел `custom` с `_plan`, ряды Луны по Table 47.A/47.B);
 B-21 закрыт удалением скрипта, freshness-шапки синхронизированы (255).
 Открыты: B-15 (наблюдение), R-18/R-25 (процесс).
