@@ -5,6 +5,7 @@ import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../../features/events/data/notification_settings_table.dart';
 import '../../features/tracker/data/tracker_tables.dart';
 
 part 'app_database.g.dart';
@@ -53,7 +54,8 @@ class Presets extends Table {
 ///
 /// Handles all persistent data storage for the application.
 /// Migrations are managed through [MigrationStrategy].
-@DriftDatabase(tables: [Presets, Practices, CountHistory])
+@DriftDatabase(
+    tables: [Presets, Practices, CountHistory, NotificationSettingsRows])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
@@ -76,7 +78,7 @@ class AppDatabase extends _$AppDatabase {
   /// Шаг 3 нельзя пропустить молча: без своей ветки миграция бросает
   /// [StateError] при первом же открытии базы (R-8).
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration {
@@ -138,6 +140,13 @@ class AppDatabase extends _$AppDatabase {
         // Данные переключает TableMigration: колонки не меняются, меняется
         // только определение таблицы (ON DELETE CASCADE вместо RESTRICT).
         await m.alterTable(TableMigration(countHistory));
+        break;
+      case 4:
+        // Этап 6 (пакет 6.1): настройки уведомлений по традициям (FR-EVT-3,
+        // D-36) — только новая таблица, существующие данные не трогаются.
+        // Строк может не быть вовсе: отсутствие строки читается как дефолт
+        // D-36 (включено, 08:00), поэтому бэкфилл не нужен.
+        await m.createTable(notificationSettingsRows);
         break;
       default:
         throw StateError(

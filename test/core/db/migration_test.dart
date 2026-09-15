@@ -26,17 +26,21 @@ class _AppDatabaseV1 extends AppDatabase {
       );
 }
 
-/// База, объявляющая версию схемы 4, для которой миграции не написано.
+/// База, объявляющая версию схемы 5, для которой миграции не написано.
 ///
 /// Регрессия на R-8: прежняя реализация в такой ситуации молча ничего
 /// не делала, и ошибка всплывала у пользователя как «no such table».
 /// Теперь она обязана упасть на первом же открытии базы.
-class _AppDatabaseV4 extends AppDatabase {
+///
+/// Версия держится ровно на одну выше текущей: когда у схемы появится ветка 5,
+/// этот класс обязан переехать на 6 (иначе тест начнёт проверять существующую
+/// миграцию и «покраснеет» по неверной причине).
+class _AppDatabaseV5 extends AppDatabase {
   // ignore: use_super_parameters — см. комментарий у _AppDatabaseV1
-  _AppDatabaseV4(QueryExecutor executor) : super.forTesting(executor);
+  _AppDatabaseV5(QueryExecutor executor) : super.forTesting(executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 }
 
 /// База «старого приложения» — версия схемы на 1 ниже текущей.
@@ -45,7 +49,7 @@ class _AppDatabaseV4 extends AppDatabase {
 /// `_AppDatabaseV1`/`_AppDatabaseV2Raw`, которые переопределяют её целиком):
 /// нужен именно downgrade-проверочный путь `onUpgrade` актуального кода —
 /// переход 3 → 2 обязан упасть на ветке `from > to` (B-12, хвост R-8).
-/// Значение 2 согласовано с тестом ниже: тест проверяет, что это ровно
+/// Значение 3 согласовано с тестом ниже: тест проверяет, что это ровно
 /// `schemaVersion - 1`, и краснеет, если версия схемы уедет без обновления
 /// препосылки.
 class _AppDatabaseDowngrade extends AppDatabase {
@@ -53,7 +57,7 @@ class _AppDatabaseDowngrade extends AppDatabase {
   _AppDatabaseDowngrade(QueryExecutor executor) : super.forTesting(executor);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 }
 
 /// База версии 2 со СТАРОЙ схемой практик и истории, воссозданной сырым SQL.
@@ -110,6 +114,19 @@ class _AppDatabaseV2Raw extends AppDatabase {
       );
 }
 
+/// База, зафиксированная ровно на версии 3 (последняя до 6.1).
+///
+/// Нужна, чтобы получить файл в состоянии «до появления настроек уведомлений»
+/// **настоящей** миграцией 2 → 3 (стратегия наследуется от [AppDatabase]),
+/// а не сырым DDL: так проверяется реальный переход 3 → 4, а не имитация.
+class _AppDatabaseV3Step extends AppDatabase {
+  // ignore: use_super_parameters — см. комментарий у _AppDatabaseV1
+  _AppDatabaseV3Step(QueryExecutor executor) : super.forTesting(executor);
+
+  @override
+  int get schemaVersion => 3;
+}
+
 Future<Set<String>> _tableNames(GeneratedDatabase db) async {
   final rows = await db
       .customSelect("SELECT name FROM sqlite_master WHERE type = 'table'")
@@ -153,7 +170,12 @@ void main() {
 
       expect(
         await _tableNames(db),
-        containsAll(<String>['presets', 'practices', 'count_history']),
+        containsAll(<String>[
+          'presets',
+          'practices',
+          'count_history',
+          'notification_settings',
+        ]),
       );
       expect(await _userVersion(db), db.schemaVersion);
 
@@ -332,6 +354,66 @@ void main() {
       }
     });
 
+    test('апгрейд 3 → 4: таблица настроек уведомлений создана, данные целы',
+        () async {
+      // Сессия 1: старая база версии 2 с пользовательскими данными.
+      {
+        final v2 = _AppDatabaseV2Raw(NativeDatabase(dbFile()));
+        await v2.customStatement(
+          "INSERT INTO presets VALUES "
+          "('nyingma', 'Ньингма', '1.0.0', 'vajrayana', '{}')",
+        );
+        await v2.customStatement(
+          "INSERT INTO practices (id, name, type, tradition_tag, current_count) "
+          "VALUES (1, 'Простирания', 'counter', 'nyingma', 108)",
+        );
+        await v2.customStatement(
+          'INSERT INTO count_history (practice_id, count) VALUES (1, 108)',
+        );
+        await v2.close();
+      }
+
+      // Сессия 2: доводим файл до версии 3 настоящей миграцией 2 → 3.
+      {
+        final v3 = _AppDatabaseV3Step(NativeDatabase(dbFile()));
+        expect(await _userVersion(v3), 3);
+        expect(await _tableNames(v3), isNot(contains('notification_settings')));
+        await v3.close();
+      }
+
+      // Сессия 3: актуальная версия выполняет ветку 4.
+      {
+        final db = AppDatabase.forTesting(
+          NativeDatabase(dbFile(), setup: enableForeignKeys),
+        );
+        expect(await _userVersion(db), db.schemaVersion);
+
+        expect(await _tableNames(db), contains('notification_settings'));
+        expect(
+          await _columnNames(db, 'notification_settings'),
+          containsAll(<String>[
+            'tradition_tag',
+            'enabled',
+            'hour',
+            'minute',
+            'updated_at',
+          ]),
+        );
+
+        // Данные пользователя целы: переход добавил только новую таблицу.
+        expect((await db.select(db.practices).get()).single.currentCount, 108);
+        expect(await _columnCount(db, 'count_history'), 1);
+        expect(await _columnCount(db, 'presets'), 1);
+
+        // Пустая таблица настроек — штатное состояние: строка появляется
+        // только когда пользователь меняет настройки (дефолт D-36 живёт
+        // в домене, а не в БД).
+        expect(await _columnCount(db, 'notification_settings'), 0);
+
+        await db.close();
+      }
+    });
+
     test('уникальный индекс не даёт дублей пресетных практик, но волен '
         'для кастомных и других традиций (B-3)', () async {
       final db = AppDatabase.forTesting(
@@ -380,21 +462,21 @@ void main() {
         await db.close();
       }
 
-      // Открываем базой, которая объявляет версию 4 без миграции на неё.
+      // Открываем базой, которая объявляет версию 5 без миграции на неё.
       // Раньше это тихо не делало ничего — теперь обязано упасть.
-      final v4 = _AppDatabaseV4(NativeDatabase(dbFile()));
+      final v5 = _AppDatabaseV5(NativeDatabase(dbFile()));
 
       await expectLater(
-        _tableNames(v4),
+        _tableNames(v5),
         throwsA(
           predicate<Object>(
-            (error) => error.toString().contains('Нет миграции на версию 4'),
+            (error) => error.toString().contains('Нет миграции на версию 5'),
             'ошибка называет отсутствующую версию миграции',
           ),
         ),
       );
 
-      // v4 намеренно не закрываем: соединение не открылось.
+      // v5 намеренно не закрываем: соединение не открылось.
     });
 
     test('препосылка downgrade-теста: старая версия ровно на 1 ниже текущей',

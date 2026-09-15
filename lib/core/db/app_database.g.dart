@@ -1249,15 +1249,401 @@ class CountHistoryCompanion extends UpdateCompanion<CountHistoryData> {
   }
 }
 
+class $NotificationSettingsRowsTable extends NotificationSettingsRows
+    with TableInfo<$NotificationSettingsRowsTable, NotificationSettingsRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $NotificationSettingsRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _traditionTagMeta = const VerificationMeta(
+    'traditionTag',
+  );
+  @override
+  late final GeneratedColumn<String> traditionTag = GeneratedColumn<String>(
+    'tradition_tag',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _enabledMeta = const VerificationMeta(
+    'enabled',
+  );
+  @override
+  late final GeneratedColumn<bool> enabled = GeneratedColumn<bool>(
+    'enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _hourMeta = const VerificationMeta('hour');
+  @override
+  late final GeneratedColumn<int> hour = GeneratedColumn<int>(
+    'hour',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(8),
+  );
+  static const VerificationMeta _minuteMeta = const VerificationMeta('minute');
+  @override
+  late final GeneratedColumn<int> minute = GeneratedColumn<int>(
+    'minute',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    traditionTag,
+    enabled,
+    hour,
+    minute,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'notification_settings';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<NotificationSettingsRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('tradition_tag')) {
+      context.handle(
+        _traditionTagMeta,
+        traditionTag.isAcceptableOrUnknown(
+          data['tradition_tag']!,
+          _traditionTagMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_traditionTagMeta);
+    }
+    if (data.containsKey('enabled')) {
+      context.handle(
+        _enabledMeta,
+        enabled.isAcceptableOrUnknown(data['enabled']!, _enabledMeta),
+      );
+    }
+    if (data.containsKey('hour')) {
+      context.handle(
+        _hourMeta,
+        hour.isAcceptableOrUnknown(data['hour']!, _hourMeta),
+      );
+    }
+    if (data.containsKey('minute')) {
+      context.handle(
+        _minuteMeta,
+        minute.isAcceptableOrUnknown(data['minute']!, _minuteMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {traditionTag};
+  @override
+  NotificationSettingsRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return NotificationSettingsRow(
+      traditionTag: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}tradition_tag'],
+      )!,
+      enabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}enabled'],
+      )!,
+      hour: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}hour'],
+      )!,
+      minute: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}minute'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $NotificationSettingsRowsTable createAlias(String alias) {
+    return $NotificationSettingsRowsTable(attachedDatabase, alias);
+  }
+}
+
+class NotificationSettingsRow extends DataClass
+    implements Insertable<NotificationSettingsRow> {
+  /// Тег традиции активного пресета (`preset.id`) — ключ строки.
+  final String traditionTag;
+
+  /// Показывать ли уведомления (FR-EVT-3).
+  final bool enabled;
+
+  /// Час срабатывания, 0..23 (локальное время).
+  final int hour;
+
+  /// Минута срабатывания, 0..59.
+  final int minute;
+
+  /// Когда настройки последний раз менялись (для диагностики).
+  final DateTime updatedAt;
+  const NotificationSettingsRow({
+    required this.traditionTag,
+    required this.enabled,
+    required this.hour,
+    required this.minute,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['tradition_tag'] = Variable<String>(traditionTag);
+    map['enabled'] = Variable<bool>(enabled);
+    map['hour'] = Variable<int>(hour);
+    map['minute'] = Variable<int>(minute);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  NotificationSettingsRowsCompanion toCompanion(bool nullToAbsent) {
+    return NotificationSettingsRowsCompanion(
+      traditionTag: Value(traditionTag),
+      enabled: Value(enabled),
+      hour: Value(hour),
+      minute: Value(minute),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory NotificationSettingsRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return NotificationSettingsRow(
+      traditionTag: serializer.fromJson<String>(json['traditionTag']),
+      enabled: serializer.fromJson<bool>(json['enabled']),
+      hour: serializer.fromJson<int>(json['hour']),
+      minute: serializer.fromJson<int>(json['minute']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'traditionTag': serializer.toJson<String>(traditionTag),
+      'enabled': serializer.toJson<bool>(enabled),
+      'hour': serializer.toJson<int>(hour),
+      'minute': serializer.toJson<int>(minute),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  NotificationSettingsRow copyWith({
+    String? traditionTag,
+    bool? enabled,
+    int? hour,
+    int? minute,
+    DateTime? updatedAt,
+  }) => NotificationSettingsRow(
+    traditionTag: traditionTag ?? this.traditionTag,
+    enabled: enabled ?? this.enabled,
+    hour: hour ?? this.hour,
+    minute: minute ?? this.minute,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  NotificationSettingsRow copyWithCompanion(
+    NotificationSettingsRowsCompanion data,
+  ) {
+    return NotificationSettingsRow(
+      traditionTag: data.traditionTag.present
+          ? data.traditionTag.value
+          : this.traditionTag,
+      enabled: data.enabled.present ? data.enabled.value : this.enabled,
+      hour: data.hour.present ? data.hour.value : this.hour,
+      minute: data.minute.present ? data.minute.value : this.minute,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NotificationSettingsRow(')
+          ..write('traditionTag: $traditionTag, ')
+          ..write('enabled: $enabled, ')
+          ..write('hour: $hour, ')
+          ..write('minute: $minute, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(traditionTag, enabled, hour, minute, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is NotificationSettingsRow &&
+          other.traditionTag == this.traditionTag &&
+          other.enabled == this.enabled &&
+          other.hour == this.hour &&
+          other.minute == this.minute &&
+          other.updatedAt == this.updatedAt);
+}
+
+class NotificationSettingsRowsCompanion
+    extends UpdateCompanion<NotificationSettingsRow> {
+  final Value<String> traditionTag;
+  final Value<bool> enabled;
+  final Value<int> hour;
+  final Value<int> minute;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const NotificationSettingsRowsCompanion({
+    this.traditionTag = const Value.absent(),
+    this.enabled = const Value.absent(),
+    this.hour = const Value.absent(),
+    this.minute = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  NotificationSettingsRowsCompanion.insert({
+    required String traditionTag,
+    this.enabled = const Value.absent(),
+    this.hour = const Value.absent(),
+    this.minute = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : traditionTag = Value(traditionTag);
+  static Insertable<NotificationSettingsRow> custom({
+    Expression<String>? traditionTag,
+    Expression<bool>? enabled,
+    Expression<int>? hour,
+    Expression<int>? minute,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (traditionTag != null) 'tradition_tag': traditionTag,
+      if (enabled != null) 'enabled': enabled,
+      if (hour != null) 'hour': hour,
+      if (minute != null) 'minute': minute,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  NotificationSettingsRowsCompanion copyWith({
+    Value<String>? traditionTag,
+    Value<bool>? enabled,
+    Value<int>? hour,
+    Value<int>? minute,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return NotificationSettingsRowsCompanion(
+      traditionTag: traditionTag ?? this.traditionTag,
+      enabled: enabled ?? this.enabled,
+      hour: hour ?? this.hour,
+      minute: minute ?? this.minute,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (traditionTag.present) {
+      map['tradition_tag'] = Variable<String>(traditionTag.value);
+    }
+    if (enabled.present) {
+      map['enabled'] = Variable<bool>(enabled.value);
+    }
+    if (hour.present) {
+      map['hour'] = Variable<int>(hour.value);
+    }
+    if (minute.present) {
+      map['minute'] = Variable<int>(minute.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NotificationSettingsRowsCompanion(')
+          ..write('traditionTag: $traditionTag, ')
+          ..write('enabled: $enabled, ')
+          ..write('hour: $hour, ')
+          ..write('minute: $minute, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $PresetsTable presets = $PresetsTable(this);
   late final $PracticesTable practices = $PracticesTable(this);
   late final $CountHistoryTable countHistory = $CountHistoryTable(this);
+  late final $NotificationSettingsRowsTable notificationSettingsRows =
+      $NotificationSettingsRowsTable(this);
   late final Index idxPracticesTraditionPreset = Index(
     'idx_practices_tradition_preset',
     'CREATE UNIQUE INDEX idx_practices_tradition_preset ON practices (tradition_tag, preset_practice_id)',
+  );
+  late final Index idxNotificationSettingsTradition = Index(
+    'idx_notification_settings_tradition',
+    'CREATE INDEX idx_notification_settings_tradition ON notification_settings (tradition_tag)',
   );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
@@ -1267,7 +1653,9 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     presets,
     practices,
     countHistory,
+    notificationSettingsRows,
     idxPracticesTraditionPreset,
+    idxNotificationSettingsTradition,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -2196,6 +2584,227 @@ typedef $$CountHistoryTableProcessedTableManager =
       CountHistoryData,
       PrefetchHooks Function({bool practiceId})
     >;
+typedef $$NotificationSettingsRowsTableCreateCompanionBuilder =
+    NotificationSettingsRowsCompanion Function({
+      required String traditionTag,
+      Value<bool> enabled,
+      Value<int> hour,
+      Value<int> minute,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$NotificationSettingsRowsTableUpdateCompanionBuilder =
+    NotificationSettingsRowsCompanion Function({
+      Value<String> traditionTag,
+      Value<bool> enabled,
+      Value<int> hour,
+      Value<int> minute,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$NotificationSettingsRowsTableFilterComposer
+    extends Composer<_$AppDatabase, $NotificationSettingsRowsTable> {
+  $$NotificationSettingsRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get traditionTag => $composableBuilder(
+    column: $table.traditionTag,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get hour => $composableBuilder(
+    column: $table.hour,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get minute => $composableBuilder(
+    column: $table.minute,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$NotificationSettingsRowsTableOrderingComposer
+    extends Composer<_$AppDatabase, $NotificationSettingsRowsTable> {
+  $$NotificationSettingsRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get traditionTag => $composableBuilder(
+    column: $table.traditionTag,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get hour => $composableBuilder(
+    column: $table.hour,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get minute => $composableBuilder(
+    column: $table.minute,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$NotificationSettingsRowsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $NotificationSettingsRowsTable> {
+  $$NotificationSettingsRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get traditionTag => $composableBuilder(
+    column: $table.traditionTag,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get enabled =>
+      $composableBuilder(column: $table.enabled, builder: (column) => column);
+
+  GeneratedColumn<int> get hour =>
+      $composableBuilder(column: $table.hour, builder: (column) => column);
+
+  GeneratedColumn<int> get minute =>
+      $composableBuilder(column: $table.minute, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$NotificationSettingsRowsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $NotificationSettingsRowsTable,
+          NotificationSettingsRow,
+          $$NotificationSettingsRowsTableFilterComposer,
+          $$NotificationSettingsRowsTableOrderingComposer,
+          $$NotificationSettingsRowsTableAnnotationComposer,
+          $$NotificationSettingsRowsTableCreateCompanionBuilder,
+          $$NotificationSettingsRowsTableUpdateCompanionBuilder,
+          (
+            NotificationSettingsRow,
+            BaseReferences<
+              _$AppDatabase,
+              $NotificationSettingsRowsTable,
+              NotificationSettingsRow
+            >,
+          ),
+          NotificationSettingsRow,
+          PrefetchHooks Function()
+        > {
+  $$NotificationSettingsRowsTableTableManager(
+    _$AppDatabase db,
+    $NotificationSettingsRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$NotificationSettingsRowsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$NotificationSettingsRowsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$NotificationSettingsRowsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> traditionTag = const Value.absent(),
+                Value<bool> enabled = const Value.absent(),
+                Value<int> hour = const Value.absent(),
+                Value<int> minute = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => NotificationSettingsRowsCompanion(
+                traditionTag: traditionTag,
+                enabled: enabled,
+                hour: hour,
+                minute: minute,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String traditionTag,
+                Value<bool> enabled = const Value.absent(),
+                Value<int> hour = const Value.absent(),
+                Value<int> minute = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => NotificationSettingsRowsCompanion.insert(
+                traditionTag: traditionTag,
+                enabled: enabled,
+                hour: hour,
+                minute: minute,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$NotificationSettingsRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $NotificationSettingsRowsTable,
+      NotificationSettingsRow,
+      $$NotificationSettingsRowsTableFilterComposer,
+      $$NotificationSettingsRowsTableOrderingComposer,
+      $$NotificationSettingsRowsTableAnnotationComposer,
+      $$NotificationSettingsRowsTableCreateCompanionBuilder,
+      $$NotificationSettingsRowsTableUpdateCompanionBuilder,
+      (
+        NotificationSettingsRow,
+        BaseReferences<
+          _$AppDatabase,
+          $NotificationSettingsRowsTable,
+          NotificationSettingsRow
+        >,
+      ),
+      NotificationSettingsRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2206,4 +2815,9 @@ class $AppDatabaseManager {
       $$PracticesTableTableManager(_db, _db.practices);
   $$CountHistoryTableTableManager get countHistory =>
       $$CountHistoryTableTableManager(_db, _db.countHistory);
+  $$NotificationSettingsRowsTableTableManager get notificationSettingsRows =>
+      $$NotificationSettingsRowsTableTableManager(
+        _db,
+        _db.notificationSettingsRows,
+      );
 }
