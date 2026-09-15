@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../shared/l10n/l10n.dart';
+import '../../shared/utils/error_text.dart';
 import '../db/app_database.dart' show kAppDatabaseFileName;
 
 /// Аварийное стирание локального состояния (B-5).
@@ -148,8 +149,12 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
+              // B-19: детали исключения — в лог, а не на экран.
               Text(
-                '${widget.error}',
+                userFacingErrorText(
+                  'Попробуйте ещё раз. Если не поможет — сбросьте настройки.',
+                  details: widget.error,
+                ),
                 style: Theme.of(context).textTheme.bodySmall,
                 textAlign: TextAlign.center,
                 maxLines: 4,

@@ -75,6 +75,14 @@ void main() {
     expect(find.text('Попробовать снова'), findsOneWidget);
     expect(find.text('Сбросить настройки'), findsOneWidget);
 
+    // B-19: на экране нет деталей исключения — только человеческое сообщение.
+    expect(find.textContaining('Симуляция повреждённых настроек'), findsNothing,
+        reason: 'сырое исключение не должно доходить до пользователя');
+    expect(
+      find.textContaining('Попробуйте ещё раз. Если не поможет'),
+      findsOneWidget,
+    );
+
     await tester.tap(find.text('Попробовать снова'));
     await tester.pumpAndSettle();
     expect(retries, 1);

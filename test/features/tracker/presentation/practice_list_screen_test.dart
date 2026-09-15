@@ -115,6 +115,38 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     });
 
+    testWidgets('B-19: ошибка стрима показывается человекочитаемо, '
+        'без текста исключения', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            practiceRepositoryProvider
+                .overrideWithValue(_FailingRepository(db)),
+          ],
+          child: MaterialApp.router(
+            routerConfig: GoRouter(
+              routes: [
+                GoRoute(
+                  path: '/',
+                  builder: (context, state) =>
+                      const PracticeListScreen(traditionTag: 'sample'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('Не удалось загрузить практики'), findsOneWidget);
+      expect(find.textContaining('SQLITE_ERROR'), findsNothing,
+          reason: 'сырое исключение Drift не должно доходить до пользователя');
+
+      await db.close();
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
     testWidgets('имеет FAB для создания', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
@@ -144,4 +176,17 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     });
   });
+}
+
+/// Стрим, который сразу падает (B-19): проверяем, что детали исключения
+/// не попадают на экран.
+class _FailingRepository extends PracticeRepository {
+  _FailingRepository(super.database);
+
+  @override
+  Stream<List<PracticeEntity>> watchByTradition(String traditionTag) {
+    return Stream<List<PracticeEntity>>.error(
+      StateError('SQLITE_ERROR: no such table: practices'),
+    );
+  }
 }

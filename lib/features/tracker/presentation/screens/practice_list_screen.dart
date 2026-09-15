@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../shared/utils/error_text.dart';
 import '../../../../shared/utils/format.dart';
 import '../../domain/practice.dart';
 import '../providers/practice_provider.dart';
@@ -102,7 +103,17 @@ class PracticeListScreen extends ConsumerWidget {
                 },
               ),
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(child: Text('Ошибка: $error')),
+        // B-19: причина на слое отображения ошибки — сырое исключение Drift
+        // в интерфейс не попадает (см. userFacingErrorText).
+        error: (error, stack) => Center(
+          child: Text(
+            userFacingErrorText(
+              'Не удалось загрузить практики',
+              details: error,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         // Стрим сам обновляет список при изменении БД — invalidate не нужен.
