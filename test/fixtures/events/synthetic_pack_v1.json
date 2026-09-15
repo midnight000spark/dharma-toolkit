@@ -1,0 +1,22 @@
+{
+  "packId": "synthetic_demo",
+  "traditionTag": "nyingma",
+  "version": "1",
+  "verified": false,
+  "entries": [
+    {
+      "id": "synthetic_tibetan_rule",
+      "type": "festival",
+      "name": "Синтетическое событие (правило тибетского дня)",
+      "dateRule": { "kind": "tibetan", "month": 1, "day": 1 },
+      "source": "синтетическая тестовая фикстура — не эталон, дата вымышлена"
+    },
+    {
+      "id": "synthetic_gregorian_rule",
+      "type": "observance",
+      "name": "Синтетическое событие (правило григорианской даты)",
+      "dateRule": { "kind": "gregorian_yearly", "month": 2, "day": 29 },
+      "source": "синтетическая тестовая фикстура — не эталон, дата вымышлена"
+    }
+  ]
+}
