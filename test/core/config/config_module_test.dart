@@ -1,9 +1,13 @@
+import 'dart:convert';
+
 import 'package:dharma_toolkit/core/config/config_module.dart';
 import 'package:dharma_toolkit/core/config/preset_schema.dart';
 import 'package:dharma_toolkit/core/module/app_module.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   group('PresetSchema', () {
     test('fromJson parses valid JSON without moduleConfigs (R-20)', () {
       final json = {
@@ -209,6 +213,77 @@ void main() {
       final restored = PresetPractice.fromJson(practice.toJson());
       expect(restored.id, practice.id);
       expect(restored.target, practice.target);
+    });
+  });
+
+  group('target практики (B-24)', () {
+    Map<String, dynamic> practiceJson(Object? target) => {
+          'id': 'p',
+          'name': 'Практика',
+          'type': 'counter',
+          'target': target,
+          'unit': 'раз',
+        };
+
+    test('отрицательная цель отклоняется на границе домена', () {
+      expect(
+        () => PresetPractice.fromJson(practiceJson(-5)),
+        throwsA(isA<PresetValidationException>()
+            .having((e) => e.field, 'поле', 'target')),
+      );
+    });
+
+    test('нулевая цель отклоняется (не «ноль прогресса», а бессмыслица)', () {
+      expect(
+        () => PresetPractice.fromJson(practiceJson(0)),
+        throwsA(isA<PresetValidationException>()),
+      );
+    });
+
+    test('положительная цель принимается', () {
+      expect(PresetPractice.fromJson(practiceJson(1)).target, 1);
+      expect(PresetPractice.fromJson(practiceJson(100000)).target, 100000);
+    });
+
+    test('null-цель по-прежнему допустима (цель не задана)', () {
+      expect(PresetPractice.fromJson(practiceJson(null)).target, isNull);
+    });
+
+    test('через PresetSchema поле называется practices[0].target', () {
+      final json = {
+        'id': 'x',
+        'name': 'X',
+        'version': '1.0.0',
+        'tradition': 'vajrayana',
+        'modules': <String>[],
+        'practices': [practiceJson(-1)],
+        'eventPacks': <String>[],
+        'contentPacks': <String>[],
+      };
+
+      expect(
+        () => PresetSchema.fromJson(json),
+        throwsA(isA<PresetValidationException>()
+            .having((e) => e.field, 'поле', 'practices[0].target')),
+      );
+    });
+  });
+
+  group('presets/tree.json (B-18)', () {
+    test('мёртвый узел custom несёт указатель на владельца-этап', () async {
+      final json = jsonDecode(await rootBundle.loadString('presets/tree.json'))
+          as Map<String, dynamic>;
+      final custom = json['custom'] as Map<String, dynamic>;
+
+      // Политика отложенных намерений (v2.12): мёртвые данные без владельца
+      // теряются. Узел не читается кодом сегодня — значит, обязан нести
+      // ссылку на запись-владельца в плане.
+      expect(custom['_plan'], isNotNull,
+          reason: 'B-18: у отложенного узла обязан быть владелец');
+      expect(custom['_plan'], contains('plan-8'));
+      // Узел остаётся инертным: сам он в дерево традиций не попадает.
+      final traditions = (json['traditions'] as List).cast<Map<String, dynamic>>();
+      expect(traditions.any((t) => t['id'] == 'custom'), isFalse);
     });
   });
 

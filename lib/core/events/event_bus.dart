@@ -47,6 +47,13 @@ class EventBus {
   /// Subscribe to events of a specific type T.
   ///
   /// Returns a Stream — the subscriber manages the subscription themselves.
+  ///
+  /// ⚠️ После [dispose] вызов отдаёт уже закрытый поток: подписчик молча
+  /// получает `done` и не узнает, что шину закрыли. Не вызывайте [on] после
+  /// [dispose] — проверяйте [isDisposed] (симметрично [publish], который в
+  /// этой ситуации бросает [StateError]). Аннотация-страховка до Этапа 6:
+  /// у шины пока нет реального потребителя (D-21), поэтому контракт не
+  /// ломается молчаливым сюрпризом в проводке.
   Stream<T> on<T extends AppEvent>() {
     return _controller.stream.where((e) => e is T).cast<T>();
   }

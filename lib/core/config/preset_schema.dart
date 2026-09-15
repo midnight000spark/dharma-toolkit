@@ -196,6 +196,15 @@ class PresetPractice {
       throw const PresetValidationException(
           'target', 'ожидалось целое число или null');
     }
+    // B-24: цель ≤ 0 — не «просто ноль прогресса», а бессмысленный пресет
+    // («Цель: −5» доезжала до экрана). Граница домена проверяется здесь,
+    // а не клампится в UI (урок 3).
+    if (target is int && target <= 0) {
+      throw PresetValidationException(
+        'target',
+        'цель должна быть больше нуля, получено $target',
+      );
+    }
     final unit = json['unit'];
     if (unit != null && unit is! String) {
       throw const PresetValidationException(

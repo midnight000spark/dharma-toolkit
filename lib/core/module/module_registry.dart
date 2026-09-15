@@ -33,6 +33,10 @@ class ModuleRegistry {
   final Map<String, AppModule> _modules = {};
   bool _initialized = false;
 
+  /// Отчёт последнего [initAll] — чтобы повторный вызов не выдавал пустой
+  /// «allOk» за прогон, который имел фейлы (B-23).
+  ModuleInitReport? _lastReport;
+
   /// Registers a module. Must be called before [initAll].
   ///
   /// Throws [StateError] if registry is already initialized.
@@ -56,9 +60,11 @@ class ModuleRegistry {
   /// остальных: решение о фатальности принимает вызывающий (см.
   /// `core/recovery/startup.dart`), а процесс валится не сразу и не молча.
   ///
-  /// Safe to call multiple times — subsequent calls are no-ops.
+  /// Идемпотентно: повторный вызов не переклассифицирует модули, а возвращает
+  /// **тот же** отчёт, что и первый (B-23). Отчёт — часть контракта: пустой
+  /// «allOk» на втором вызове маскировал бы деградацию первого прогона.
   Future<ModuleInitReport> initAll() async {
-    if (_initialized) return const ModuleInitReport([]);
+    if (_initialized) return _lastReport ?? const ModuleInitReport([]);
     final failures = <ModuleInitFailure>[];
     for (final module in _modules.values) {
       try {
@@ -68,7 +74,8 @@ class ModuleRegistry {
       }
     }
     _initialized = true;
-    return ModuleInitReport(failures);
+    _lastReport = ModuleInitReport(failures);
+    return _lastReport!;
   }
 
   /// Disposes all modules in reverse registration order.
@@ -92,6 +99,10 @@ class ModuleRegistry {
     } finally {
       _modules.clear();
       _initialized = false;
+      // Defensive: после disposeAll первый initAll всё равно пересчитает
+      // отчёт — строка держит инвариант «кэш = текущий жизненный цикл»,
+      // наблюдаемого поведения за ней нет (guard-теста тоже нет).
+      _lastReport = null;
     }
     if (firstError != null) {
       // ignore: only_throw_errors — пробрасываем исходный объект ошибки.

@@ -33,6 +33,27 @@ class _StubModule implements AppModule {
   }
 }
 
+/// Модуль, падающий на init (B-23): проверяем, что повторный [initAll]
+/// не выдаёт пустой «allOk» за уже провалившийся прогон.
+class _FailingModule implements AppModule {
+  @override
+  String get id => 'failing';
+
+  @override
+  String get name => 'Failing Module';
+
+  @override
+  String get version => '1.0.0';
+
+  @override
+  Future<void> init() async {
+    throw StateError('модуль сломан');
+  }
+
+  @override
+  Future<void> dispose() async {}
+}
+
 void main() {
   group('AppModule interface', () {
     test('has all 5 required members', () {
@@ -106,6 +127,20 @@ void main() {
       await registry.initAll();
       expect(module1.initCallCount, 1);
       expect(module2.initCallCount, 1);
+    });
+
+    test('повторный initAll возвращает тот же отчёт, а не пустой allOk '
+        '(B-23)', () async {
+      final registry = ModuleRegistry.instance;
+      registry.register(_FailingModule());
+
+      final first = await registry.initAll();
+      final second = await registry.initAll();
+
+      expect(first.allOk, isFalse);
+      expect(second.allOk, isFalse,
+          reason: 'второй вызов не должен выдавать успех за провал первого');
+      expect(second.failures.map((f) => f.moduleId), ['failing']);
     });
 
     test('disposeAll calls dispose in reverse registration order', () async {
