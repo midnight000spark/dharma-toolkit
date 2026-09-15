@@ -55,3 +55,5 @@ gittoken.md
 node_modules/
 package.json
 package-lock.json
+.opencode/dcp.jsonc
+.opencode-trace/
