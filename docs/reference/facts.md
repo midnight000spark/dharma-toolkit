@@ -591,3 +591,39 @@
 - **Источник**: пакет `infra-cost-guard` (коммиты `5338ff9`, `9e023cf`, `751ef5a`),
   документация OpenCode (plugins), отчёт big-pickle 2026-09-15
 - **Дата**: 2026-09-15
+
+---
+
+<a id="f-61"></a>
+### F-61: `FlutterLocalNotificationsPlugin` 22.3.0 — синглтон с приватным конструктором (не мокается точечно)
+- **Описание**: вопреки премиссе F-55 «кросс-платформенный API (не статический,
+  мокаемый)», сам класс плагина подменить нельзя: в
+  `flutter_local_notifications-22.3.0/lib/src/flutter_local_notifications_plugin.dart`
+  L24–33 объявлено `class FlutterLocalNotificationsPlugin` с **приватным**
+  конструктором и фабрикой-синглтоном (`factory FlutterLocalNotificationsPlugin()
+  => _instance`, `static final _instance`). Следствия:
+  * подкласс, мок и `implements` невозможны — конструктор закрыт;
+  * методы при этом не статические (F-55 в этой части верна), поэтому шов
+    возможен, но **свой**: в 6.2 это `NotificationGateway` (шесть вызовов) поверх
+    плагина; политика живёт в `NotificationService` и тестируется без устройства;
+  * `FlutterTimezone` (5.1.0) — тоже статический класс с метод-каналом: в тестах
+    недоступен, поэтому закрыт своим швом `LocalTimeZoneSource`.
+- **Источник**: чтение исходников ~/.pub-cache (плагин 22.3.0 L24–33; flutter_timezone
+  5.1.0 `lib/flutter_timezone.dart` L19–29), пакет 6.2 (коммит `2c6e8fa`)
+- **Дата**: 2026-09-15
+
+<a id="f-62"></a>
+### F-62: `UnimplementedError implements UnsupportedError` — «ловим не тот тип» не является отдельной мутацией
+- **Описание**: план пакета 6.2 предполагал мутацию «ловить `UnsupportedError` вместо
+  `UnimplementedError` → тест красный (не тот тип)». В dart:core
+  `class UnimplementedError extends Error implements UnsupportedError`, поэтому
+  `on UnsupportedError` **ловит** и `UnimplementedError`: подмена типа ловли
+  семантически эквивалентна и красной быть не может (проверено прогоном: тесты
+  зелёные). Уточнение F-57 остаётся в силе в другой части: Linux-реализация
+  **бросает** `UnimplementedError`, а не `UnsupportedError`.
+  Проверяемая формулировка того же гарда: ловля **неродственного** типа
+  (например, `StateError`) — красная (`UnimplementedError: zonedSchedule() has not
+  been implemented` наружу из `schedule()`), равно как и полное отсутствие
+  `try/catch`.
+- **Источник**: dart:core; мутационные прогоны M5/M5′ пакета 6.2
+- **Дата**: 2026-09-15
