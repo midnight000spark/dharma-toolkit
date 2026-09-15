@@ -1,6 +1,6 @@
 # Быстрый контекст проекта "Дхарма-тулкит"
 
-> _Freshness — owner: пользователь · reviewed: 2026-09-15 · verified-by: `flutter analyze --fatal-infos` (0) / `flutter test` (255/255) / `./scripts/check_docs.sh` (PASSED)._
+> _Freshness — owner: пользователь · reviewed: 2026-09-16 · verified-by: `flutter analyze --fatal-infos` (0) / `flutter test` (255/255) / `./scripts/check_docs.sh` (PASSED)._
 
 ## Суть
 Мобильное приложение — универсальный буддийский тулкит: Тхеравада, Махаяна,
@@ -68,7 +68,7 @@ Phugpa-движка (F-47).
 
 ## Ключевые файлы
 STATE.md — статус; ROADMAP.md — план; AGENT.md — конституция v2.13; docs/README.md — индекс документации;
-docs/BFT-v1.8.md — требования (актуальная версия БФТ — файл с наибольшим номером);
+docs/BFT-v1.9.md — требования (актуальная версия БФТ — файл с наибольшим номером);
 docs/archive/ — read-only (хроника фаз 0–5, закрытые R-/B-, история конституции);
 docs/reference/ — read-only (тела D-/F-, адресно по якорю);
 docs/REVIEW-2026-08-31.md — аудит; docs/MIGRATIONS.md — процедура миграций;
