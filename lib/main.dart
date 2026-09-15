@@ -5,15 +5,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app_router.dart';
+import 'core/calendar/special_days_source.dart';
 import 'core/config/config_module.dart';
 import 'core/config/preset_manager.dart';
 import 'core/db/app_database.dart';
 import 'core/db/database_module.dart';
 import 'core/db/dev_seeder.dart';
+import 'core/events/event_bus.dart';
 import 'core/module/module_registry.dart';
 import 'core/recovery/recovery_screen.dart';
 import 'core/recovery/startup.dart';
 import 'core/storage/storage_module.dart';
+import 'features/calendar/presentation/providers/calendar_providers.dart';
+import 'features/events/domain/notification_scheduler.dart';
+import 'features/events/platform/degraded_notification_scheduler.dart';
+import 'features/events/platform/notification_gateway.dart';
+import 'features/events/platform/notification_scheduler_adapter.dart';
+import 'features/events/platform/notification_service.dart';
+import 'features/events/presentation/providers/event_providers.dart';
 import 'shared/l10n/l10n.dart';
 import 'shared/providers/app_providers.dart';
 
@@ -70,12 +79,14 @@ Future<void> main() async {
       ));
       return;
     }
+    final scheduler = await initNotifications();
     mount(
       ProviderScope(
         overrides: [
           appDatabaseProvider.overrideWithValue(services.database),
           configModuleProvider.overrideWithValue(services.config),
           presetManagerProvider.overrideWithValue(services.presetManager),
+          ...platformPortOverrides(scheduler: scheduler),
         ],
         child: const DharmaToolkitApp(),
       ),
@@ -96,6 +107,54 @@ Future<void> main() async {
       }
     },
   );
+}
+
+/// Портовые оверрайды composition root (D-22/D-34/D-37, пакет 6.2).
+///
+/// Календарь и планировщик приходят в приложение **только** через порты ядра
+/// (`core/calendar`, `features/events/domain`), а связываются с реализациями
+/// фич здесь — в единственном месте, которому позволено знать обе стороны
+/// (принцип №1: фича не импортирует фичу, composition root — может).
+///
+/// **Зачем функция, а не инлайн в `ProviderScope`:** проводку портов нужно
+/// предъявлять тестом («убрал оверрайд — тест красный», урок 1), а поднять
+/// ради этого всё приложение нельзя. Тест вызывает ту же функцию, что и
+/// `start()`.
+List<Override> platformPortOverrides({
+  required NotificationScheduler scheduler,
+}) =>
+    [
+      // Особые дни активной традиции — для UI-пути (лента, SCR-12).
+      specialDaysSourceProvider.overrideWith(
+          (ref) => ref.watch(activeSpecialDaysSourceProvider)),
+      // Особые дни по явному тегу — для перепланирования уведомлений: событие
+      // смены пресета приходит раньше, чем реактивная проводка обновит тег, и
+      // план обязан строиться по уже активной традиции (см. репланер).
+      specialDaysSourceForTagProvider.overrideWith((ref, traditionTag) =>
+          ref.watch(calendarSpecialDaysSourceForTagProvider(traditionTag))),
+      notificationSchedulerProvider.overrideWithValue(scheduler),
+    ];
+
+/// Подготовить планировщик уведомлений (пакет 6.2).
+///
+/// Платформенный сервис требует асинхронной инициализации (база таймзон +
+/// плагин), поэтому живёт в composition root, а не в провайдере (D-22).
+/// Отказ **не валит старт**: приложение работает без напоминаний, а причина
+/// уходит в лог — тишина вместо уведомлений была бы неотличима от «всё
+/// запланировано» (урок 1).
+Future<NotificationScheduler> initNotifications() async {
+  try {
+    final service = NotificationService(
+      gateway: FlutterLocalNotificationsGateway(),
+      timeZoneSource: const FlutterTimeZoneSource(),
+      warn: debugPrint,
+    );
+    await service.initialize();
+    return NotificationSchedulerAdapter(service);
+  } catch (error, stack) {
+    debugPrint('Уведомления недоступны: $error\n$stack');
+    return DegradedNotificationScheduler(reason: '$error', warn: debugPrint);
+  }
 }
 
 /// Регистрирует и инициализирует модули приложения.
@@ -121,6 +180,8 @@ Future<(AppServices?, StartupOutcome)> bootstrapServices() async {
   final presetManager = PresetManager(
     () => databaseModule.database,
     storageModule,
+    // Шина: смена пресета — триггер перепланирования напоминаний (D-36).
+    eventBus: EventBus.instance,
   );
 
   registry.register(databaseModule);
@@ -157,11 +218,30 @@ Future<(AppServices?, StartupOutcome)> bootstrapServices() async {
   );
 }
 
-class DharmaToolkitApp extends ConsumerWidget {
+class DharmaToolkitApp extends ConsumerStatefulWidget {
   const DharmaToolkitApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DharmaToolkitApp> createState() => _DharmaToolkitAppState();
+}
+
+class _DharmaToolkitAppState extends ConsumerState<DharmaToolkitApp> {
+  @override
+  void initState() {
+    super.initState();
+    // Первый потребитель шины (D-21): перепланирование напоминаний на старте
+    // и на смену пресета/настроек (D-36). Отказ проводки не валит UI —
+    // напоминания не то, ради чего стоит показывать пользователю ошибку, — но
+    // и не молчит: причина уходит в лог.
+    try {
+      ref.read(notificationReplannerProvider).start();
+    } catch (error) {
+      debugPrint('Перепланирование уведомлений не запущено: $error');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return MaterialApp.router(
       title: 'Дхарма-тулкит',
       // ru-локаль: русские системные строки Material (R-15, D-28).

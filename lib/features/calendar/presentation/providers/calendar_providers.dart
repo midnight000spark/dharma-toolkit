@@ -20,9 +20,11 @@ library;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../shared/providers/app_providers.dart';
+import '../../data/calendar_special_days_source.dart';
 import '../../data/tibetan/tibetan_calendar_provider.dart';
 import '../../data/uposatha/uposatha_calendar_provider.dart';
 import '../../../../core/calendar/calendar_provider.dart';
+import '../../../../core/calendar/special_days_source.dart';
 
 /// Тибетский календарь (Пхугпа) для тега традиции [String].
 ///
@@ -74,4 +76,27 @@ final activeCalendarProviderProvider = Provider<CalendarProvider?>((ref) {
   final tag = ref.watch(activeTraditionTagProvider).value ?? '';
   if (tag.isEmpty) return null;
   return ref.watch(calendarProviderForTagProvider(tag));
+});
+
+/// Источник особых дней для тега [traditionTag] (D-37, пакет 6.2).
+///
+/// Реализация порта ядра `specialDaysSourceForTagProvider`: фича календаря —
+/// единственное место, где известно соответствие «традиция → движок», поэтому
+/// адаптер [CalendarSpecialDaysSource] поднимается здесь, а ядро и события
+/// видят только контракт. `null` — календаря для такого тега в сборке нет.
+final calendarSpecialDaysSourceForTagProvider =
+    Provider.family<SpecialDaysSource?, String>((ref, traditionTag) {
+  final calendar = ref.watch(calendarProviderForTagProvider(traditionTag));
+  return calendar == null ? null : CalendarSpecialDaysSource(calendar);
+});
+
+/// Источник особых дней активной традиции — то, что composition root отдаёт в
+/// порт ядра `specialDaysSourceProvider` (пакет 6.2).
+///
+/// Реактивен, как и [activeCalendarProviderProvider]: смена пресета без
+/// перезапуска переключает и источник дней.
+final activeSpecialDaysSourceProvider = Provider<SpecialDaysSource?>((ref) {
+  final tag = ref.watch(activeTraditionTagProvider).value ?? '';
+  if (tag.isEmpty) return null;
+  return ref.watch(calendarSpecialDaysSourceForTagProvider(tag));
 });
