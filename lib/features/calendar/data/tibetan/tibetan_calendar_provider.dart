@@ -17,8 +17,8 @@
 /// а не «праздников нет» (UX-A-4).
 library;
 
-import '../../domain/calendar_provider.dart';
-import '../../domain/special_day.dart';
+import '../../../../core/calendar/calendar_provider.dart';
+import '../../../../core/calendar/special_day.dart';
 import 'tibetan_calendar.dart';
 import 'tibetan_date.dart';
 

@@ -12,7 +12,7 @@ import 'dart:io';
 import 'package:dharma_toolkit/features/calendar/data/tibetan/tibetan_calendar.dart';
 import 'package:dharma_toolkit/features/calendar/data/tibetan/tibetan_calendar_provider.dart';
 import 'package:dharma_toolkit/features/calendar/data/tibetan/tibetan_date.dart';
-import 'package:dharma_toolkit/features/calendar/domain/special_day.dart';
+import 'package:dharma_toolkit/core/calendar/special_day.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'contract_harness.dart';

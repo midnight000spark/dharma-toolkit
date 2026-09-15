@@ -28,7 +28,7 @@ import 'dart:io';
 
 import 'package:dharma_toolkit/features/calendar/data/tibetan/tibetan_calendar_provider.dart';
 import 'package:dharma_toolkit/features/calendar/data/uposatha/uposatha_calendar_provider.dart';
-import 'package:dharma_toolkit/features/calendar/domain/calendar_provider.dart';
+import 'package:dharma_toolkit/core/calendar/calendar_provider.dart';
 
 /// Число прогонов холодного протокола (медиана по ним — критерий решения).
 const int _runs = 20;

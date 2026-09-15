@@ -8,8 +8,8 @@ library;
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:dharma_toolkit/features/calendar/domain/calendar_provider.dart';
-import 'package:dharma_toolkit/features/calendar/domain/special_day.dart';
+import 'package:dharma_toolkit/core/calendar/calendar_provider.dart';
+import 'package:dharma_toolkit/core/calendar/special_day.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Фиктивный провайдер: отдаёт заранее заданный список.

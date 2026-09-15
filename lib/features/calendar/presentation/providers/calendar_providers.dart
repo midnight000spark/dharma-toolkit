@@ -22,7 +22,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/providers/app_providers.dart';
 import '../../data/tibetan/tibetan_calendar_provider.dart';
 import '../../data/uposatha/uposatha_calendar_provider.dart';
-import '../../domain/calendar_provider.dart';
+import '../../../../core/calendar/calendar_provider.dart';
 
 /// Тибетский календарь (Пхугпа) для тега традиции [String].
 ///

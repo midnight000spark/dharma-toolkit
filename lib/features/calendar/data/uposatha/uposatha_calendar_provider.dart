@@ -12,8 +12,8 @@
 /// астрономические упосатхи, а не государственные праздничные паки.
 library;
 
-import '../../domain/calendar_provider.dart';
-import '../../domain/special_day.dart';
+import '../../../../core/calendar/calendar_provider.dart';
+import '../../../../core/calendar/special_day.dart';
 import 'moon_phase.dart';
 
 class UposathaCalendarProvider implements CalendarProvider {

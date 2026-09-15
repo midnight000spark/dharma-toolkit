@@ -7,7 +7,7 @@ library;
 
 import 'package:dharma_toolkit/features/calendar/data/uposatha/moon_phase.dart';
 import 'package:dharma_toolkit/features/calendar/data/uposatha/uposatha_calendar_provider.dart';
-import 'package:dharma_toolkit/features/calendar/domain/special_day.dart';
+import 'package:dharma_toolkit/core/calendar/special_day.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'contract_harness.dart';

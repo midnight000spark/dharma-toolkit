@@ -5,7 +5,7 @@
 /// доказывает. Моки ручные (mocktail в стек не включён, AGENT v2.5).
 library;
 
-import 'package:dharma_toolkit/features/calendar/domain/special_day.dart';
+import 'package:dharma_toolkit/core/calendar/special_day.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'contract_harness.dart';

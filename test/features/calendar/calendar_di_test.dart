@@ -5,8 +5,8 @@
 library;
 
 import 'package:dharma_toolkit/features/calendar/data/tibetan/tibetan_calendar_provider.dart';
-import 'package:dharma_toolkit/features/calendar/domain/calendar_provider.dart';
-import 'package:dharma_toolkit/features/calendar/domain/special_day.dart';
+import 'package:dharma_toolkit/core/calendar/calendar_provider.dart';
+import 'package:dharma_toolkit/core/calendar/special_day.dart';
 import 'package:dharma_toolkit/features/calendar/presentation/providers/calendar_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
