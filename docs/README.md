@@ -16,6 +16,7 @@
 | `BFT-v1.0.md` … `BFT-v1.7.md` | история требований | адресно | reference (read-only) |
 | `MIGRATIONS.md` | процедура миграций БД (D-17) | при изменении схемы | reference |
 | `REVIEW-2026-08-31.md` | внешний аудит (B-3…B-11, R-8…R-17) | адресно | reference |
+| `dcp.md` | механика DCP/compress: refs, диагностика «not available», регресс serve-auth и фикс | при работе с compress / поломках контекст-менеджмента | reference |
 | `archive/state-journal-phases-0-5.md` | хроника журнала фаз 0–5 | адресно | archive (read-only) |
 | `archive/state-closed-risks.md` | тела закрытых угроз R- | адресно по якорю | archive (read-only) |
 | `archive/state-closed-bugs.md` | тела закрытых багов B- | адресно по якорю | archive (read-only) |
