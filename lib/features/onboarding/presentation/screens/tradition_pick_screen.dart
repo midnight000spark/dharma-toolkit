@@ -1,3 +1,4 @@
+import 'package:dharma_toolkit/core/config/preset_schema.dart';
 import 'package:dharma_toolkit/shared/providers/app_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -37,33 +38,58 @@ class TraditionPickScreen extends ConsumerWidget {
   }
 }
 
-class _PresetTile extends ConsumerWidget {
+class _PresetTile extends ConsumerStatefulWidget {
   final String tradition;
   final String presetId;
 
   const _PresetTile({required this.tradition, required this.presetId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_PresetTile> createState() => _PresetTileState();
+}
+
+class _PresetTileState extends ConsumerState<_PresetTile> {
+  /// Защита от двойного тапа (R-22): пока [PresetManager.applyPreset] в
+  /// полёте, карточка не принимает повторный тап. Материализация внутри
+  /// транзакции защищает целостность БД, этот гард — от второго применения
+  /// и лишней навигации; вместе они делают быстрый тап-спам безвредным.
+  /// Тот же паттерн, что у формы создания (B-9, урок 3).
+  bool _saving = false;
+
+  Future<void> _pick(PresetSchema preset) async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    try {
+      await ref.read(presetManagerProvider).applyPreset(preset);
+      if (mounted) context.go('/');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final config = ref.watch(configModuleProvider);
-    final preset = config.getPreset(presetId);
+    final preset = config.getPreset(widget.presetId);
     final available = preset != null;
 
     return ListTile(
-      title: Text(preset?.name ?? presetId),
+      title: Text(preset?.name ?? widget.presetId),
       subtitle: Text(
         available
-            ? (preset.description ?? tradition)
+            ? (preset.description ?? widget.tradition)
             : 'Скоро — пресет ещё не готов',
       ),
-      trailing: available ? const Icon(Icons.chevron_right) : null,
-      enabled: available,
-      onTap: available
-          ? () async {
-              await ref.read(presetManagerProvider).applyPreset(preset);
-              if (context.mounted) context.go('/');
-            }
-          : null,
+      trailing: _saving
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : (available ? const Icon(Icons.chevron_right) : null),
+      // Пока применение в полёте, тайл выключен — тап не доходит до onTap.
+      enabled: available && !_saving,
+      onTap: available ? () => _pick(preset) : null,
     );
   }
 }

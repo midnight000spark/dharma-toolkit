@@ -61,6 +61,10 @@ class PresetManager implements AppModule {
   /// Идемпотентна: повторный вызов с тем же пресетом не создаёт дублей и
   /// не трогает счётчики (upsert по (traditionTag, presetPracticeId)).
   /// Кастомные практики (presetPracticeId == null) не затрагиваются вовсе.
+  ///
+  /// Безопасна при конкурентных вызовах (R-22): материализация выполняется
+  /// одной транзакцией, поэтому второй параллельный вызов видит строки
+  /// первого, а не падает `ConstraintException` по уникальному индексу.
   Future<void> applyPreset(PresetSchema preset) async {
     // Save preset to DB (presets table)
     await _database.into(_database.presets).insertOnConflictUpdate(
@@ -105,56 +109,68 @@ class PresetManager implements AppModule {
     yield* _activePresetController.stream;
   }
 
+  /// Материализовать практики пресета идемпотентным upsert'ом.
+  ///
+  /// R-22: вся последовательность select → insert/update выполняется в одной
+  /// транзакции. Без неё два конкурентных [applyPreset] (двойной тап по
+  /// карточке пресета) оба не видят незакоммиченную строку: второй insert
+  /// падает `ConstraintException` по уникальному индексу
+  /// (traditionTag, presetPracticeId), исключение из async `onTap`
+  /// проглатывается зоной — падение молчаливое и недетерминированное.
+  /// Drift сериализует транзакции, поэтому второй вызов после ожидания
+  /// видит результат первого и идёт по ветке update.
   Future<void> _materializePractices(PresetSchema preset) async {
     final db = _database;
-    for (var i = 0; i < preset.practices.length; i++) {
-      final practice = preset.practices[i];
+    await db.transaction(() async {
+      for (var i = 0; i < preset.practices.length; i++) {
+        final practice = preset.practices[i];
 
-      final existing = await (db.select(db.practices)
-            ..where(
-              (t) =>
-                  t.traditionTag.equals(preset.id) &
-                  t.presetPracticeId.equals(practice.id),
-            ))
-          .getSingleOrNull();
+        final existing = await (db.select(db.practices)
+              ..where(
+                (t) =>
+                    t.traditionTag.equals(preset.id) &
+                    t.presetPracticeId.equals(practice.id),
+              ))
+            .getSingleOrNull();
 
-      // Смещение на секунду за порядок в пресете: Drift хранит DateTime с
-      // точностью до секунды, а список сортируется по createdAt — массовая
-      // вставка одним DateTime.now() дала бы недетерминированный порядок
-      // (существо B-10). Шаг в миллисекунду молча схлопнулся бы в равенство.
-      final now = DateTime.now().add(Duration(seconds: i));
+        // Смещение на секунду за порядок в пресете: Drift хранит DateTime с
+        // точностью до секунды, а список сортируется по createdAt — массовая
+        // вставка одним DateTime.now() дала бы недетерминированный порядок
+        // (существо B-10). Шаг в миллисекунду молча схлопнулся бы в равенство.
+        final now = DateTime.now().add(Duration(seconds: i));
 
-      if (existing == null) {
-        await db.into(db.practices).insert(
-              PracticesCompanion.insert(
-                presetId: Value(preset.id),
-                presetPracticeId: Value(practice.id),
-                name: practice.name,
-                type: practice.type,
-                target: Value(practice.target),
-                unit: Value(practice.unit),
-                traditionTag: preset.id,
-                createdAt: Value(now),
-                updatedAt: Value(now),
-              ),
-            );
-      } else {
-        // Обновляем только описательные поля из пресета: currentCount,
-        // createdAt и id не трогаем — счёт практикующего священен (D-26).
-        await (db.update(db.practices)
-              ..where((t) => t.id.equals(existing.id)))
-            .write(
-          PracticesCompanion(
-            presetId: Value(preset.id),
-            name: Value(practice.name),
-            type: Value(practice.type),
-            target: Value(practice.target),
-            unit: Value(practice.unit),
-            updatedAt: Value(now),
-          ),
-        );
+        if (existing == null) {
+          await db.into(db.practices).insert(
+                PracticesCompanion.insert(
+                  presetId: Value(preset.id),
+                  presetPracticeId: Value(practice.id),
+                  name: practice.name,
+                  type: practice.type,
+                  target: Value(practice.target),
+                  unit: Value(practice.unit),
+                  traditionTag: preset.id,
+                  createdAt: Value(now),
+                  updatedAt: Value(now),
+                ),
+              );
+        } else {
+          // Обновляем только описательные поля из пресета: currentCount,
+          // createdAt и id не трогаем — счёт практикующего священен (D-26).
+          await (db.update(db.practices)
+                ..where((t) => t.id.equals(existing.id)))
+              .write(
+            PracticesCompanion(
+              presetId: Value(preset.id),
+              name: Value(practice.name),
+              type: Value(practice.type),
+              target: Value(practice.target),
+              unit: Value(practice.unit),
+              updatedAt: Value(now),
+            ),
+          );
+        }
       }
-    }
+    });
   }
 
   Future<PresetSchema?> _loadPresetFromDb(String presetId) async {

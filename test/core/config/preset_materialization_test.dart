@@ -2,7 +2,7 @@ import 'package:dharma_toolkit/core/config/preset_manager.dart';
 import 'package:dharma_toolkit/core/config/preset_schema.dart';
 import 'package:dharma_toolkit/core/db/app_database.dart';
 import 'package:dharma_toolkit/core/storage/storage_module.dart';
-import 'package:drift/drift.dart' hide isNull;
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -233,6 +233,67 @@ void main() {
       // далее — применения/сбросы.
       expect(seen, [null, 'nyingma', null]);
       await sub.cancel();
+    });
+  });
+
+  // R-22: check-then-insert материализации был вне транзакции. Два
+  // конкурентных применения (тап-спам по карточке /pick) оба не видели
+  // незакоммиченную строку, второй insert падал ConstraintException по
+  // уникальному индексу (traditionTag, presetPracticeId), а исключение из
+  // async onTap молча проглатывалось зоной. Тест детерминированный —
+  // Future.wait без await между вызовами (урок 5).
+  group('R-22: конкурентное применение пресета', () {
+    test('гонка «с нуля»: пять параллельных applyPreset → ровно 4 строки',
+        () async {
+      // Ни одного await между вызовами: все пять стартуют до первой вставки.
+      await Future.wait([
+        for (var i = 0; i < 5; i++) presetManager.applyPreset(ny),
+      ]);
+
+      final rows = await nyPractices();
+      expect(rows, hasLength(4),
+          reason: 'R-22: конкурентные применения не должны плодить дубли');
+      final presetIds = rows.map((r) => r.presetPracticeId).toList();
+      expect(presetIds.toSet(), hasLength(4),
+          reason: 'каждый presetPracticeId присутствует ровно один раз');
+    });
+
+    test('гонка поверх готовых строк сохраняет насчитанный счёт', () async {
+      await presetManager.applyPreset(ny);
+      final first = (await nyPractices()).first;
+      await (database.update(database.practices)
+            ..where((t) => t.id.equals(first.id)))
+          .write(const PracticesCompanion(currentCount: Value(108)));
+
+      await Future.wait([
+        for (var i = 0; i < 5; i++) presetManager.applyPreset(ny),
+      ]);
+
+      final rows = await nyPractices();
+      expect(rows, hasLength(4));
+      expect(
+        rows
+            .firstWhere((r) => r.presetPracticeId == 'ngondro_prostrations')
+            .currentCount,
+        108,
+        reason: 'D-26: счёт практикующего пережил конкурентные применения',
+      );
+    });
+
+    test('параллельное применение разных пресетов не мешает друг другу',
+        () async {
+      await Future.wait([
+        presetManager.applyPreset(ny),
+        presetManager.applyPreset(th),
+        presetManager.applyPreset(ny),
+      ]);
+
+      expect(await nyPractices(), hasLength(4));
+      final thRows = await (database.select(database.practices)
+            ..where((t) => t.traditionTag.equals('theravada_default')))
+          .get();
+      expect(thRows, isEmpty);
+      expect(presetManager.activePreset, isNotNull);
     });
   });
 }
