@@ -1,6 +1,6 @@
 # ROADMAP — Дхарма-тулкит
 
-> _Freshness — owner: пользователь · reviewed: 2026-09-15 · verified-by: `flutter analyze --fatal-infos` (0) / `flutter test` (255/255) / `./scripts/check_docs.sh` (PASSED)._
+> _Freshness — owner: пользователь · reviewed: 2026-09-15 · verified-by: `flutter analyze --fatal-infos` (0) / `flutter test` (359/359) / `./scripts/check_docs.sh` (PASSED)._
 
 > План проекта. STATE.md = где мы сейчас. Этот документ = куда идём.
 > dharma читает в начале каждого этапа. Изменения — только с записью в «Changelog плана».
