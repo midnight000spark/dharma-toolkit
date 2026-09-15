@@ -1,11 +1,28 @@
 import '../../../core/db/app_database.dart';
 
+/// Канонический набор типов практики, доступных в текущей версии (R-19).
+///
+/// Единственный источник истины о типах: форма создания и любой будущий UI
+/// строят список из этого набора, а не из строковых литералов виджета
+/// (урок 3 — чинить на слое причины). Тип таймера (FR-TRK-7) — бэклог v1.1:
+/// появится здесь вместе с экраном таймера; до тех пор форма его не
+/// предлагает, потому что предлагать несуществующий тип — обман.
+abstract final class PracticeTypes {
+  /// Счётчик тапов — единственный тип MVP.
+  static const String counter = 'counter';
+
+  /// Типы, доступные пользователю в текущей версии приложения.
+  static const List<String> available = <String>[counter];
+}
+
 /// Доменная модель практики
 class PracticeEntity {
   final int? id;
   final String? presetId;
   final String name;
-  final String type; // 'counter' или 'timer'
+
+  /// Тип практики; канонические значения — [PracticeTypes] (R-19).
+  final String type;
   final int? target;
   final String? unit;
   final String traditionTag;

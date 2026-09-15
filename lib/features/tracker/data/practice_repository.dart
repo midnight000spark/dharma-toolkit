@@ -34,20 +34,12 @@ class PracticeRepository {
         );
   }
 
-  /// Получить практику по ID
-  Future<PracticeEntity> getById(int id) async {
-    final row = await (_database.select(_database.practices)
-          ..where((t) => t.id.equals(id)))
-        .getSingle();
-    return PracticeEntity.fromRow(row);
-  }
-
   /// Стрим практики по ID (D-16, I-1).
   ///
-  /// Реактивный аналог [getById]. Если практика удалена или не существует,
-  /// стрим эмитит `null` — это лекарство от B-6 (вечный спиннер): экран
-  /// получает явное состояние «не найдена» вместо неопределённого Future,
-  /// который мог упасть с исключением.
+  /// Реактивный доступ к одной практике. Если практика удалена или не
+  /// существует, стрим эмитит `null` — это лекарство от B-6 (вечный спиннер):
+  /// экран получает явное состояние «не найдена» вместо неопределённого
+  /// Future, который мог упасть с исключением.
   Stream<PracticeEntity?> watchById(int id) {
     return (_database.select(_database.practices)
           ..where((t) => t.id.equals(id)))
@@ -82,7 +74,20 @@ class PracticeRepository {
   /// Один `UPDATE ... SET current_count = current_count + ?` вместо
   /// read-modify-write: нет гонки при быстром тапе (B-8), нет лишнего
   /// чтения. Запись в историю — в той же транзакции.
+  ///
+  /// [amount] обязан быть строго положительным: отрицательный инкремент —
+  /// это не «ошибочный тап», а тихая потеря счёта, и запись «−50000» в
+  /// историю выглядит легальной (R-23). Гард живёт на слое репозитория, а не
+  /// только в экране (урок 3): любой будущий вызывающий — импорт бэкапа,
+  /// синк, новый виджет — получает исключение вместо порчи данных.
+  ///
+  /// Бросает [ArgumentError], если [amount] <= 0. Проверка стоит до открытия
+  /// транзакции: невалидный вызов не должен оставлять следов в БД.
   Future<void> incrementCount(int practiceId, int amount) async {
+    if (amount <= 0) {
+      throw ArgumentError.value(amount, 'amount', 'must be positive');
+    }
+
     await _database.transaction(() async {
       // Атомарный инкремент: current_count = current_count + amount.
       // PracticesCompanion.custom принимает Expression<int>, что позволяет

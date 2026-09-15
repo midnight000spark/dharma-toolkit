@@ -15,7 +15,7 @@ void main() {
 
       // Первая сессия: создаём практику и инкрементим
       {
-        final db = AppDatabase.forTesting(NativeDatabase(File(dbPath)));
+        final db = AppDatabase.forTesting(NativeDatabase(File(dbPath), setup: enableForeignKeys));
         final repo = PracticeRepository(db);
 
         final now = DateTime.now();
@@ -35,7 +35,7 @@ void main() {
 
       // Вторая сессия: открываем ту же БД и проверяем счёт
       {
-        final db = AppDatabase.forTesting(NativeDatabase(File(dbPath)));
+        final db = AppDatabase.forTesting(NativeDatabase(File(dbPath), setup: enableForeignKeys));
         final repo = PracticeRepository(db);
 
         final practices = await repo.getByTradition('test');
@@ -51,7 +51,7 @@ void main() {
     });
 
     test('изоляция по traditionTag', () async {
-      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      final db = AppDatabase.forTesting(NativeDatabase.memory(setup: enableForeignKeys));
       final repo = PracticeRepository(db);
 
       final now = DateTime.now();
@@ -86,7 +86,7 @@ void main() {
     });
 
     test('incrementCount обновляет currentCount', () async {
-      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      final db = AppDatabase.forTesting(NativeDatabase.memory(setup: enableForeignKeys));
       final repo = PracticeRepository(db);
 
       final now = DateTime.now();
@@ -110,7 +110,7 @@ void main() {
     });
 
     test('watchByTradition эмитит список и реагирует на инкремент', () async {
-      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      final db = AppDatabase.forTesting(NativeDatabase.memory(setup: enableForeignKeys));
       final repo = PracticeRepository(db);
 
       final now = DateTime.now();
@@ -145,7 +145,7 @@ void main() {
 
     test('watchById эмитит null после удаления практики (лекарство B-6)',
         () async {
-      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      final db = AppDatabase.forTesting(NativeDatabase.memory(setup: enableForeignKeys));
       final repo = PracticeRepository(db);
 
       final now = DateTime.now();
@@ -176,7 +176,7 @@ void main() {
 
     test('два параллельных incrementCount дают строго +2 (атомарность, B-8)',
         () async {
-      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      final db = AppDatabase.forTesting(NativeDatabase.memory(setup: enableForeignKeys));
       final repo = PracticeRepository(db);
 
       final now = DateTime.now();
@@ -204,7 +204,7 @@ void main() {
 
     // B-10: create() обязан сохранять переданные даты, а не дефолты БД.
     test('create() сохраняет заданные createdAt/updatedAt (B-10)', () async {
-      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      final db = AppDatabase.forTesting(NativeDatabase.memory(setup: enableForeignKeys));
       final repo = PracticeRepository(db);
 
       // Даты с точностью до секунды — Drift хранит DateTime без мисек (F-33).
@@ -226,7 +226,7 @@ void main() {
     });
 
     test('порядок getByTradition по createdAt детерминирован (B-10)', () async {
-      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      final db = AppDatabase.forTesting(NativeDatabase.memory(setup: enableForeignKeys));
       final repo = PracticeRepository(db);
 
       // I-6: разнос > 1 секунды — Drift усекает даты до секунд,
@@ -258,6 +258,66 @@ void main() {
       );
 
       await db.close();
+    });
+
+    // R-23: неположительный инкремент — не «ошибочный тап», а тихая потеря
+    // счёта с легальной на вид записью в истории. Гард проверяется на слое
+    // репозитория (урок 3): UI-валидация — не граница домена.
+    group('R-23: incrementCount отклоняет неположительный amount', () {
+      Future<(AppDatabase, PracticeRepository, int)> seed() async {
+        final db =
+            AppDatabase.forTesting(NativeDatabase.memory(setup: enableForeignKeys));
+        final repo = PracticeRepository(db);
+        final now = DateTime.now();
+        final id = await repo.create(PracticeEntity(
+          name: 'Тест',
+          type: 'counter',
+          traditionTag: 'test',
+          createdAt: now,
+          updatedAt: now,
+        ));
+        await repo.incrementCount(id, 5);
+        return (db, repo, id);
+      }
+
+      test('amount = -1 → ArgumentError, счёт и история не тронуты', () async {
+        final (db, repo, id) = await seed();
+
+        await expectLater(repo.incrementCount(id, -1), throwsArgumentError);
+
+        final p = (await repo.getByTradition('test')).single;
+        expect(p.currentCount, 5, reason: 'отклонённый инкремент не меняет счёт');
+        final history = await db.select(db.countHistory).get();
+        expect(history.length, 1,
+            reason: 'запись «-1» не должна попасть в историю');
+        expect(history.single.count, 5);
+
+        await db.close();
+      });
+
+      test('amount = 0 → ArgumentError, следов в БД нет', () async {
+        final (db, repo, id) = await seed();
+
+        await expectLater(repo.incrementCount(id, 0), throwsArgumentError);
+
+        final p = (await repo.getByTradition('test')).single;
+        expect(p.currentCount, 5);
+        final history = await db.select(db.countHistory).get();
+        expect(history.length, 1, reason: 'нулевой инкремент — не событие');
+
+        await db.close();
+      });
+
+      test('положительный amount по-прежнему работает (граница 1)', () async {
+        final (db, repo, id) = await seed();
+
+        await repo.incrementCount(id, 1);
+
+        final p = (await repo.getByTradition('test')).single;
+        expect(p.currentCount, 6);
+
+        await db.close();
+      });
     });
   });
 }

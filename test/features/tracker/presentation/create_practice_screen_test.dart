@@ -211,6 +211,87 @@ void main() {
       expect(rows.single.name, 'Мантра');
     });
   });
+
+  // R-19: форма предлагала тип «Таймер», которого в MVP нет (FR-TRK-7 —
+  // бэклог v1.1), и созданный «таймер» открывался экраном счёта по тапам.
+  // Guard проверяет, что список типов берётся из доменного PracticeTypes
+  // (урок 3), а не из литералов виджета.
+  group('R-19: форма не предлагает несуществующий тип практики', () {
+    late AppDatabase db;
+    late PracticeRepository repository;
+
+    setUp(() async {
+      db = AppDatabase.forTesting(
+          NativeDatabase.memory(setup: enableForeignKeys));
+      repository = PracticeRepository(db);
+    });
+
+    tearDown(() async {
+      await db.close();
+    });
+
+    testWidgets('все пункты типа — ровно доменный набор PracticeTypes',
+        (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            practiceRepositoryProvider.overrideWithValue(repository),
+          ],
+          child: const MaterialApp(
+            home: CreatePracticeScreen(traditionTag: 'test'),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Открываем выпадающий список типов.
+      await tester.tap(find.text('Счётчик'));
+      await tester.pumpAndSettle();
+
+      final offered = tester
+          .widgetList<DropdownMenuItem<String>>(
+              find.byType(DropdownMenuItem<String>))
+          .map((item) => item.value)
+          .toSet();
+
+      expect(offered, PracticeTypes.available.toSet(),
+          reason: 'R-19: UI показывает ровно типы домена, не свои литералы');
+      expect(find.text('Таймер'), findsNothing,
+          reason: 'R-19: тип без экрана не предлагается пользователю');
+
+      // Закрываем меню, чтобы не оставлять открытый route.
+      await tester.tapAt(const Offset(5, 5));
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('у каждого доменного типа есть человекочитаемая подпись',
+        (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            practiceRepositoryProvider.overrideWithValue(repository),
+          ],
+          child: const MaterialApp(
+            home: CreatePracticeScreen(traditionTag: 'test'),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Счётчик'));
+      await tester.pumpAndSettle();
+
+      // Сырое значение вместо подписи («counter») означало бы, что новый тип
+      // домена забыли подписать — это заметно, а не молчит.
+      for (final type in PracticeTypes.available) {
+        expect(find.text(type), findsNothing,
+            reason: 'тип "$type" показан сырым значением — нет подписи');
+      }
+
+      await tester.tapAt(const Offset(5, 5));
+      await tester.pumpAndSettle();
+    });
+  });
 }
 
 /// Репозиторий-двойник: [create] встает на Completer, пока тест его не
