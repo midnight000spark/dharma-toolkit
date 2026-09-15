@@ -10,10 +10,14 @@
 /// адаптер планировщика). До 6.2 фича живёт в тестах и в готовых провайдерах.
 library;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/calendar/special_days_source.dart';
+import '../../../../core/config/preset_schema.dart';
+import '../../../../core/events/event_bus_provider.dart';
 import '../../../../shared/providers/app_providers.dart';
+import '../../application/notification_replanner.dart';
 import '../../data/event_pack_loader.dart';
 import '../../data/notification_settings_store.dart';
 import '../../domain/event_feed.dart';
@@ -73,9 +77,15 @@ final eventFeedProvider = Provider<EventFeed>((ref) {
 });
 
 /// Хранилище настроек уведомлений (таблица схемы v4, FR-EVT-3/D-36).
+///
+/// Пишущее хранилище получает шину: запись настроек публикует
+/// `NotificationSettingsChanged` — второй триггер перепланирования (D-36).
 final notificationSettingsStoreProvider =
     Provider<NotificationSettingsStore>((ref) {
-  return NotificationSettingsStore(ref.watch(appDatabaseProvider));
+  return NotificationSettingsStore(
+    ref.watch(appDatabaseProvider),
+    eventBus: ref.watch(eventBusProvider),
+  );
 });
 
 /// Настройки уведомлений активной традиции как поток: смена настроек —
@@ -114,7 +124,52 @@ final notificationPlanProvider = Provider<NotificationPlan>((ref) {
 /// заглушкой недопустима (паттерн `appDatabaseProvider`, D-22/R-13).
 final notificationSchedulerProvider = Provider<NotificationScheduler>((ref) {
   throw StateError(
-    'notificationSchedulerProvider не привязан: платформенный адаптер '
-    'планировщика подключается в composition root (пакет 6.2, D-34)',
+    'notificationSchedulerProvider не привязан: composition root обязан '
+    'передать платформенный адаптер планировщика (пакет 6.2, D-34)',
   );
+});
+
+/// План по активному **на момент вызова** пресету (пакет 6.2).
+///
+/// Единственный путь сборки плана для перепланирования: активный пресет
+/// читается напрямую (первое значение его потока — текущее состояние),
+/// настройки — из хранилища по тегу этого пресета, дни — через порт ядра по
+/// тому же тегу. Реактивные провайдеры здесь намеренно не используются:
+/// событие шины приходит раньше, чем UI-проводка переключит тег, и план по
+/// «текущему значению провайдера» построился бы по покинутой традиции.
+Future<NotificationPlan> buildNotificationPlan(Ref ref) async {
+  final PresetSchema? preset =
+      await ref.read(presetManagerProvider).activePresetStream.first;
+  final tag = preset?.id ?? '';
+  final settings = tag.isEmpty
+      ? NotificationSettings.defaults
+      : await ref.read(notificationSettingsStoreProvider).read(tag);
+  final loaded = await ref
+      .read(eventPackLoaderProvider)
+      .load(preset?.eventPacks ?? const <String>[]);
+
+  return NotificationPlanBuilder(
+    feedService: EventFeedService(
+      traditionTag: tag,
+      source:
+          tag.isEmpty ? null : ref.read(specialDaysSourceForTagProvider(tag)),
+      packs: loaded.packs,
+      packFailures: loaded.failures,
+    ),
+  ).build(now: ref.read(eventsClockProvider)(), settings: settings);
+}
+
+/// Перепланировщик напоминаний — первый потребитель шины (D-21, блок E 6.2).
+///
+/// Читается корнем приложения: он перепланирует на старте и подписывается на
+/// смену пресета и настроек (триггеры D-36).
+final notificationReplannerProvider = Provider<NotificationReplanner>((ref) {
+  final replanner = NotificationReplanner(
+    bus: ref.watch(eventBusProvider),
+    scheduler: ref.watch(notificationSchedulerProvider),
+    buildPlan: () => buildNotificationPlan(ref),
+    warn: (message) => debugPrint(message),
+  );
+  ref.onDispose(replanner.stop);
+  return replanner;
 });

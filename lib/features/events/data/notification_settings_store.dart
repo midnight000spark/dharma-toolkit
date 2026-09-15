@@ -17,13 +17,22 @@ library;
 import 'package:drift/drift.dart';
 
 import '../../../core/db/app_database.dart';
+import '../../../core/events/event_bus.dart';
+import '../../../core/events/notification_events.dart';
 import '../domain/notification_settings.dart';
 
 /// Чтение и запись настроек уведомлений по традициям.
 class NotificationSettingsStore {
-  NotificationSettingsStore(this._db);
+  NotificationSettingsStore(this._db, {this.eventBus});
 
   final AppDatabase _db;
+
+  /// Шина для события «настройки изменились» (D-21/D-36).
+  ///
+  /// Необязательна: хранилище остаётся рабочим и без шины (тесты, утилитарное
+  /// чтение), но тогда перепланирование на смену настроек не среагирует —
+  /// поэтому в приложении шина передаётся composition root'ом.
+  final EventBus? eventBus;
 
   /// Настройки традиции [traditionTag]; строки нет — дефолт D-36.
   Future<NotificationSettings> read(String traditionTag) async {
@@ -67,6 +76,8 @@ class NotificationSettingsStore {
             updatedAt: Value(DateTime.now()),
           ),
         );
+    eventBus?.publish(
+        NotificationSettingsChanged(traditionTag: traditionTag));
   }
 
   /// Вернуть настройки традиции к дефолту (удаление строки).
@@ -74,6 +85,8 @@ class NotificationSettingsStore {
     await (_db.delete(_db.notificationSettingsRows)
           ..where((t) => t.traditionTag.equals(traditionTag)))
         .go();
+    eventBus?.publish(
+        NotificationSettingsChanged(traditionTag: traditionTag));
   }
 
   NotificationSettings _fromRow(

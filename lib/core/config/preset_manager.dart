@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 
 import '../db/app_database.dart';
+import '../events/event_bus.dart';
+import '../events/preset_events.dart';
 import '../module/app_module.dart';
 import '../storage/storage_module.dart';
 import 'preset_schema.dart';
@@ -32,13 +34,22 @@ class PresetManager implements AppModule {
   final StorageModule _storage;
   PresetSchema? _activePreset;
 
+  /// Шина для события [PresetChanged] (D-21/D-36).
+  ///
+  /// Необязательна: менеджер пресетов работает и без неё (тесты, утилитарные
+  /// сценарии), но тогда о смене традиции узнаёт только поток
+  /// [activePresetStream] — перепланирование уведомлений его не слушает
+  /// (гонка смены пресета), поэтому в приложении шина передаётся
+  /// composition root'ом.
+  final EventBus? eventBus;
+
   /// Broadcast-шина изменений активного пресета для UI (реактивность без
   /// EventBus — D-21). Намеренно не закрывается в [dispose]: синглтон-подобные
   /// тестовые пересоздания не должны превращать publish в тишину (урок R-12).
   final StreamController<PresetSchema?> _activePresetController =
       StreamController<PresetSchema?>.broadcast();
 
-  PresetManager(this._databaseGetter, this._storage);
+  PresetManager(this._databaseGetter, this._storage, {this.eventBus});
 
   AppDatabase get _database => _databaseGetter();
 
@@ -83,6 +94,10 @@ class PresetManager implements AppModule {
     await _storage.setString('active_preset_id', preset.id);
     _activePreset = preset;
     _activePresetController.add(preset);
+    // Событие публикуется ПОСЛЕ присвоения активного пресета: подписчик
+    // (перепланировщик, D-36) обязан увидеть уже переключённую традицию, иначе
+    // план напоминаний построится по покинутой (см. NotificationReplanner).
+    eventBus?.publish(PresetChanged(traditionTag: preset.id));
   }
 
   /// Switch preset: apply new. Data of the old tradition is NOT deleted (D-26):
@@ -97,6 +112,8 @@ class PresetManager implements AppModule {
     await _storage.remove('active_preset_id');
     _activePreset = null;
     _activePresetController.add(null);
+    // Пустой тег — «активной традиции нет»: напоминания снимаются.
+    eventBus?.publish(PresetChanged(traditionTag: ''));
   }
 
   /// Get the active preset.
