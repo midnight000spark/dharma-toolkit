@@ -503,3 +503,25 @@
   ~/.pub-cache platform_interface 12.2.0 и linux 8.0.1; Android-политики — README
   плагина (Android 14 behavioural changes), пакет 6.0
 - **Дата**: 2026-09-02
+
+---
+
+<a id="f-58"></a>
+### F-58: `rootBundle.loadString` виснет внутри fake-async зоны `testWidgets` (второй тест того же файла)
+- **Описание**: `ConfigModule.init()` (грузит ассеты через `rootBundle`) при вызове из
+  `testWidgets` во **втором** тесте того же файла не завершается: тест висит до таймаута
+  (~3–4 мин), флейка нет — воспроизводится стабильно по порядку запуска. В одиночку тот же
+  тест проходит. Причина — реальный I/O `rootBundle.loadString` внутри fake-async зоны
+  `testWidgets`: ожидание не получает шанса завершиться. Локализовано пошаговыми
+  `debugPrint` (зависает именно на `await config.init()`); `SharedPreferences.setMockInitialValues`,
+  `SharedPreferences.getInstance`, `PresetManager.init` и in-memory БД исключены как причины
+  по одной. До пакета review-fixes-1 ни один тест-файл не вызывал `config.init()` дважды,
+  поэтому находка не всплывала.
+- **Лечение (применено в `tradition_pick_screen_test.dart`)**: ассеты грузятся **один раз
+  в `setUpAll`** (обычная, не fake-async зона) в `late ConfigModule config;`, тесты делят
+  read-only экземпляр — файл проходит за ~2 с. Для тестов, которым нужен только разбор
+  ассета, тот же приём: `TestWidgetsFlutterBinding.ensureInitialized()` + `rootBundle.loadString`
+  в теле самого `test()` вне `testWidgets` (так сделано в `dev_seeder_test.dart` и
+  `config_module_test.dart`).
+- **Источник**: отладка R-22 (блок 2 пакета review-fixes-1), 2026-09-15
+- **Дата**: 2026-09-15
