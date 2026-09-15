@@ -8,6 +8,15 @@
 /// База таймзон и локальная зона проверяются отдельным файлом
 /// (`notification_service_timezone_test.dart`): база `timezone` — состояние
 /// процесса, и «забыли поднять» можно поймать только в изолированном изоляте.
+///
+/// Оговорка про зону процесса: перенос полей дата-время в зону устройства
+/// (F-56) отличается от переноса инстанта ровно тогда, когда зона процесса не
+/// равна зоне устройства. Фейк держит `Europe/Moscow`, поэтому на хосте с
+/// московской зоной совпадение маскирует подмену «поля → инстант», а на
+/// UTC-раннере (CI, `TZ=UTC`) — нет: там 08:30 настенных часов против 11:30
+/// переинтерпретированного инстанта (падение шага Test, CI #46). Мутация
+/// «вернуть `TZDateTime.from`» поэтому красная на CI и зелёная локально —
+/// проверять её надо под `TZ=UTC`.
 library;
 
 import 'package:dharma_toolkit/features/events/domain/notification_plan.dart';
@@ -110,13 +119,30 @@ void main() {
       expect(gateway.scheduled.single.mode, AndroidScheduleMode.exact);
     });
 
-    test('момент уходит в локальной зоне устройства с тем же временем', () async {
-      await (await readyService()).schedule(item(at: DateTime(2026, 6, 2, 8, 30)));
+    test('настенные часы устройства переносятся полями, не инстантом',
+        () async {
+      await (await readyService())
+          .schedule(item(at: DateTime(2026, 6, 2, 8, 30)));
 
       final date = gateway.scheduled.single.scheduledDate;
       expect(date.hour, 8);
       expect(date.minute, 30);
       expect(date.location.name, tz.local.name);
+      expect(date.location.name, 'Europe/Moscow');
+    });
+
+    test('UTC-момент сохраняет инстант и выражается в зоне устройства',
+        () async {
+      final utc = DateTime.utc(2026, 6, 2, 8, 30);
+
+      await (await readyService()).schedule(item(at: utc));
+
+      final date = gateway.scheduled.single.scheduledDate;
+      expect(date.millisecondsSinceEpoch, utc.millisecondsSinceEpoch);
+      expect(date.location.name, 'Europe/Moscow');
+      // Москва — UTC+3 без перехода: 08:30Z читается как 11:30 местного.
+      expect(date.hour, 11);
+      expect(date.minute, 30);
     });
 
     test('платформа без планировщика (Linux) → деградация, не исключение',

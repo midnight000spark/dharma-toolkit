@@ -124,7 +124,11 @@ class NotificationService {
   /// Поставить уведомление по пункту плана [item].
   ///
   /// Момент берётся в локальной зоне устройства: `scheduledAt` домена —
-  /// локальные дата-время (D-36), а `TZDateTime` нужен плагину (F-56).
+  /// настенные часы устройства полями (`DateTime(y, m, d, h, min)`, D-36),
+  /// а `TZDateTime` нужен плагину (F-56). Поля переносятся в `tz.local` как
+  /// есть (см. [_deviceLocal]): переинтерпретация инстанта
+  /// (`TZDateTime.from`) совпадала бы с ними лишь пока зона процесса равна
+  /// зоне устройства.
   ///
   /// Точность честная: [canScheduleExact] даёт `exact` только при реально
   /// выданном разрешении, иначе `inexact` — D-36 запрещает обещать точность,
@@ -138,7 +142,7 @@ class NotificationService {
     try {
       await gateway.zonedSchedule(
         id: item.id,
-        scheduledDate: tz.TZDateTime.from(item.scheduledAt, tz.local),
+        scheduledDate: _deviceLocal(item.scheduledAt),
         details: _details,
         androidScheduleMode: await _androidScheduleMode(),
         title: item.title,
@@ -149,6 +153,31 @@ class NotificationService {
       await degradation.onScheduleUnsupported(item, error);
     }
   }
+
+  /// Момент плана в зоне устройства (F-56).
+  ///
+  /// Локальные дата-время домена заданы настенными часами устройства (D-36,
+  /// «локальное время устройства» в `NotificationPlanItem.scheduledAt`),
+  /// поэтому в `tz.local` переносятся **поля**, а не инстант: при переносе
+  /// инстанта (`TZDateTime.from`) время сдвинулось бы на разницу зон, если
+  /// зона процесса не совпала с зоной устройства (UTC-раннер CI против
+  /// `Europe/Moscow` — падение шага Test, CI #46).
+  ///
+  /// Исключение — UTC-момент: настенных часов устройства у него нет, значим
+  /// инстант, и он переводится в зону устройства без сдвига полей.
+  tz.TZDateTime _deviceLocal(DateTime at) => at.isUtc
+      ? tz.TZDateTime.from(at, tz.local)
+      : tz.TZDateTime(
+          tz.local,
+          at.year,
+          at.month,
+          at.day,
+          at.hour,
+          at.minute,
+          at.second,
+          at.millisecond,
+          at.microsecond,
+        );
 
   /// Снять уведомление по id.
   Future<void> cancel(int id) => gateway.cancel(id);

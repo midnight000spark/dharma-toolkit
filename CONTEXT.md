@@ -1,6 +1,6 @@
 # Быстрый контекст проекта "Дхарма-тулкит"
 
-> _Freshness — owner: пользователь · reviewed: 2026-09-15 · verified-by: `flutter analyze --fatal-infos` (0) / `flutter test` (399/399) / `./scripts/check_docs.sh` (PASSED)._
+> _Freshness — owner: пользователь · reviewed: 2026-09-15 · verified-by: `flutter analyze --fatal-infos` (0) / `flutter test` (400/400) / `./scripts/check_docs.sh` (PASSED)._
 
 ## Суть
 Мобильное приложение — универсальный буддийский тулкит: Тхеравада, Махаяна,
@@ -42,7 +42,7 @@ stage-5b.3/5b.4/5b.5). Приёмка подэтапа — ручным прог
 **6.2 ✅** (платформенный адаптер: `NotificationService` за узким швом, честная
 точность exact/inexact, Linux-деградация F-57, биндинг портов в composition root,
 первый потребитель EventBus — D-21); далее 6.3 — живой прогон уведомлений.
-399 тестов зелёные, analyze --fatal-infos 0, CI на пине Flutter 3.47.1 с drift-gate.
+400 тестов зелёные, analyze --fatal-infos 0, CI на пине Flutter 3.47.1 с drift-gate.
 
 ## Открытые баги и угрозы (главное)
 - Багов уровня блокер/высокий нет; хвосты ревью 2026-09-01 закрыты пакетом
