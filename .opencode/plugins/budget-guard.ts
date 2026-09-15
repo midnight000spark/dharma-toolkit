@@ -17,41 +17,36 @@
  *
  * Конфигурация (переменные окружения):
  *   - `OPENCODE_BUDGET_USD` — бюджет сессии в долларах (default: 0.5).
- *   - `OPENCODE_BUDGET_LOG` — путь журнала срабатываний (default: /tmp/opencode-budget.log).
- *   - `OPENCODE_BUDGET_DB`  — путь к SQLite OpenCode (default: XDG data dir opencode.db).
+ *   - `OPENCODE_BUDGET_LOG` — журнал срабатываний (default: /tmp/opencode-budget.log).
+ *   - `OPENCODE_BUDGET_DB` — путь к SQLite OpenCode (default: XDG data dir / opencode.db).
  *   - `OPENCODE_BUDGET_DB_CHECK` — `0` отключает сверку с БД (default: включена).
  *
- * Публичный API (используется тестом `scripts/budget_guard_test.ts`):
- *   - `createBudgetState()` — чистое состояние счётчиков.
- *   - `trackMessage(state, sessionID, messageID, cost)` — учесть стоимость сообщения.
- *   - `trackSession(state, sessionID, cost)` — учесть авторитетную стоимость сессии.
- *   - `trackedCost(state, sessionID)` — текущая оценка стоимости сессии.
- *   - `resolveBudget(raw?)` — разбор бюджета (некорректное значение → default).
- *   - `isExceeded(cost, budget)` — предикат превышения (строго «больше или равно»).
+ * ВАЖНО (форма модуля). Загрузчик плагинов OpenCode 1.18 требует, чтобы **каждый**
+ * экспорт файла был плагином (функцией или `{ server }`); любой посторонний экспорт
+ * (константа, утилита) роняет загрузку с `Plugin export is not a function`.
+ * Поэтому вспомогательная логика намеренно НЕ экспортируется — поведение плагина
+ * проверяется через его хуки (`scripts/budget_guard_test.ts`).
+ *
+ * Регистрация: файл в `.opencode/plugins/` подхватывается автоматически.
  */
-import type { Plugin, PluginInput } from "@opencode-ai/plugin"
+import type { Plugin, PluginInput, PluginModule } from "@opencode-ai/plugin"
 import { appendFileSync } from "node:fs"
 
 /** Бюджет сессии по умолчанию, USD. */
-export const DEFAULT_BUDGET_USD = 0.5
+const DEFAULT_BUDGET_USD = 0.5
 
 /** Путь журнала срабатываний по умолчанию. */
-export const DEFAULT_LOG_PATH = "/tmp/opencode-budget.log"
+const DEFAULT_LOG_PATH = "/tmp/opencode-budget.log"
 
 /** Минимальный интервал между сверками с БД (мс) — ограничивает стоимость проверки. */
-export const DB_CACHE_MS = 5_000
+const DB_CACHE_MS = 5_000
 
 /** Стоимость сообщения: последний известный апдейт (не сумма), поэтому берём максимум. */
-export type BudgetState = {
-  /** messageID → максимальная известная стоимость этого сообщения */
+type BudgetState = {
+  /** «sessionID \0 messageID» → максимальная известная стоимость сообщения */
   messages: Map<string, number>
   /** sessionID → авторитетная стоимость сессии из `session.updated` */
   sessions: Map<string, number>
-}
-
-/** Создаёт пустое состояние счётчиков. */
-export function createBudgetState(): BudgetState {
-  return { messages: new Map(), sessions: new Map() }
 }
 
 /** Событийный ключ «сессия + сообщение» (в одном процессе живут разные сессии). */
@@ -60,20 +55,21 @@ function messageKey(sessionID: string, messageID: string): string {
 }
 
 /** Учитывает стоимость сообщения. Повторные апдейты того же сообщения не двоят счёт. */
-export function trackMessage(
+function trackMessage(
   state: BudgetState,
   sessionID: string,
   messageID: string,
   cost: number
 ): void {
-  if (!Number.isFinite(cost) || cost < 0) return
+  // Монотонное обновление само отсекает мусор: NaN и отрицательные не проходят
+  // сравнение `>` и не попадают в счёт (отдельный гард был бы мёртвым кодом).
   const key = messageKey(sessionID, messageID)
   const prev = state.messages.get(key) ?? 0
   if (cost > prev) state.messages.set(key, cost)
 }
 
 /** Учитывает авторитетную стоимость сессии (событие `session.updated`). */
-export function trackSession(state: BudgetState, sessionID: string, cost: number): void {
+function trackSession(state: BudgetState, sessionID: string, cost: number): void {
   if (!Number.isFinite(cost) || cost < 0) return
   const prev = state.sessions.get(sessionID) ?? 0
   if (cost > prev) state.sessions.set(sessionID, cost)
@@ -83,7 +79,7 @@ export function trackSession(state: BudgetState, sessionID: string, cost: number
  * Оценка стоимости сессии: максимум из суммы по сообщениям и авторитетного
  * значения сессии. Источники дополняют друг друга, поэтому берём большее.
  */
-export function trackedCost(state: BudgetState, sessionID: string): number {
+function trackedCost(state: BudgetState, sessionID: string): number {
   let sum = 0
   const prefix = `${sessionID}\u0000`
   for (const [key, cost] of state.messages) {
@@ -94,7 +90,7 @@ export function trackedCost(state: BudgetState, sessionID: string): number {
 }
 
 /** Разбирает бюджет: пустое/битое/отрицательное значение → default. Ноль допустим. */
-export function resolveBudget(raw?: string): number {
+function resolveBudget(raw?: string): number {
   if (raw === undefined || raw.trim() === "") return DEFAULT_BUDGET_USD
   const parsed = Number(raw)
   if (!Number.isFinite(parsed) || parsed < 0) return DEFAULT_BUDGET_USD
@@ -102,7 +98,7 @@ export function resolveBudget(raw?: string): number {
 }
 
 /** Превышение бюджета: срабатывает и на точном равенстве. */
-export function isExceeded(cost: number, budget: number): boolean {
+function isExceeded(cost: number, budget: number): boolean {
   return cost >= budget
 }
 
@@ -147,12 +143,10 @@ function log(message: string): void {
   }
 }
 
-/**
- * Плагин OpenCode. Регистрируется автоматически из `.opencode/plugins/`.
- */
-export const BudgetGuard: Plugin = async ({ $ }) => {
+/** Плагин OpenCode. Регистрируется автоматически из `.opencode/plugins/`. */
+const BudgetGuard: Plugin = async ({ $ }) => {
   const budget = resolveBudget(process.env.OPENCODE_BUDGET_USD)
-  const state = createBudgetState()
+  const state: BudgetState = { messages: new Map(), sessions: new Map() }
   /** sessionID → время последней сверки с БД (мс) */
   const lastDbCheck = new Map<string, number>()
   const announced = new Set<string>()
@@ -173,8 +167,9 @@ export const BudgetGuard: Plugin = async ({ $ }) => {
   return {
     event: async ({ event }) => {
       if (event.type === "message.updated") {
-        const info = (event.properties as { info?: { role?: string; sessionID?: string; id?: string; cost?: number } })
-          ?.info
+        const info = (event.properties as {
+          info?: { role?: string; sessionID?: string; id?: string; cost?: number }
+        })?.info
         if (info?.role === "assistant" && typeof info.cost === "number") {
           trackMessage(state, info.sessionID ?? "", info.id ?? "", info.cost)
         }
@@ -192,7 +187,8 @@ export const BudgetGuard: Plugin = async ({ $ }) => {
       if (!announced.has(input.sessionID)) {
         announced.add(input.sessionID)
         log(
-          `BUDGET EXCEEDED session=${input.sessionID} cost=$${cost.toFixed(4)} budget=$${budget.toFixed(4)} tool=${input.tool}`
+          `BUDGET EXCEEDED session=${input.sessionID} cost=$${cost.toFixed(4)} ` +
+            `budget=$${budget.toFixed(4)} tool=${input.tool}`
         )
       }
       throw new Error(
@@ -202,3 +198,5 @@ export const BudgetGuard: Plugin = async ({ $ }) => {
     },
   }
 }
+
+export default { id: "budget-guard", server: BudgetGuard } satisfies PluginModule
