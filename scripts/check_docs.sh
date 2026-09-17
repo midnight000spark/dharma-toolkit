@@ -126,9 +126,16 @@ for f in FILES:
     for m in link_re.finditer(scan):
         check_ref(f, m.group(1), "link")
     # 2) обратные указатели в кавычках на path/*.md (только пути со слешем)
+    #    Токен с пробелом указателем не является: это пример команды или проза,
+    #    случайно оканчивающаяся на «.md» (`firecrawl parse ./file.pdf -o out.md`).
+    #    Путь-указатель пробелов не содержит — эвристика сужена в 6.4 после
+    #    ложного красного на скилле (аттестация: пробный токен с пробелом —
+    #    зелёный, настоящая отсутствующая цель — красный).
     for m in re.finditer(r"`([^`\n]+?\.md(?:#[^`\n]*)?)`", text):
         token = m.group(1)
         if "/" not in token or any(c in token for c in "*<>{}…"):
+            continue
+        if re.search(r"\s", token):
             continue
         check_ref(f, token, "path")
     # 3) указатели «тело: ...»
