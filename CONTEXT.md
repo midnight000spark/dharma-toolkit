@@ -1,6 +1,6 @@
 # Быстрый контекст проекта "Дхарма-тулкит"
 
-> _Freshness — owner: пользователь · reviewed: 2026-09-16 · verified-by: `flutter analyze --fatal-infos` (0) / `flutter test` (400/400) / `./scripts/check_docs.sh` (PASSED) / `flutter build apk --debug|--release` (exit 0)._
+> _Freshness — owner: пользователь · reviewed: 2026-09-17 · verified-by: `flutter analyze --fatal-infos` (0) / `flutter test` (412/412) / `./scripts/check_docs.sh` (PASSED) / `flutter build apk --debug|--release` (exit 0)._
 
 ## Суть
 Мобильное приложение — универсальный буддийский тулкит: Тхеравада, Махаяна,
@@ -44,8 +44,13 @@ stage-5b.3/5b.4/5b.5). Приёмка подэтапа — ручным прог
 первый потребитель EventBus — D-21); **android-emu-0 ✅** (первый android-билд:
 desugaring + манифест по F-55/D-43, headless-эмулятор `scripts/emu.sh`, гранты
 `emu-perms.sh`, живое доказательство pending `emu-verify.sh` — 4 exact-будильника
-в 08:00 на API 35 без перезапуска, F-65); далее 6.3 — живой выстрел уведомления.
-400 тестов зелёные, analyze --fatal-infos 0, CI на пине Flutter 3.47.4 с drift-gate.
+в 08:00 на API 35 без перезапуска, F-65).
+**6.3 ✅ по существу** (живое уведомление: `scripts/emu-fire.sh` довёл плановый будильник
+до показа на API 35 — `id=100000` в 08:00 2026-09-21, заголовок «10-й день тибетского
+месяца»; негативный контроль — выключенные уведомления → пустой план, exit 1;
+debug-хук `+1 мин`; печатаемый демо-харнес; R-26, F-66); критерий этапа закрывается
+ручной приёмкой прогона (тег stage-6, пакет 6.4).
+412 тестов зелёные, analyze --fatal-infos 0, CI на пине Flutter 3.47.4 с drift-gate.
 
 ## Открытые баги и угрозы (главное)
 - Багов уровня блокер/высокий нет; хвосты ревью 2026-09-01 закрыты пакетом
@@ -58,6 +63,8 @@ desugaring + манифест по F-55/D-43, headless-эмулятор `scripts
 - Календарные риски: R-3/R-5 закрыты в 5b.6; R-24 (ряды Луны) закрыт в
   review-fixes-1 — ряд приведён к Meeus Table 47.A/47.B, сверка по Example 47.a
   (max-ошибка фазы 0.0002 против astronomia); H-3 подтверждена (5a)
+
+- R-26: vendor-политики против exact-будильников (Samsung 500 alarms, OEM-killers, Android 14+ SCHEDULE_EXACT_ALARM) — открыта, митигация в D-36 (inexact-fallback)
 
 ## Ключевые решения (кратко)
 D-2 Flutter; D-4+D-22 Riverpod = единственная DI; D-5 модульность папками +
@@ -78,7 +85,7 @@ Phugpa-движка (F-47).
 
 ## Ключевые файлы
 STATE.md — статус; ROADMAP.md — план; AGENT.md — конституция v2.16; docs/README.md — индекс документации;
-docs/BFT-v1.11.md — требования (актуальная версия БФТ — файл с наибольшим номером);
+docs/BFT-v1.12.md — требования (актуальная версия БФТ — файл с наибольшим номером);
 docs/archive/ — read-only (хроника фаз 0–5, закрытые R-/B-, история конституции);
 docs/reference/ — read-only (тела D-/F-, адресно по якорю);
 docs/REVIEW-2026-08-31.md — аудит; docs/MIGRATIONS.md — процедура миграций;
