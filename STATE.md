@@ -281,6 +281,8 @@
 - **B-23**: повторный initAll() возвращает пустой «allOk»-репорт — закрыт (2026-09-15, review-fixes-1); `docs/archive/state-closed-bugs.md#b-23`
 - **B-24**: target пресета не валидировался на >0; EventBus on<T> — закрыт (2026-09-15, review-fixes-1); `docs/archive/state-closed-bugs.md#b-24`
 
+## Журнал изменений
+
 > Хроника фаз 0–5 — в `docs/archive/state-journal-phases-0-5.md` (read-only);
 > фазы 6 и 7 — `docs/archive/state-journal-phases-6.md` и `state-journal-phases-7.md` (read-only).
 
@@ -289,6 +291,7 @@
 | 2026-09-17 | **7.0 ✅ (данные/домен, тег `stage-7.0` на `67dc4cc`, CI `GREEN` #54)**: паки, чтение дня с ротацией, лента «сегодня + 7», порт `ContentSource` в ядре (D-44), docs-закрытие (БФТ v1.14 / ROADMAP v1.18 / AGENT v2.17); детали блоков A–D — `docs/archive/state-journal-phases-7.md` | Команда |
 
 ---
+
 ## Следующее действие
 **Этап 7 «Контент» — пакет 7.0 ✅ (данные/домен, тег `stage-7.0`, 2026-09-17)**: паки, чтение дня
 с ротацией, лента «сегодня + 7», фолбэк FR-CNT-3, контракт чтения дня в ядре (**D-44**), проводка
