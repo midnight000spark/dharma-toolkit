@@ -52,6 +52,8 @@ gittoken.md
 
 # OpenCode / plugin artifacts
 .omo/
+.tmp/
+.firecrawl/
 node_modules/
 package.json
 package-lock.json

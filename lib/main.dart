@@ -22,6 +22,7 @@ import 'features/events/platform/degraded_notification_scheduler.dart';
 import 'features/events/platform/notification_gateway.dart';
 import 'features/events/platform/notification_scheduler_adapter.dart';
 import 'features/events/platform/notification_service.dart';
+import 'features/events/presentation/dev/debug_notification_button.dart';
 import 'features/events/presentation/providers/event_providers.dart';
 import 'shared/l10n/l10n.dart';
 import 'shared/providers/app_providers.dart';
@@ -249,6 +250,20 @@ class _DharmaToolkitAppState extends ConsumerState<DharmaToolkitApp> {
       supportedLocales: appSupportedLocales,
       localizationsDelegates: appLocalizationsDelegates,
       routerConfig: ref.watch(routerProvider),
+      // Dev-хук демо-напоминания (6.3, блок A): кнопка рисуется только под
+      // гейтом `kDebugMode` (см. DebugNotificationButton) — в release здесь
+      // остаётся пустой слой. Живёт в composition root, потому что только он
+      // вправе связывать UI с портом фичи событий.
+      builder: (context, child) => Stack(
+        children: [
+          ?child,
+          const Positioned(
+            right: 16,
+            bottom: 96,
+            child: DebugNotificationButton(),
+          ),
+        ],
+      ),
     );
   }
 }
