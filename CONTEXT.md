@@ -1,6 +1,6 @@
 # Быстрый контекст проекта "Дхарма-тулкит"
 
-> _Freshness — owner: пользователь · reviewed: 2026-09-15 · verified-by: `flutter analyze --fatal-infos` (0) / `flutter test` (400/400) / `./scripts/check_docs.sh` (PASSED)._
+> _Freshness — owner: пользователь · reviewed: 2026-09-16 · verified-by: `flutter analyze --fatal-infos` (0) / `flutter test` (400/400) / `./scripts/check_docs.sh` (PASSED) / `flutter build apk --debug|--release` (exit 0)._
 
 ## Суть
 Мобильное приложение — универсальный буддийский тулкит: Тхеравада, Махаяна,
@@ -15,7 +15,7 @@
 - Изолированная: данные по тегу traditionTag из активного пресета
 
 ## Стек
-Flutter 3.47.1 / Dart 3.13.1, Riverpod 2.6.1 (state + DI, service locator
+Flutter 3.47.4 / Dart 3.13.3, Riverpod 2.6.1 (state + DI, service locator
 запрещён — D-4/D-22), Drift 2.34.3 (SQLite, сверять с pubspec.lock — F-24),
 go_router 18.0.0, flutter_test; локализация ru подключена в 5.0.5 (intl 0.20.3).
 
@@ -41,8 +41,11 @@ stage-5b.3/5b.4/5b.5). Приёмка подэтапа — ручным прог
 по D-36); UI и платформенный адаптер уведомлений — пакеты 6.2–6.3.
 **6.2 ✅** (платформенный адаптер: `NotificationService` за узким швом, честная
 точность exact/inexact, Linux-деградация F-57, биндинг портов в composition root,
-первый потребитель EventBus — D-21); далее 6.3 — живой прогон уведомлений.
-400 тестов зелёные, analyze --fatal-infos 0, CI на пине Flutter 3.47.1 с drift-gate.
+первый потребитель EventBus — D-21); **android-emu-0 ✅** (первый android-билд:
+desugaring + манифест по F-55/D-43, headless-эмулятор `scripts/emu.sh`, гранты
+`emu-perms.sh`, живое доказательство pending `emu-verify.sh` — 4 exact-будильника
+в 08:00 на API 35 без перезапуска, F-65); далее 6.3 — живой выстрел уведомления.
+400 тестов зелёные, analyze --fatal-infos 0, CI на пине Flutter 3.47.4 с drift-gate.
 
 ## Открытые баги и угрозы (главное)
 - Багов уровня блокер/высокий нет; хвосты ревью 2026-09-01 закрыты пакетом
@@ -74,12 +77,13 @@ Phugpa-движка (F-47).
 - pub.dev tibetan_calendar — только атрибуты года, проверить (H-3) — F-21
 
 ## Ключевые файлы
-STATE.md — статус; ROADMAP.md — план; AGENT.md — конституция v2.13; docs/README.md — индекс документации;
+STATE.md — статус; ROADMAP.md — план; AGENT.md — конституция v2.16; docs/README.md — индекс документации;
 docs/BFT-v1.11.md — требования (актуальная версия БФТ — файл с наибольшим номером);
 docs/archive/ — read-only (хроника фаз 0–5, закрытые R-/B-, история конституции);
 docs/reference/ — read-only (тела D-/F-, адресно по якорю);
 docs/REVIEW-2026-08-31.md — аудит; docs/MIGRATIONS.md — процедура миграций;
-scripts/check_docs.sh — linkcheck; .opencode/agent/dharma.md — инструкции агента.
+scripts/check_docs.sh — linkcheck; scripts/emu.sh + emu-perms.sh + emu-verify.sh — headless-эмулятор,
+гранты и проверка pending-будильников (F-65); .opencode/agent/dharma.md — инструкции агента.
 
 ## Команда
 Пользователь — разработка и ревью с оркестратором;

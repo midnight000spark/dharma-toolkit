@@ -656,3 +656,74 @@
   зафиксирована в докстринге теста.
 - **Источник**: CI #46 (`3b82359`), мутационные прогоны M14/M2 пакета 6.2
 - **Дата**: 2026-09-15
+
+<a id="f-65"></a>
+### F-65: Android-сборка и headless-эмулятор — рабочий конфиг, скрипты, живое доказательство pending
+- **Описание** (пакет android-emu-0, 2026-09-16):
+  - **Android-конфиг после правок** (первый android-билд проекта; F-55 требовал
+    `desugaring` + манифест): AGP **9.1.0**, Gradle **9.3.1**, Kotlin **2.4.0**,
+    compileSdk **36**, targetSdk **36**, minSdk **24**, Java **17**
+    (source/target/`jvmTarget`), `isCoreLibraryDesugaringEnabled = true` +
+    `coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")`.
+    AGP не понижался: README flutter_local_notifications 22.3.0 требует минимум
+    8.11.1 и прямо разрешает более высокую версию. Манифест: `POST_NOTIFICATIONS`,
+    `SCHEDULE_EXACT_ALARM` (не `USE_EXACT_ALARM` — D-36), `RECEIVE_BOOT_COMPLETED`,
+    ресиверы `ScheduledNotificationReceiver` и `ScheduledNotificationBootReceiver`
+    (с `BOOT_COMPLETED`/`MY_PACKAGE_REPLACED`/`QUICKBOOT_POWERON`/`htc`).
+    `ActionBroadcastReceiver` не добавлялся (notification actions не в MVP).
+    Мутация M1 (снять `isCoreLibraryDesugaringEnabled`) — красная дословно:
+    «Dependency ':flutter_local_notifications' requires core library desugaring to
+    be enabled for :app.»; восстановление — зелёный билд.
+  - **JDK-среда**: дефолтный `java` в системе — JRE 21
+    (`/usr/lib/jvm/java-21-openjdk-amd64`, пакет `openjdk-21-jre`), без `javac`;
+    Gradle падал на `toolchain ... does not provide the required capabilities:
+    [JAVA_COMPILER]`. Сборка идёт с `flutter config --jdk-dir=
+    /usr/lib/jvm/java-17-openjdk-amd64` (javac 17.0.20) — настройка Flutter,
+    вне репозитория; `flutter build apk --debug` без `JAVA_HOME` → exit 0.
+  - **Скрипты** (порядок прогона: `emu.sh up` → установка APK → `emu-perms.sh` →
+    запуск; гранты физически требуют установленного пакета, а `uninstall` сбрасывает
+    app-op): `scripts/emu.sh` (`up|down|status|wait-boot`, идемпотентный up по
+    `adb emu avd name`, флаги `-no-window -no-audio -no-boot-anim`, ожидание
+    `sys.boot_completed` **и** видимости в `flutter devices`; `status`: BOOT_OK/BOOTING/none);
+    `scripts/emu-perms.sh` (`grant|revoke`, applicationId из `build.gradle.kts`);
+    `scripts/emu-verify.sh` (грепает `dumpsys alarm` по пакету, проверяет время
+    и режим `--expect-exact|--expect-inexact`).
+  - **Команда гранта exact** (проверена на устройстве API 35): `adb shell appops set
+    --uid <pkg> SCHEDULE_EXACT_ALARM allow` — uid-mode; флаг `--uid` подтверждён
+    синтаксисом `appops set [--user <ID>] <[--uid] PACKAGE | UID> <OP> <MODE>` из
+    `adb shell appops help`; проверка — `appops get <pkg> SCHEDULE_EXACT_ALARM`
+    (в синтаксисе `get` флага `--uid` нет). Показ:
+    `adb shell pm grant <pkg> android.permission.POST_NOTIFICATIONS`.
+  - **Живое доказательство pending** (release-APK, API 35/Android 15, Europe/Moscow):
+    чистая установка → `/pick` → «Ньингма» → 4 pending-будильника, **без перезапуска**
+    приложения (план построен событием `PresetChanged` через шину — D-21/D-36):
+    `type=RTC_WAKEUP origWhen=2026-09-21 08:00:00.000 window=0
+    exactAllowReason=permission ... flags=0x1` (и 10-05, 10-21, 11-04 — те же 08:00).
+  - **Эмпирика плана для Ньингма**: 4 напоминания на 60-дневном горизонте при
+    `eventPacks: []` в пресетах — источник только особые дни тибетского календаря
+    (лимит 64 pending соблюдён с большим запасом; обоснование D-36 «2–4 особых дня в
+    неделю» эмпирически выше фактического для этого пресета).
+  - **Red/green разрешения через appops**: `revoke` + перезапуск → те же 4 записи
+    с `window=+1h0m0s0ms` (inexact), `--expect-exact` → FAIL, `--expect-inexact` → OK;
+    `grant` + перезапуск → `window=0` (exact), `--expect-exact` → OK. Деградация честная
+    (D-36): без гранта план сохраняется, но точность не обещается.
+  - **Ловушка проверок состояния**: `flutter devices | grep -q <serial>` под
+    `set -o pipefail` **всегда ложна** — `grep -q` выходит на первом совпадении,
+    источник получает SIGPIPE (141/255), pipefail делает статус конвейера ненулевым.
+    Первый прогон `emu.sh up` «не видел» готовый эмулятор 600 с. Сравнение состояния
+    ведётся по строке в переменной, без конвейеров (тот же класс ошибки, что F-63:
+    exit-код, замаскированный пайпом).
+  - **`/pick` только на release-сборке**: `DevSeeder.seedIfEmpty` работает под
+    `kDebugMode` и на чистой установке сам применяет первый пресет манифеста →
+    роутер редиректит `/pick` → `/`. Живой прогон онбординга/выбора традиции возможен
+    только на release/profile-сборке (debug-путь закрыт сеятелем).
+  - **Пин Flutter сверен с Tier-0**: официальный манифест
+    `flutter_infra_release/releases/releases_linux.json` → `current_release.stable`
+    = **3.47.4** (release_date 2026-09-11, Dart 3.13.3) — совпадает с локальным
+    toolchain; пин CI (ранее 3.47.1) обновлён, AGENT/CONTEXT синхронизированы.
+- **Источник**: пакет android-emu-0 (коммиты `6abda41`, `c255cd9`, `05b0d48`,
+  `80a5511`); выводы `flutter build apk --debug/--release`, `adb shell dumpsys alarm`,
+  `aapt2 dump permissions`, `flutter config --list`, `appops help`;
+  Tier-0: README flutter_local_notifications 22.3.0 (gradle/manifest/desugaring),
+  releases_linux.json Flutter
+- **Дата**: 2026-09-16

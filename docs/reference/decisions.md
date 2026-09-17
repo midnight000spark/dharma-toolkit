@@ -404,3 +404,22 @@
   рассуждений) → A/B одного и того же пакета → честное сравнение → возврат кодовых
   пакетов на qwen.
 - **Дата**: 2026-09-15
+
+<a id="d-43"></a>
+### D-43: `desugar_jdk_libs` 2.1.4 — build-зависимость Android-сборки по требованию F-55
+- **Описание**: в `android/app/build.gradle.kts` включён
+  `isCoreLibraryDesugaringEnabled = true` и добавлена build-зависимость Maven
+  `coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")` — ровно версия
+  из README flutter_local_notifications 22.3.0 (F-55).
+- **Причина**: flutter_local_notifications v10+ требует core library desugaring
+  **даже без планирования**; первый android-билд проекта без неё невозможен —
+  проверено мутацией: без флага сборка падает на `:app:checkDebugAarMetadata` с
+  «requires core library desugaring to be enabled for :app». Одобрение владельца —
+  трек эмулятора 2026-09-16.
+- **Альтернативы**: (а) понизить AGP до 8.11.1 — отвергнуто: README плагина прямо
+  разрешает более высокую версию, у нас 9.1.0, понижение ломало бы шаблон Flutter
+  3.47.4; (б) обойтись без desugaring — невозможно, плагин его требует на уровне
+  AAR-метаданных.
+- **Условие пересмотра**: обновление flutter_local_notifications, снимающее
+  требование desugaring, или конфликт версии библиотеки с AGP при апгрейде.
+- **Дата**: 2026-09-16
