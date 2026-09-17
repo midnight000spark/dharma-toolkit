@@ -1,0 +1,31 @@
+{
+  "packId": "synthetic_content_demo",
+  "traditionTag": "nyingma",
+  "version": "1",
+  "verified": false,
+  "entries": [
+    {
+      "id": "synthetic_daily_reading",
+      "type": "daily_reading",
+      "title": "Синтетическое чтение дня",
+      "body": "Синтетический текст фикстуры. Не цитата, не перевод и не источник традиции — только проверка разбора схемы.",
+      "source": "синтетическая тестовая фикстура — не издание, текст вымышлен"
+    },
+    {
+      "id": "synthetic_date_bound",
+      "type": "daily_reading",
+      "title": "Синтетическое чтение с привязкой к дате",
+      "body": "Синтетический текст, привязанный к дате правилом.",
+      "source": "синтетическая тестовая фикстура — не издание, текст вымышлен",
+      "dateRule": { "kind": "tibetan", "month": 10, "day": 25 }
+    },
+    {
+      "id": "synthetic_gregorian_bound",
+      "type": "quote",
+      "title": "Синтетическая цитата с григорианской привязкой",
+      "body": "Синтетический текст с ежегодной григорианской датой.",
+      "source": "синтетическая тестовая фикстура — не издание, текст вымышлен",
+      "dateRule": { "kind": "gregorian_yearly", "month": 2, "day": 29 }
+    }
+  ]
+}
