@@ -11,7 +11,7 @@ import 'package:dharma_toolkit/features/content/domain/content_fallbacks.dart';
 import 'package:dharma_toolkit/features/content/domain/content_feed.dart';
 import 'package:dharma_toolkit/features/content/domain/content_feed_service.dart';
 import 'package:dharma_toolkit/features/content/domain/content_pack.dart';
-import 'package:dharma_toolkit/features/content/domain/content_reading.dart';
+import 'package:dharma_toolkit/core/content/daily_reading.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 ContentEntry entryOf({

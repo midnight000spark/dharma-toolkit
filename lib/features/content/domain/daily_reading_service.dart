@@ -22,10 +22,11 @@
 library;
 
 import '../../../core/calendar/special_days_source.dart';
+import '../../../../core/content/daily_reading.dart';
 import 'content_fallbacks.dart';
 import 'content_pack.dart';
-import 'content_reading.dart';
 import 'content_rotation.dart';
+import 'daily_readings.dart';
 
 /// Собирает чтения конкретного дня из паков активной традиции.
 class DailyReadingService {

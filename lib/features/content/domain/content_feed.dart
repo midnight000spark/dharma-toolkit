@@ -14,7 +14,8 @@
 /// приложения, а не текст традиции (FR-CNT-3, UX-A-4).
 library;
 
-import 'content_reading.dart';
+import '../../../../core/content/daily_reading.dart';
+import 'daily_readings.dart';
 
 /// Результат сборки ленты контента.
 class ContentFeed {

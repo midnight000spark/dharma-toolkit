@@ -13,7 +13,7 @@ import 'package:dharma_toolkit/core/calendar/special_day.dart';
 import 'package:dharma_toolkit/core/calendar/special_days_source.dart';
 import 'package:dharma_toolkit/features/content/domain/content_fallbacks.dart';
 import 'package:dharma_toolkit/features/content/domain/content_pack.dart';
-import 'package:dharma_toolkit/features/content/domain/content_reading.dart';
+import 'package:dharma_toolkit/core/content/daily_reading.dart';
 import 'package:dharma_toolkit/features/content/domain/content_rotation.dart';
 import 'package:dharma_toolkit/features/content/domain/daily_reading_service.dart';
 import 'package:flutter_test/flutter_test.dart';
