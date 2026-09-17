@@ -39,55 +39,18 @@
 
 ## ФАКТЫ
 
-> **Индекс фактов (D-38).** Тела перенесены в `docs/reference/facts.md` (read-only) и
-> читаются адресно по якорю `#f-N`. Все номера F-1…F-57 сохранены.
+> **Индекс фактов (D-38).** Тела — в `docs/reference/facts.md` (read-only), адресно по якорю;
+> номера F-1…F-67 (тела F-1…F-58 — там же, по диапазону), номера не переиспользуются.
 
-- **F-1…F-67** — 67 фактов; тела адресно по якорю `#f-N` в `docs/reference/facts.md` (read-only).
-  Новое: **F-67** — подготовка бонского календаря (первичное исследование — пакет
-  `research-scout-0`; запись — 6.4 блок D): реализация в тулките (бэклог v1.1, D-30) —
-  **не новая математика**, а **параметризация Phugpa-движка** (конвенции из F-47: старт
-  60-летнего цикла, имена лет, начало года с 12-го хор-месяца) **+ отдельный пак событий**
-  (F-48: наборы дат не совпадают, переключателя года недостаточно); тест-вектор —
-  новогодний якорь 2026 (**19.01.2026**) против тибетского Лосара (**18.02.2026**);
-  открытого расчётного ядра нет — только проприетарные приложения; **D-23 не меняется**
-  (MVP = Ньингма + Тхеравада; ветка — подготовка, не реализация).
-  Ранее: **F-66** — техника приёмки плановых уведомлений на эмуляторе: time-travel
-  (`adb root` + `adb shell date`) срывает RTC-будильник (AlarmManager пересчитывает
-  `whenElapsed` по новым часам); показ проверяется `dumpsys notification --noredact`
-  (сервиса `notification_manager` в Android **нет** → `grep -c` даёт ложный ноль при
-  живом показе на экране); отпечаток показа `id|posttimeElapsedMs`; негативный контроль —
-  уведомления выключены → `emu-fire.sh` exit 1 «срабатывания нет»; быстрый контур —
-  debug-хук `+1 мин` через реальный порт; ловушка `printf|head` под `pipefail` → exit 141;
-  часы возвращаются `trap`'ом + переплан.
-  Ранее: **F-65** — android-emu-0: рабочий Android-конфиг (AGP 9.1.0 / compileSdk 36 /
-  Java 17 / `desugar_jdk_libs` 2.1.4, мутация без desugaring красная), JDK-среда
-  (дефолтный `java` — JRE 21 без `javac`; сборка через `flutter config --jdk-dir` на
-  JDK 17), три скрипта (`emu.sh`/`emu-perms.sh`/`emu-verify.sh`) и порядок
-  «установка → гранты», форма гранта exact (`appops set --uid`), живое доказательство
-  4 exact-pending в 08:00 без перезапуска, red/green через `appops revoke/grant`,
-  эмпирика 4 pending/60 дней, release-only `/pick` из-за `DevSeeder`, ловушка
-  `pipefail`+`grep -q`, сверка пина Flutter 3.47.4 с Tier-0.
-  Ранее: **F-64** — перенос момента плана в зону устройства: `scheduledAt` домена несёт
-  настенные часы устройства полями, поэтому в `tz.local` переносятся **поля**; перенос инстанта
-  (`TZDateTime.from`) совпадает с ними лишь при совпадении зоны процесса и устройства — UTC-раннер
-  CI дал 11:30 вместо 08:30 (шаг Test красный при зелёных analyze/drift-gate, CI #46).
-  **F-63** — сеть до GitHub: порт 22 не проходит (`kex_exchange_identification: Connection closed`),
-  `ssh.github.com:443` тем же ключом аутентифицируется; пуш — одноразовым `core.sshCommand`,
-  конфиг/remote не менялись.
-  Ранее в 6.2: **F-62** — `UnimplementedError implements UnsupportedError` в dart:core: мутация
-  «ловить `UnsupportedError` вместо `UnimplementedError`» семантически эквивалентна и красной
-  быть не может; проверяемая форма гарда — ловля неродственного типа или отсутствие `try/catch`.
-  **F-61** — `FlutterLocalNotificationsPlugin` 22.3.0 — синглтон с приватным конструктором
-  (не подклассируется и не мокается), поэтому шов 6.2 — свой (`NotificationGateway`,
-  `LocalTimeZoneSource`); премисса F-55 «мокаемый» уточнена.
-  Предыдущее: **F-60** — объективная остановка по стоимости сессии OpenCode: TUI-плагин `token-tracker`
-  (визуальный контроль; подхватывается регистрацией в `tui.json`, а не серверным загрузчиком),
-  `.opencode/plugins/budget-guard.ts` (жёсткая остановка при `cost >= $OPENCODE_BUDGET_USD`,
-  default 0.5) и `scripts/cost-check.sh` (fallback по `session.cost`); там же — ограничение
-  загрузчика 1.18: каждый экспорт файла-плагина обязан быть плагином (пакет `infra-cost-guard`).
-  Предыдущее: **F-59** — порт календаря расширен до `SpecialDaysSource` (D-37 + D-35): резолв
-  тибетских дат M/D для правила `tibetan`, отказ `null` у календаря без тибетских дат; контракт
-  `CalendarProvider` не менялся, `core→features` не возник (пакет 6.1 блок C).
+- **F-67**: подготовка research-ветки календаря бэклога v1.1 — параметризация движка + свой пак событий (research-scout-0, 6.4/D); `docs/reference/facts.md#f-67`
+- **F-66**: техника приёмки плановых уведомлений на эмуляторе (time-travel срывает RTC, `dumpsys`, негативный контроль); `docs/reference/facts.md#f-66`
+- **F-65**: android-emu-0 — Android-конфиг, JDK 17, три скрипта `emu*`, 4 exact-pending без перезапуска; `docs/reference/facts.md#f-65`
+- **F-64**: момент плана переносится полями в зоне устройства (UTC-раннер CI дал 11:30 вместо 08:30); `docs/reference/facts.md#f-64`
+- **F-63**: сеть до GitHub по SSH только через `ssh.github.com:443`; пуш — одноразовый `core.sshCommand`; `docs/reference/facts.md#f-63`
+- **F-62**: `UnimplementedError implements UnsupportedError` — проверяемая форма гарда в мутациях; `docs/reference/facts.md#f-62`
+- **F-61**: `FlutterLocalNotificationsPlugin` 22.3.0 — синглтон с приватным конструктором, шов 6.2 собственный; `docs/reference/facts.md#f-61`
+- **F-60**: объективная остановка по стоимости сессии (token-tracker, budget-guard, cost-check); `docs/reference/facts.md#f-60`
+- **F-59**: порт календаря расширен до `SpecialDaysSource` (D-37/D-35); `docs/reference/facts.md#f-59`
 
 ## РЕШЕНИЯ
 
