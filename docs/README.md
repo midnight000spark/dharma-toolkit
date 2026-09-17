@@ -19,6 +19,9 @@
 | `dcp.md` | механика DCP/compress: refs, диагностика «not available», регресс serve-auth и фикс | при работе с compress / поломках контекст-менеджмента | reference |
 | `archive/state-journal-phases-0-5.md` | хроника журнала фаз 0–5 | адресно | archive (read-only) |
 | `archive/state-journal-phases-6.md` | хроника журнала фазы 6 (2026-09-02…2026-09-17) | адресно | archive (read-only) |
+| `archive/state-journal-phases-7.md` | хроника журнала фазы 7 (пакет 7.0) | адресно | archive (read-only) |
+| `archive/state-closed-hypotheses.md` | тела завершённых гипотез H- | адресно по якорю | archive (read-only) |
+| `archive/r18-chronicle.md` | хроника обрывов сессий R-18 (#12–#16) | адресно | archive (read-only) |
 | `archive/state-closed-risks.md` | тела закрытых угроз R- | адресно по якорю | archive (read-only) |
 | `archive/state-closed-bugs.md` | тела закрытых багов B- | адресно по якорю | archive (read-only) |
 | `archive/constitution-history.md` | история конституции AGENT v1…v2.12 | адресно | archive (read-only) |
