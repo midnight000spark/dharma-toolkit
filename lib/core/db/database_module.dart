@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart' show QueryExecutor;
+import 'package:flutter/foundation.dart';
 
 import '../module/app_module.dart';
 import 'app_database.dart';
@@ -42,8 +43,36 @@ class DatabaseModule implements AppModule {
   @override
   Future<void> init() async {
     final executor = _executor;
-    _database =
+    final db =
         executor == null ? AppDatabase() : AppDatabase.withExecutor(executor);
+    _database = db;
+
+    // C1(2): «критичный модуль, который не может упасть» — прежний init только
+    // конструировал AppDatabase над LazyDatabase, файл не открывался, и
+    // повреждение базы физически не могло попасть в fatalFailures: оно
+    // всплывало текстом на экране списка практик вместо экрана восстановления.
+    // Активный зонд обязан открывать соединение здесь.
+    //
+    // Выбор `PRAGMA quick_check`, а не `SELECT count(*) FROM sqlite_master`:
+    // второй ловит только «это вообще не база», а обрезанный/битостраничный
+    // файл проходит. Цена — обход страниц (стоимость растёт с размером базы);
+    // вопрос таймаута и выноса зонда за критический путь — W19, не этот пакет.
+    try {
+      await db.customSelect('PRAGMA quick_check').get();
+    } catch (error, stack) {
+      debugPrint('Зонд целостности БД не прошёл: $error\n$stack');
+      _database = null;
+      // Соединение закрываем в любом случае: у LazyDatabase, у которого opener
+      // упал, ошибка кешируется, и close() пере-бросит её сюда второй раз.
+      try {
+        await db.close();
+      } catch (closeError) {
+        debugPrint('Закрытие после отказа зонда: $closeError');
+      }
+      // Отказ наружу: `database` входит в kCriticalModuleIds, и теперь это
+      // действительно фатал с причиной, а не тихая работа «на честном слове».
+      Error.throwWithStackTrace(error, stack);
+    }
   }
 
   @override

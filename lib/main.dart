@@ -79,6 +79,10 @@ Future<void> main() async {
       degradations: outcome.degradedModules,
       onRetry: start,
       onReset: start,
+      // C1(3): стирание закрывает соединения ДО файловых операций и
+      // переименовывает файл базы вместо удаления; отчёт о неполноте
+      // показывает сам экран.
+      wipe: () => wipeLocalState(closeDatabase: _closeModulesForWipe),
     ));
   }
 
@@ -121,6 +125,16 @@ Future<void> main() async {
       }
     },
   );
+}
+
+/// Закрытие модулей перед аварийным стиранием (C1(3)).
+///
+/// Отказ диспоза не отменяет стирание: `wipeLocalState` занесёт его в отчёт, и
+/// экран покажет, что стирание было неполным. Модули закрываются все — база
+/// первая по важности (`SQLite дописывает файл при close`), а `disposeAll`
+/// очищает реестр в `finally`, так что следующий bootstrap поднимет заново.
+Future<void> _closeModulesForWipe() async {
+  await ModuleRegistry.instance.disposeAll();
 }
 
 /// Портовые оверрайды composition root (D-22/D-34/D-37, пакет 6.2).

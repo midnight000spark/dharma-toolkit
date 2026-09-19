@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:dharma_toolkit/core/config/config_module.dart';
 import 'package:dharma_toolkit/core/db/database_module.dart';
 import 'package:dharma_toolkit/core/module/module_registry.dart';
 import 'package:dharma_toolkit/core/storage/storage_module.dart';
+import 'package:flutter/services.dart' show MethodChannel;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -9,10 +12,30 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('ModuleRegistry integration', () {
+    late Directory dbDir;
+
     setUp(() async {
       // Reset singleton state between tests
       await ModuleRegistry.instance.disposeAll();
       SharedPreferences.setMockInitialValues({});
+
+      // C1(2): DatabaseModule.init теперь открывает файл активно, а прод-
+      // конструктор берёт путь из path_provider — канал обязан отвечать.
+      dbDir = await Directory.systemTemp.createTemp('dharma_registry_');
+      const channel = MethodChannel('plugins.flutter.io/path_provider');
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+        if (call.method == 'getApplicationDocumentsDirectory') {
+          return dbDir.path;
+        }
+        return null;
+      });
+      addTearDown(() => TestDefaultBinaryMessengerBinding.instance
+          .defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null));
+      addTearDown(() {
+        if (dbDir.existsSync()) dbDir.deleteSync(recursive: true);
+      });
     });
 
     test('all three modules register without errors', () {
@@ -38,7 +61,11 @@ void main() {
 
       // Verify each module is accessible after init
       final dbModule = registry.get('database') as DatabaseModule;
-      expect(dbModule.database, isNotNull);
+      // Зонд открыл файл: схема создана, версия проставлена (C1(2)).
+      final version = await dbModule.database
+          .customSelect('PRAGMA user_version')
+          .getSingle();
+      expect(version.read<int>('user_version'), dbModule.database.schemaVersion);
 
       final storageModule = registry.get('storage') as StorageModule;
       // StorageModule should be initialized (no StateError)

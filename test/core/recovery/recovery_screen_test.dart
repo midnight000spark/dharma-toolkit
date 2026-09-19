@@ -2,12 +2,14 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:dharma_toolkit/core/db/app_database.dart'
-    show kAppDatabaseFileName;
+    show kAppDatabaseFileName, PracticesCompanion;
+import 'package:dharma_toolkit/core/db/database_module.dart';
 import 'package:dharma_toolkit/core/module/app_module.dart';
 import 'package:dharma_toolkit/core/module/module_registry.dart';
 import 'package:dharma_toolkit/core/recovery/recovery_screen.dart';
 import 'package:dharma_toolkit/core/recovery/startup.dart';
 import 'package:dharma_toolkit/core/storage/storage_module.dart';
+import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -88,6 +90,7 @@ void main() {
       },
       wipe: () async {
         wipeCalls++;
+        return const WipeReport(prefsCleared: true);
       },
     ));
     await tester.pumpAndSettle();
@@ -149,6 +152,7 @@ void main() {
       wipe: () async {
         await gate.future;
         wiped = true;
+        return const WipeReport(prefsCleared: true);
       },
     ));
     await tester.pumpAndSettle();
@@ -265,7 +269,7 @@ void main() {
       ],
       onRetry: () async {},
       onReset: () async {},
-      wipe: () async {},
+      wipe: () async => const WipeReport(prefsCleared: true),
     ));
     await tester.pumpAndSettle();
 
@@ -288,7 +292,7 @@ void main() {
       error: StateError('повреждённые данные'),
       onRetry: () async {},
       onReset: () async {},
-      wipe: () async {},
+      wipe: () async => const WipeReport(prefsCleared: true),
     ));
     await tester.pumpAndSettle();
 
@@ -309,7 +313,7 @@ void main() {
         throw StateError('опять не поднялись');
       },
       onReset: () async {},
-      wipe: () async {},
+      wipe: () async => const WipeReport(prefsCleared: true),
     ));
     await tester.pumpAndSettle();
 
@@ -351,7 +355,7 @@ void main() {
         }
       },
       onReset: () async {},
-      wipe: () async {},
+      wipe: () async => const WipeReport(prefsCleared: true),
     ));
     await tester.pumpAndSettle();
 
@@ -365,5 +369,164 @@ void main() {
 
     expect(find.byKey(const ValueKey('retry-failure')), findsNothing,
         reason: 'сообщение об отказе не должно висеть после успешной попытки');
+  });
+
+  // C1(2): «критичный модуль database» раньше не мог упасть — init только
+  // конструировал AppDatabase над LazyDatabase, файл не открывался, и
+  // повреждение физически не попадало в fatalFailures: оно всплывало текстом
+  // на экране списка практик (сценарий (в) находки C1).
+  group('зонд целостности БД (C1(2))', () {
+    test('битый файл базы → init бросает, отказ классифицирован как фатал',
+        () async {
+      final dir = await Directory.systemTemp.createTemp('dharma_corrupt_');
+      addTearDown(() => dir.delete(recursive: true));
+      final file = File(p.join(dir.path, kAppDatabaseFileName))
+        ..writeAsStringSync('это не база данных, а простыня байтов');
+
+      final module = DatabaseModule(executor: NativeDatabase(file));
+      await expectLater(module.init(), throwsA(anything),
+          reason: 'отказ открытия обязан всплыть в init, а не наружу в UI');
+
+      final registry = ModuleRegistry.instance;
+      await registry.disposeAll();
+      addTearDown(registry.disposeAll);
+      registry.register(module);
+
+      final outcome = await bootstrapModules(registry);
+
+      expect(outcome.ok, isFalse,
+          reason: 'повреждение базы — фатал с причиной, а не «no such table» '
+              'в списке практик');
+      expect(outcome.fatalFailures.map((f) => f.moduleId), ['database']);
+    });
+
+    test('здоровая база проходит зонд и остаётся пригодной к записи',
+        () async {
+      final module = DatabaseModule(executor: NativeDatabase.memory());
+
+      await module.init();
+
+      // Не «getter вернул non-nullable», а поведение: соединение после зонда
+      // живое и пишет (иначе «активный зонд» означал бы закрытую базу).
+      final id = await module.database.into(module.database.practices).insert(
+            PracticesCompanion.insert(
+              name: 'Простирания',
+              type: 'counter',
+              traditionTag: 'nyingma',
+            ),
+          );
+      expect(id, greaterThan(0));
+      expect(await module.database.select(module.database.practices).get(),
+          hasLength(1));
+
+      await module.dispose();
+    });
+  });
+
+  // C1(3): стирание обязано закрывать соединение до файловых операций, сносить
+  // сайдкары журнала и беречь основной файл (rename вместо delete), а отказ —
+  // попадать в отчёт, а не в debugPrint.
+  group('аварийное стирание (C1(3))', () {
+    late Directory dir;
+    late String dbPath;
+
+    setUp(() async {
+      dir = await Directory.systemTemp.createTemp('dharma_wipe_');
+      dbPath = p.join(dir.path, kAppDatabaseFileName);
+      File(dbPath).writeAsStringSync('данные со счётчиком');
+      File('$dbPath-journal').writeAsStringSync('journal');
+      File('$dbPath-wal').writeAsStringSync('wal');
+      File('$dbPath-shm').writeAsStringSync('shm');
+
+      const channel = MethodChannel('plugins.flutter.io/path_provider');
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (call) async {
+        if (call.method == 'getApplicationDocumentsDirectory') {
+          return dir.path;
+        }
+        return null;
+      });
+      addTearDown(() => TestDefaultBinaryMessengerBinding.instance
+          .defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, null));
+      SharedPreferences.setMockInitialValues({'dharma.wipe.test': 1});
+    });
+
+    tearDown(() async {
+      if (dir.existsSync()) await dir.delete(recursive: true);
+    });
+
+    test('закрытие — раньше файлов; сайдкары снесены; база переименована',
+        () async {
+      final order = <String>[];
+
+      final report = await wipeLocalState(closeDatabase: () async {
+        order.add('close');
+        // На момент закрытия основной файл ещё на месте: иначе SQLite дописал
+        // бы его под уже удалённый путь.
+        expect(File(dbPath).existsSync(), isTrue);
+      });
+
+      expect(order, ['close']);
+      expect(File(dbPath).existsSync(), isFalse,
+          reason: 'путь базы свободен — приложение стартует с чистой схемы');
+      expect(report.renamedDatabaseTo, isNotNull);
+      expect(File(report.renamedDatabaseTo!).existsSync(), isTrue,
+          reason: 'файл сохранён под corrupt-именем: шанс вытащить счёт (D-26)');
+      expect(p.basename(report.renamedDatabaseTo!),
+          startsWith('$kAppDatabaseFileName.corrupt-'));
+      expect(report.removedSidecars, unorderedEquals(<String>[
+        '$kAppDatabaseFileName-journal',
+        '$kAppDatabaseFileName-wal',
+        '$kAppDatabaseFileName-shm',
+      ]));
+      for (final suffix in ['-journal', '-wal', '-shm']) {
+        expect(File('$dbPath$suffix').existsSync(), isFalse,
+            reason: 'оставленный журнал восстановил бы базу под удалённый путь');
+      }
+      expect(report.prefsCleared, isTrue);
+      expect(report.errors, isEmpty);
+      expect(report.clean, isTrue);
+    });
+
+    test('отказ закрытия попадает в отчёт и не отменяет стирание', () async {
+      final report = await wipeLocalState(closeDatabase: () async {
+        throw StateError('close не отдал соединение');
+      });
+
+      expect(report.clean, isFalse,
+          reason: 'проглоченный отказ стирания — это «кнопка сработала», '
+              'которая не сработала');
+      expect(report.errors.single, contains('close не отдал соединение'));
+      expect(File(dbPath).existsSync(), isFalse);
+      expect(report.renamedDatabaseTo, isNotNull);
+    });
+
+    testWidgets('неполное стирание видно на экране, детали — в логе (C1(3))',
+        (tester) async {
+      await tester.pumpWidget(RecoveryApp(
+        error: StateError('повреждённые данные'),
+        onRetry: () async {},
+        onReset: () async {},
+        wipe: () async => const WipeReport(
+          prefsCleared: true,
+          errors: ['файл базы не переименован: errno 13'],
+        ),
+      ));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('wipe-incomplete')), findsNothing,
+          reason: 'до подтверждения стирания не было');
+
+      await tester.tap(find.text('Сбросить настройки'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, 'Сбросить'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('wipe-incomplete')), findsOneWidget);
+      expect(
+          find.textContaining('Стирание прошло не полностью'), findsOneWidget);
+      expect(find.textContaining('errno 13'), findsNothing,
+          reason: 'B-19: системные детали не уходят на экран');
+    });
   });
 }

@@ -10,29 +10,120 @@ import '../../shared/utils/error_text.dart';
 import '../db/app_database.dart' show kAppDatabaseFileName;
 import '../module/module_registry.dart' show ModuleInitFailure;
 
+/// Отчёт об аварийном стирании (C1(3)): что удалось и что нет.
+///
+/// До FIX-1 [wipeLocalState] возвращала `void` и проглатывала каждый отказ в
+/// `debugPrint`: пользователь жал «Сбросить настройки», видел перезапуск, а
+/// не стёршийся файл базы оставался на месте — и тот же экран появлялся снова,
+/// без единого признака, что стирание не состоялось.
+class WipeReport {
+  /// Настройки (SharedPreferences) очищены.
+  final bool prefsCleared;
+
+  /// Путь, под который переименован файл базы, или `null`, если файла не было
+  /// либо переименование не удалось.
+  final String? renamedDatabaseTo;
+
+  /// Имена сайдкаров журнала, удалённых вместе с базой.
+  final List<String> removedSidecars;
+
+  /// Человекочитаемые формулировки того, что не получилось. Пусто = чисто.
+  final List<String> errors;
+
+  const WipeReport({
+    required this.prefsCleared,
+    this.renamedDatabaseTo,
+    this.removedSidecars = const [],
+    this.errors = const [],
+  });
+
+  bool get clean => errors.isEmpty;
+}
+
+/// Файлы, которые SQLite держит рядом с базой. Стирать только основной файл —
+/// значит оставить журнал, по которому база «восстанавливается» обратно под
+/// удалённый путь.
+const List<String> _databaseSidecarSuffixes = ['-journal', '-wal', '-shm'];
+
 /// Аварийное стирание локального состояния (B-5).
 ///
 /// ВНИМАНИЕ (I-3): это НЕ [PresetManager.resetPreset] и не смена традиции —
 /// катастроф-рекавери при повреждённых данных: чистит настройки и файл БД.
 /// Вызывается только после явного подтверждения пользователем.
 /// Каждая операция независима: отказ path_provider не должен мешать
-/// очистке prefs (и наоборот).
-Future<void> wipeLocalState() async {
+/// очистке prefs (и наоборот) — но обязан попасть в [WipeReport].
+///
+/// [closeDatabase] вызывается ПЕРЕД файловыми операциями (C1(3)): SQLite
+/// дописывает файл при `close`, и «стёртая» база возродилась бы из-под
+/// удалённого пути. Основной файл не удаляется, а переименовывается в
+/// `…sqlite.corrupt-<ts>` — шанс вытащить счёт остаётся (дух D-26).
+Future<WipeReport> wipeLocalState({
+  Future<void> Function()? closeDatabase,
+}) async {
+  final errors = <String>[];
+  final removedSidecars = <String>[];
+  String? renamedDatabaseTo;
+
+  if (closeDatabase != null) {
+    try {
+      await closeDatabase();
+    } catch (error) {
+      errors.add('соединение с базой не закрылось: $error');
+      debugPrint('recovery: не удалось закрыть соединение перед стиранием: $error');
+    }
+  }
+
+  var prefsCleared = false;
   try {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
+    prefsCleared = true;
   } catch (e) {
+    errors.add('настройки не очищены: $e');
     debugPrint('recovery: не удалось очистить настройки: $e');
   }
+
   try {
     final dir = await getApplicationDocumentsDirectory();
-    final file = File(p.join(dir.path, kAppDatabaseFileName));
-    if (await file.exists()) {
-      await file.delete();
+    final dbPath = p.join(dir.path, kAppDatabaseFileName);
+
+    for (final suffix in _databaseSidecarSuffixes) {
+      final sidecar = File('$dbPath$suffix');
+      try {
+        if (await sidecar.exists()) {
+          await sidecar.delete();
+          removedSidecars.add('$kAppDatabaseFileName$suffix');
+        }
+      } catch (e) {
+        errors.add('сайдкар ${p.basename(sidecar.path)} не удалён: $e');
+        debugPrint('recovery: не удалось удалить ${sidecar.path}: $e');
+      }
+    }
+
+    try {
+      final file = File(dbPath);
+      if (await file.exists()) {
+        final target =
+            '$dbPath.corrupt-${DateTime.now().millisecondsSinceEpoch}';
+        await file.rename(target);
+        renamedDatabaseTo = target;
+        debugPrint('recovery: файл базы сохранён как $target');
+      }
+    } catch (e) {
+      errors.add('файл базы не переименован: $e');
+      debugPrint('recovery: не удалось переименовать файл БД: $e');
     }
   } catch (e) {
-    debugPrint('recovery: не удалось удалить файл БД: $e');
+    errors.add('папка документов недоступна: $e');
+    debugPrint('recovery: не удалось добраться до файлов БД: $e');
   }
+
+  return WipeReport(
+    prefsCleared: prefsCleared,
+    renamedDatabaseTo: renamedDatabaseTo,
+    removedSidecars: removedSidecars,
+    errors: errors,
+  );
 }
 
 /// Операция аварийного стирания локального состояния.
@@ -41,7 +132,7 @@ Future<void> wipeLocalState() async {
 /// и [RecoveryApp.onReset] извне, а стирание было зашито внутрь — из-за этого
 /// widget-тест вынужденно ждал реального I/O платформенных каналов фиксированным
 /// окном и флейкал. По умолчанию — реальный [wipeLocalState].
-typedef WipeLocalState = Future<void> Function();
+typedef WipeLocalState = Future<WipeReport> Function();
 
 /// Корень приложения, когда данные не прочитаны (B-5): вместо чёрного
 /// экрана — два пути: повторить попытку или стереть локальное состояние.
@@ -151,6 +242,9 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
     }
   }
 
+  /// Отчёт последней операции стирания (C1(3)): «кнопка нажата» ≠ «стёрто».
+  WipeReport? _wipeReport;
+
   /// Сброс только через явное подтверждение (I-3): это необратимое удаление
   /// духовного счёта практикующего, а не «кнопка починки».
   Future<void> _confirmReset() async {
@@ -176,7 +270,14 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
     );
     if (confirmed == true && mounted) {
       await _run(() async {
-        await widget.wipe();
+        final report = await widget.wipe();
+        if (mounted) {
+          setState(() => _wipeReport = report);
+          if (!report.clean) {
+            // B-19: на экран — факт неполноты, в лог — формулировки отказов.
+            debugPrint('recovery: стирание неполное: ${report.errors}');
+          }
+        }
         await widget.onReset();
       });
     }
@@ -241,6 +342,20 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
                 Text(
                   _retryFailure!,
                   key: const ValueKey('retry-failure'),
+                  style: Theme.of(context).textTheme.bodySmall,
+                  textAlign: TextAlign.center,
+                ),
+              ],
+              if (_wipeReport case final WipeReport report when !report.clean) ...[
+                const SizedBox(height: 8),
+                // C1(3): отказ стирания обязан быть виден. Без этого «Сбросить
+                // настройки» выглядит выполненным, а экран восстановления
+                // возвращается молча — тот же класс молчаливой деградации,
+                // что R-11/R-13/R-20.
+                Text(
+                  'Стирание прошло не полностью: данные могли остаться '
+                  'на устройстве.',
+                  key: const ValueKey('wipe-incomplete'),
                   style: Theme.of(context).textTheme.bodySmall,
                   textAlign: TextAlign.center,
                 ),
