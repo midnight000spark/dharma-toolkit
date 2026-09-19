@@ -46,7 +46,7 @@ class _AppDatabaseV5 extends AppDatabase {
 /// База «старого приложения» — версия схемы на 1 ниже текущей.
 ///
 /// Миграционную стратегию **наследует** от [AppDatabase] (в отличие от
-/// `_AppDatabaseV1`/`_AppDatabaseV2Raw`, которые переопределяют её целиком):
+/// `_AppDatabaseV1`/`_AppDatabaseV2`, которые переопределяют её целиком):
 /// нужен именно downgrade-проверочный путь `onUpgrade` актуального кода —
 /// переход 3 → 2 обязан упасть на ветке `from > to` (B-12, хвост R-8).
 /// Значение 3 согласовано с тестом ниже: тест проверяет, что это ровно
@@ -60,14 +60,29 @@ class _AppDatabaseDowngrade extends AppDatabase {
   int get schemaVersion => 3;
 }
 
-/// База версии 2 со СТАРОЙ схемой практик и истории, воссозданной сырым SQL.
+/// DDL версии 2 из снимка генератора (`test/fixtures/schema_v2_drift.sql`).
+///
+/// Фикстура снималась прогоном настоящего кода ревизии `f0b6c5e`, а не
+/// переписывалась глазами (W27): рукописная версия отличалась от генератора и
+/// статическим `DEFAULT 1725000000` вместо `strftime(...)`, и формулировкой
+/// внешнего ключа. Править файл руками нельзя — гард ниже сверяет, что replay
+/// даёт ровно ту схему, что задекларирована в снимке.
+List<String> _schemaV2Statements() => File('test/fixtures/schema_v2_drift.sql')
+    .readAsLinesSync()
+    .map((line) => line.trim())
+    .where((line) => line.isNotEmpty && !line.startsWith('--'))
+    .map((line) =>
+        line.endsWith(';') ? line.substring(0, line.length - 1) : line)
+    .toList();
+
+/// База версии 2 со СТАРОЙ схемой практик и истории — из снимка генератора.
 ///
 /// Использовать актуальные классы Drift-таблиц здесь нельзя: они генерируют
-/// уже v3-DDL (с колонкой preset_practice_id и каскадом). Сырой DDL фиксирует
+/// уже v3-DDL (с колонкой preset_practice_id и каскадом). Снимок фиксирует
 /// именно то состояние, в котором живут пользовательские базы до 5.0.2.
-class _AppDatabaseV2Raw extends AppDatabase {
+class _AppDatabaseV2 extends AppDatabase {
   // ignore: use_super_parameters — см. комментарий у _AppDatabaseV1
-  _AppDatabaseV2Raw(QueryExecutor executor) : super.forTesting(executor);
+  _AppDatabaseV2(QueryExecutor executor) : super.forTesting(executor);
 
   @override
   int get schemaVersion => 2;
@@ -75,41 +90,9 @@ class _AppDatabaseV2Raw extends AppDatabase {
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (Migrator m) async {
-          await customStatement('''
-            CREATE TABLE "presets" (
-              "id" TEXT NOT NULL PRIMARY KEY,
-              "name" TEXT NOT NULL,
-              "version" TEXT NOT NULL,
-              "tradition" TEXT NOT NULL,
-              "data" TEXT NOT NULL
-            )
-          ''');
-          // Старые practices: без preset_practice_id и без индекса.
-          await customStatement('''
-            CREATE TABLE "practices" (
-              "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-              "preset_id" TEXT,
-              "name" TEXT NOT NULL,
-              "type" TEXT NOT NULL,
-              "target" INTEGER,
-              "unit" TEXT,
-              "tradition_tag" TEXT NOT NULL,
-              "current_count" INTEGER NOT NULL DEFAULT 0,
-              "created_at" INTEGER NOT NULL DEFAULT 1725000000,
-              "updated_at" INTEGER NOT NULL DEFAULT 1725000000
-            )
-          ''');
-          // Старая count_history: RESTRICT вместо CASCADE (дефект B-11).
-          await customStatement('''
-            CREATE TABLE "count_history" (
-              "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-              "practice_id" INTEGER NOT NULL
-                REFERENCES "practices" ("id") ON DELETE RESTRICT,
-              "count" INTEGER NOT NULL,
-              "timestamp" INTEGER NOT NULL DEFAULT 1725000000,
-              "note" TEXT
-            )
-          ''');
+          for (final statement in _schemaV2Statements()) {
+            await customStatement(statement);
+          }
         },
       );
 }
@@ -149,6 +132,12 @@ Future<int> _columnCount(GeneratedDatabase db, String table) async {
       .customSelect('SELECT COUNT(*) AS c FROM "$table"')
       .getSingle();
   return row.read<int>('c');
+}
+
+/// Состояние `PRAGMA foreign_keys` на текущем соединении (W7).
+Future<bool> _foreignKeysEnabled(GeneratedDatabase db) async {
+  final row = await db.customSelect('PRAGMA foreign_keys').getSingle();
+  return row.read<int>('foreign_keys') == 1;
 }
 
 void main() {
@@ -296,7 +285,7 @@ void main() {
         () async {
       // Сессия 1: база версии 2 со СТАРЫМ DDL и пользовательскими данными.
       {
-        final v2 = _AppDatabaseV2Raw(NativeDatabase(dbFile()));
+        final v2 = _AppDatabaseV2(NativeDatabase(dbFile()));
 
         await v2.customStatement(
           "INSERT INTO presets VALUES "
@@ -358,7 +347,7 @@ void main() {
         () async {
       // Сессия 1: старая база версии 2 с пользовательскими данными.
       {
-        final v2 = _AppDatabaseV2Raw(NativeDatabase(dbFile()));
+        final v2 = _AppDatabaseV2(NativeDatabase(dbFile()));
         await v2.customStatement(
           "INSERT INTO presets VALUES "
           "('nyingma', 'Ньингма', '1.0.0', 'vajrayana', '{}')",
@@ -558,6 +547,198 @@ void main() {
         final practices = await db.select(db.practices).get();
         expect(practices.single.currentCount, 42);
 
+        await db.close();
+      }
+    });
+
+    test('цепочка миграций атомарна: сбой посередине откатывает схему (W6)',
+        () async {
+      const lastBranch = 4; // совпадает с assert-ниже: последняя ветка цепочки
+
+      // Сессия 1: пользовательская база версии 2 со счётом.
+      {
+        final v2 = _AppDatabaseV2(NativeDatabase(dbFile()));
+        await v2.customStatement(
+          "INSERT INTO presets VALUES "
+          "('nyingma', 'Ньингма', '1.0.0', 'vajrayana', '{}')",
+        );
+        await v2.customStatement(
+          "INSERT INTO practices (id, name, type, tradition_tag, current_count) "
+          "VALUES (1, 'Простирания', 'counter', 'nyingma', 21000)",
+        );
+        await v2.customStatement(
+          'INSERT INTO count_history (practice_id, count) VALUES (1, 21000)',
+        );
+        expect(await _userVersion(v2), 2);
+        await v2.close();
+      }
+
+      // Сессия 2: апгрейд 2 → актуальная версия падает перед последней
+      // веткой. Шов debugFailBeforeVersion — единственный способ уронить
+      // середину цепочки, не порча данных и не игра с таймингами.
+      {
+        final db = AppDatabase.forTesting(NativeDatabase(dbFile()));
+        expect(db.schemaVersion, lastBranch,
+            reason: 'тест написан под цепочку, где 4 — последняя ветка; '
+                'при добавлении версии обновить и это ожидаемое, и сценарий');
+        db.debugFailBeforeVersion = (target) async {
+          if (target == lastBranch) {
+            throw StateError('инjected: сбой перед веткой $target');
+          }
+        };
+        await expectLater(
+          _tableNames(db),
+          throwsA(
+            predicate<Object>(
+              (error) => error.toString().contains('инjected: сбой перед веткой'),
+              'всплывает именно подброшенная причина, а не «no such table»',
+            ),
+          ),
+        );
+        await db.close();
+      }
+
+      // Сессия 3: файл выглядит так, будто апгрейда не было вовсе — и по
+      // номеру версии, и по составу схемы. Это и есть гард транзакции:
+      // без неё ветка 3 (addColumn + индекс + пересоздание count_history)
+      // осталась бы на диске при user_version = 2.
+      {
+        final after = _AppDatabaseV2(NativeDatabase(dbFile()));
+        expect(await _userVersion(after), 2);
+        expect(await _columnNames(after, 'practices'),
+            isNot(contains('preset_practice_id')));
+        expect(await _tableNames(after), isNot(contains('notification_settings')));
+        expect(await _columnCount(after, 'practices'), 1);
+        expect(await _columnCount(after, 'count_history'), 1);
+        await after.close();
+      }
+
+      // Сессия 4: откат не сломал базу — тот же файл до мигрируется до
+      // конца, данные целы.
+      {
+        final db = AppDatabase.forTesting(NativeDatabase(dbFile()));
+        expect(await _userVersion(db), db.schemaVersion);
+        expect(await _columnNames(db, 'practices'), contains('preset_practice_id'));
+        expect(await _columnCount(db, 'practices'), 1);
+        final history = await db.select(db.countHistory).get();
+        expect(history.single.count, 21000);
+        await db.close();
+      }
+    });
+
+    test('FK включены на тест-пути без setup: pragma ON и каскад (W7)',
+        () async {
+      // Ровно та ветка, что раньше молча жила с FK OFF: forTesting +
+      // NativeDatabase.memory() без `setup: enableForeignKeys`.
+      final db = AppDatabase.forTesting(NativeDatabase.memory());
+
+      expect(await _foreignKeysEnabled(db), isTrue,
+          reason: 'PRAGMA обязан применяться в migration.beforeOpen, а не '
+              'только в setup: прод-соединения');
+
+      final id = await db.into(db.practices).insert(
+            PracticesCompanion.insert(
+              name: 'Простирания',
+              type: 'counter',
+              traditionTag: 'nyingma',
+              currentCount: const Value(108),
+            ),
+          );
+      await db.into(db.countHistory).insert(
+            CountHistoryCompanion.insert(practiceId: id, count: 108),
+          );
+      await (db.delete(db.practices)..where((t) => t.id.equals(id))).go();
+
+      // Без pragma каскад не сработал бы: строки истории осиротели, а тест
+      // остался зелёным (расхождение прод/тест в семантике удалений, B-22).
+      expect(await _columnCount(db, 'count_history'), 0);
+
+      await db.close();
+    });
+
+    test('FK включены и на прод-пути (NativeDatabase + setup) (W7)', () async {
+      final db = AppDatabase.forTesting(
+        NativeDatabase(dbFile(), setup: enableForeignKeys),
+      );
+
+      expect(await _foreignKeysEnabled(db), isTrue);
+
+      final id = await db.into(db.practices).insert(
+            PracticesCompanion.insert(
+              name: 'Практика с историей',
+              type: 'counter',
+              traditionTag: 'nyingma',
+            ),
+          );
+      await db.into(db.countHistory).insert(
+            CountHistoryCompanion.insert(practiceId: id, count: 1000000),
+          );
+      // Сирота запрещён уровнем соединения: без FK такая вставка прошла бы
+      // молча, и тест перестал бы отличать каскад от его отсутствия.
+      await expectLater(
+        db.into(db.countHistory).insert(
+              CountHistoryCompanion.insert(practiceId: 9999, count: 1),
+            ),
+        throwsA(isA<SqliteException>()),
+      );
+      await (db.delete(db.practices)..where((t) => t.id.equals(id))).go();
+      expect(await _columnCount(db, 'count_history'), 0);
+
+      await db.close();
+    });
+
+    test('фикстура v2 — DDL генератора, единицы времени — секунды (W27)',
+        () async {
+      // (1) Что пишет drift на прод-подобном пути: DateTime колонка — это
+      // целое ЧИСЛО СЕКУНД (mapToSql: millisecondsSinceEpoch ~/ 1000).
+      // (2) Что даёт DEFAULT из снимка v2 — те же секунды, потому что DEFAULT
+      // в снимке дословно тот же `strftime('%s', CURRENT_TIMESTAMP)`.
+      final instant = DateTime.utc(2024, 9, 1, 12);
+      {
+        final v2 = _AppDatabaseV2(NativeDatabase(dbFile()));
+        await v2.customInsert(
+          'INSERT INTO practices (id, name, type, tradition_tag, created_at) '
+          'VALUES (?, ?, ?, ?, ?)',
+          variables: [
+            Variable.withInt(1),
+            Variable.withString('Простирания'),
+            Variable.withString('counter'),
+            Variable.withString('nyingma'),
+            Variable.withInt(instant.millisecondsSinceEpoch ~/ 1000),
+          ],
+        );
+        await v2.customStatement(
+          "INSERT INTO practices (name, type, tradition_tag) "
+          "VALUES ('Без явной даты', 'counter', 'nyingma')",
+        );
+        final raw = await v2
+            .customSelect('SELECT id, created_at FROM practices ORDER BY id')
+            .get();
+        final explicit = raw[0].data['created_at'] as int;
+        final defaulted = raw[1].data['created_at'] as int;
+        final nowSeconds = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+        expect(explicit, instant.millisecondsSinceEpoch ~/ 1000);
+        expect((defaulted - nowSeconds).abs(), lessThan(60),
+            reason: 'DEFAULT из снимка v2 обязан давать секунды: значение '
+                '$defaulted рядом с now=$nowSeconds');
+        expect(defaulted.toString().length, 10,
+            reason: '13 знаков = миллисекунды; фикстура не должна возвращаться '
+                'на выдуманные единицы');
+        await v2.close();
+      }
+
+      // (3) Значения фикстуры читаются drift-маппингом как те же самые
+      // моменты, что и записи прод-пути: после миграции 2 → текущая версия
+      // дата не уезжает в 1970-й или в 45-й век.
+      {
+        final db = AppDatabase.forTesting(NativeDatabase(dbFile()));
+        final rows = await db.select(db.practices).get();
+        expect(rows.map((r) => r.name), containsAll(['Простирания', 'Без явной даты']));
+        final stored = rows.firstWhere((r) => r.name == 'Простирания').createdAt;
+        expect(stored.difference(instant.toLocal()).abs().inSeconds,
+            lessThan(2),
+            reason: 'drift читает секунды из фикстуры — тот же миг, что и писали');
         await db.close();
       }
     });

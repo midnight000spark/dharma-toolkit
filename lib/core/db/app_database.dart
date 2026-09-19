@@ -96,12 +96,41 @@ class AppDatabase extends _$AppDatabase {
         // Версии применяются последовательно: 1→2, затем 2→3 и так далее.
         // Пропуск промежуточных версий (например, обновление приложения
         // через несколько релизов) обрабатывается тем же циклом.
-        for (var target = from + 1; target <= to; target++) {
-          await _migrateToVersion(m, target);
-        }
+        //
+        // Вся цепочка — одной транзакцией (W6). Без неё сбой на середине
+        // оставляет частично новую схему при старом `user_version`: drift
+        // пишет версию только после успеха миграции, а `LazyDatabase`
+        // кеширует ошибку открытия и пере-бросит её на каждом последующем
+        // `ensureOpen` — база больше не откроется никогда.
+        await transaction(() async {
+          for (var target = from + 1; target <= to; target++) {
+            await debugFailBeforeVersion?.call(target);
+            await _migrateToVersion(m, target);
+          }
+        });
+      },
+      beforeOpen: (OpeningDetails details) async {
+        // W7: `foreign_keys` — свойство СОЕДИНЕНИЯ, а не схемы. Пока pragma
+        // жил только в `setup:` прод-исполнителя (`_openConnection`), любая
+        // база без этого setup — прежде всего `AppDatabase.forTesting` —
+        // открывалась с FK OFF, и каскад B-11 в тестах молча не срабатывал
+        // (тот же класс, что B-22: расхождение прод/тест в семантике
+        // удалений). Здесь ветка одна для любого исполнителя.
+        //
+        // drift вызывает этот хук ПОСЛЕ onCreate/onUpgrade (поток `_runMigrations`
+        // + `GeneratedDatabase.beforeOpen` в drift 2.34.3), поэтому миграции он
+        // не касается.
+        await customStatement('PRAGMA foreign_keys = ON;');
       },
     );
   }
+
+  /// Тестовый шов атомарности цепочки (W6): вызывается перед каждой веткой
+  /// миграции. Позволяет уронить переход на середине и проверить, что схема
+  /// откатилась целиком. В проде обязан оставаться `null`.
+  /// (Аннотации `@visibleForTesting` нет: `meta` не входит в прямые
+  /// зависимости пакета, а тянуть её ради маркировки — owner-gated шаг.)
+  Future<void> Function(int targetVersion)? debugFailBeforeVersion;
 
   /// Один шаг миграции: приводит схему с версии `version - 1` к `version`.
   ///
@@ -166,8 +195,14 @@ class AppDatabase extends _$AppDatabase {
 /// Включение внешних ключей на каждом соединении (B-11, I-2).
 ///
 /// SQLite по умолчанию держит `foreign_keys = OFF`; без этого прикладного
-/// pragma каскад из объявления таблицы — только бумага. Используется в
-/// [_openConnection] и в тестах, где проверяется каскад.
+/// pragma каскад из объявления таблицы — только бумага.
+///
+/// С W7 основная гарантия живёт в `migration.beforeOpen` (см. [AppDatabase]) и
+/// действует на ЛЮБОМ исполнителе, включая `forTesting` без `setup:`. Этот
+/// колбэк остался как дубль прод-соединения: он включает FK до того, как
+/// начнутся миграции, — `beforeOpen` drift вызывается после них. Постепенно
+/// дубли устраняются по мере исчезновения потребителей (тест на PRAGMA
+/// обязателен на обеих путях).
 // Тип параметра Database не экспортируется из drift/native.dart: объявить
 // функцию с сигнатурой DatabaseSetup именованно нельзя, поэтому замыкание.
 // ignore: prefer_function_declarations_over_variables
