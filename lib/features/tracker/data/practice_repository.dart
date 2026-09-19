@@ -53,7 +53,30 @@ class PracticeRepository {
   /// вставке из пресета порядок строк определяется именно ими (список
   /// отсортирован по createdAt), а будущий импорт бэкапа обязан сохранять
   /// чужие даты. Drift хранит DateTime с точностью до секунды (F-33).
+  ///
+  /// Пресетные строки здесь не создаются: [PracticeEntity.presetId] обязан
+  /// быть `null` (см. ниже). Причина — инвариант C4/D-45.
   Future<int> create(PracticeEntity practice) async {
+    // Инвариант C4 (D-45): пресетную строку создаёт только материализация
+    // `PresetManager._materializePractices` — она одна пишет и `preset_id`, и
+    // `preset_practice_id`. Строка с `preset_id` без `preset_practice_id`
+    // невидима upsert-ключу (tradition_tag, preset_practice_id), а уникальный
+    // индекс SQLite на NULL не конфликтует → первый же applyPreset кладёт к
+    // ней двойника и счёт рассепляется. Держать границу на слое записи
+    // дешевле, чем лечить веткой v5 состояние, которого код породить не может:
+    // за всю историю репозитория (21ef531) вызывающий экран (796e5c8) presetId
+    // не передавал, а материализация (5805f5d) пишет обе колонки с первого
+    // коммита.
+    if (practice.presetId != null) {
+      throw ArgumentError.value(
+        practice.presetId,
+        'practice.presetId',
+        'практики из пресета создаёт PresetManager.applyPreset — только он '
+            'проставляет preset_practice_id; прямой create оставил бы строку '
+            'без стабильного id (C4, D-45)',
+      );
+    }
+
     return await _database.into(_database.practices).insert(
           PracticesCompanion.insert(
             presetId: Value(practice.presetId),

@@ -1,9 +1,13 @@
 import 'dart:io';
 
+import 'package:dharma_toolkit/core/config/preset_manager.dart';
+import 'package:dharma_toolkit/core/config/preset_schema.dart';
 import 'package:dharma_toolkit/core/db/app_database.dart';
-import 'package:drift/drift.dart';
+import 'package:dharma_toolkit/core/storage/storage_module.dart';
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// База, зафиксированная на схеме версии 1 — только таблица `presets`.
 ///
@@ -108,6 +112,19 @@ class _AppDatabaseV3Step extends AppDatabase {
 
   @override
   int get schemaVersion => 3;
+}
+
+/// Текущая версия схемы, но **без** миграционной стратегии.
+///
+/// Нужен, чтобы откатить `user_version` мигрированного файла назад (2 → 4 уже
+/// отработало) и не дать drift сразу прогнеть цепочку заново: только так
+/// получается честный второй прогон веток поверх уже мигрированной базы.
+class _AppDatabaseNoMigration extends AppDatabase {
+  // ignore: use_super_parameters — см. комментарий у _AppDatabaseV1
+  _AppDatabaseNoMigration(QueryExecutor executor) : super.forTesting(executor);
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy();
 }
 
 Future<Set<String>> _tableNames(GeneratedDatabase db) async {
@@ -626,6 +643,78 @@ void main() {
       }
     });
 
+    test('второй прогон цепочки поверх мигрированной базы безопасен (W6)',
+        () async {
+      // Чек-лист MIGRATIONS.md требует от ветки повторно-безопасности: убой на
+      // середине цепочки оставляет частично новую схему, и следующий старт идёт
+      // по тем же веткам. Воспроизводится прямо: файл мигрируется до текущей
+      // версии, затем его НОМЕР версии откатывается без изменения схемы.
+      {
+        final v2 = _AppDatabaseV2(NativeDatabase(dbFile()));
+        await v2.customStatement(
+          "INSERT INTO practices (id, name, type, tradition_tag, "
+          "current_count) VALUES "
+          "(1, 'Простирания', 'counter', 'nyingma', 100000)",
+        );
+        await v2.customStatement(
+          'INSERT INTO count_history (practice_id, count) VALUES (1, 60000)',
+        );
+        await v2.customStatement(
+          'INSERT INTO count_history (practice_id, count) VALUES (1, 40000)',
+        );
+        await v2.close();
+      }
+
+      // Первый прогон 2 → текущая.
+      {
+        final db = AppDatabase.forTesting(
+          NativeDatabase(dbFile(), setup: enableForeignKeys),
+        );
+        expect(await _userVersion(db), db.schemaVersion);
+        expect(await _columnCount(db, 'count_history'), 2);
+        await db.close();
+      }
+
+      // Откат номера версии без изменения схемы (схема остаётся текущей).
+      {
+        final rewind = _AppDatabaseNoMigration(NativeDatabase(dbFile()));
+        expect(await _userVersion(rewind), rewind.schemaVersion);
+        await rewind.customStatement('PRAGMA user_version = 2');
+        expect(await _userVersion(rewind), 2);
+        await rewind.close();
+      }
+
+      // Второй прогон тех же веток поверх уже мигрированной схемы.
+      {
+        final db = AppDatabase.forTesting(
+          NativeDatabase(dbFile(), setup: enableForeignKeys),
+        );
+        expect(await _userVersion(db), db.schemaVersion,
+            reason: 'цепочка доходит до текущей версии со второго захода');
+
+        final practice = (await db.select(db.practices).get()).single;
+        expect(practice.currentCount, 100000);
+        final history = await db.select(db.countHistory).get();
+        expect(history, hasLength(2),
+            reason: 'повторное пересоздание count_history не удваивает и не '
+                'теряет строки истории');
+        expect(history.fold<int>(0, (s, r) => s + r.count), 100000);
+
+        // Схема после второго прогона: индекс B-3 на месте, каскад жив.
+        final idx = await db.customSelect(
+          "SELECT name FROM sqlite_master WHERE type = 'index' "
+          "AND name = 'idx_practices_tradition_preset'",
+        ).get();
+        expect(idx, hasLength(1));
+        expect(await _foreignKeysEnabled(db), isTrue);
+        await (db.delete(db.practices)..where((t) => t.id.equals(1))).go();
+        expect(await _columnCount(db, 'count_history'), 0,
+            reason: 'ON DELETE CASCADE пережил повторное пересоздание таблицы');
+
+        await db.close();
+      }
+    });
+
     test('FK включены на тест-пути без setup: pragma ON и каскад (W7)',
         () async {
       // Ровно та ветка, что раньше молча жила с FK OFF: forTesting +
@@ -742,5 +831,227 @@ void main() {
         await db.close();
       }
     });
+
+    test('почти-реальная legacy-база v2 переживает переход, инвариант C4 цел',
+        () async {
+      // Форма строк скопирована с живой базы (эмулятор, adb pull
+      // app_flutter/dharma_toolkit.sqlite, user_version = 4): пресетные строки
+      // там есть, а популяции `preset_id NOT NULL ∧ preset_practice_id NULL`
+      // нет — ровно то, что утверждает D-45. На v2 таких строк и не могло быть:
+      // пресетные строки заводила материализация, а она появилась в 5.0.2
+      // вместе с колонкой.
+      {
+        final v2 = _AppDatabaseV2(NativeDatabase(dbFile()));
+        await v2.customStatement(
+          "INSERT INTO presets VALUES "
+          "('nyingma', 'Ньингма', '1.0.0', 'vajrayana', '{}')",
+        );
+        await v2.customStatement(
+          "INSERT INTO practices (id, preset_id, name, type, target, unit, "
+          "tradition_tag, current_count) VALUES "
+          "(1, NULL, 'Простирания', 'counter', 100000, 'повторений', 'nyingma', 21000)",
+        );
+        await v2.customStatement(
+          "INSERT INTO practices (id, preset_id, name, type, tradition_tag, "
+          "current_count) VALUES "
+          "(2, NULL, 'Своя практика', 'counter', 'nyingma', 7)",
+        );
+        await v2.customStatement(
+          'INSERT INTO count_history (practice_id, count) VALUES (1, 21000)',
+        );
+        await v2.customStatement(
+          'INSERT INTO count_history (practice_id, count) VALUES (2, 7)',
+        );
+        expect(await _userVersion(v2), 2);
+        await v2.close();
+      }
+
+      {
+        final db = AppDatabase.forTesting(
+          NativeDatabase(dbFile(), setup: enableForeignKeys),
+        );
+        expect(await _userVersion(db), db.schemaVersion);
+
+        final rows = await db.select(db.practices).get();
+        expect(rows, hasLength(2));
+        expect(
+          rows.map((r) => r.currentCount),
+          containsAll(<int>[21000, 7]),
+          reason: 'счёт практикующего священен (D-26)',
+        );
+        expect(await _columnCount(db, 'count_history'), 2);
+        expect(await _presetRowsWithoutStableId(db), 0,
+            reason: 'переход не должен порождать строку с preset_id без '
+                'preset_practice_id — это и есть популяция C4');
+
+        await db.close();
+      }
+    });
+
+    test('applyPreset дважды поверх мигрированной базы не плодит дублей (C4)',
+        () async {
+      // Механизм C4 (NULL невидим upsert-ключу, уникальный индекс на NULL
+      // легален) обезврежен тем, что у мигрированной базы просто нет
+      // строк-кандидатов. Тест фиксирует это поведенчески: две материализации
+      // поверх реального перехода 2 → текущая дают ровно 4 пресетные строки
+      // сверх двух пользовательских.
+      {
+        final v2 = _AppDatabaseV2(NativeDatabase(dbFile()));
+        await v2.customStatement(
+          "INSERT INTO practices (id, name, type, tradition_tag, current_count) "
+          "VALUES (1, 'Длинная практика', 'counter', 'nyingma', 108)",
+        );
+        await v2.customStatement(
+          'INSERT INTO count_history (practice_id, count) VALUES (1, 108)',
+        );
+        await v2.close();
+      }
+
+      SharedPreferences.setMockInitialValues({});
+      final storage = StorageModule();
+      await storage.init();
+
+      final db = AppDatabase.forTesting(
+        NativeDatabase(dbFile(), setup: enableForeignKeys),
+      );
+      final manager = PresetManager(() => db, storage);
+      final preset = PresetSchema(
+        id: 'nyingma',
+        name: 'Ньингма',
+        version: '1.0.0',
+        tradition: 'vajrayana',
+        modules: ['tracker'],
+        practices: [
+          PresetPractice(
+            id: 'ngondro_prostrations',
+            name: 'Простирания',
+            type: 'counter',
+            target: 100000,
+            unit: 'повторений',
+          ),
+          PresetPractice(
+            id: 'ngondro_mandala',
+            name: 'Подношение мандал',
+            type: 'counter',
+            target: 100000,
+            unit: 'повторений',
+          ),
+        ],
+        eventPacks: [],
+        contentPacks: [],
+      );
+
+      await manager.applyPreset(preset);
+      final afterFirst = await db.select(db.practices).get();
+      await manager.applyPreset(preset);
+      final afterSecond = await db.select(db.practices).get();
+
+      expect(afterFirst, hasLength(3), reason: '1 кастомная + 2 из пресета');
+      expect(afterSecond, hasLength(3),
+          reason: 'повторное применение не добавляет строк (B-3)');
+      expect(
+        afterSecond.map((r) => r.presetPracticeId).where((id) => id != null),
+        containsAll(<String>['ngondro_prostrations', 'ngondro_mandala']),
+      );
+      expect(afterSecond.firstWhere((r) => r.presetPracticeId == null).currentCount,
+          108,
+          reason: 'счёт кастомной строки не тронут');
+      expect(await _presetRowsWithoutStableId(db), 0);
+
+      await db.close();
+    });
+
+    test('бэкфилл по имени поглотил бы пользовательский счёт — поэтому его нет '
+        '(D-45)', () async {
+      // Первоначальный «рекомендуемый» путь C4 — сопоставить legacy-строку с
+      // практикой пресета по (tradition_tag, preset_id, name) и проставить ей
+      // preset_practice_id. Здесь показано, что он делал бы с законной
+      // кастомной практикой того же имени: её счёт 21 000 переезжал бы в
+      // пресетную строку, а upsert начал бы перезаписывать её описательные
+      // поля. Отказ от бэкфилла — не лень, а сохранность данных (D-26).
+      {
+        final v2 = _AppDatabaseV2(NativeDatabase(dbFile()));
+        // Как на живой базе: applyPreset на v2 писал строку пресета в presets
+        // (rev-v2 preset_manager.dart:45) — именно этот JSON бэкфилл по имени
+        // и использовал бы как источник соответствий.
+        await v2.customStatement(
+          "INSERT INTO presets VALUES ('nyingma', 'Ньингма', '1.0.0', "
+          "'vajrayana', "
+          "'{\"practices\":[{\"id\":\"ngondro_prostrations\",\"name\":\"Простирания\"}]}')",
+        );
+        await v2.customStatement(
+          "INSERT INTO practices (id, preset_id, name, type, target, unit, "
+          "tradition_tag, current_count) VALUES "
+          "(1, 'nyingma', 'Простирания', 'counter', 100, 'раз', 'nyingma', 21000)",
+        );
+        await v2.customStatement(
+          'INSERT INTO count_history (practice_id, count) VALUES (1, 21000)',
+        );
+        await v2.close();
+      }
+
+      final db = AppDatabase.forTesting(
+        NativeDatabase(dbFile(), setup: enableForeignKeys),
+      );
+
+      final custom = (await db.select(db.practices).get()).single;
+      expect(custom.name, 'Простирания');
+      expect(custom.presetPracticeId, isNull,
+          reason: 'миграция НЕ должна угадывать стабильный id по имени');
+      expect(custom.target, 100, reason: 'и не должна переписывать цель');
+
+      SharedPreferences.setMockInitialValues({});
+      final storage = StorageModule();
+      await storage.init();
+      await PresetManager(() => db, storage).applyPreset(PresetSchema(
+            id: 'nyingma',
+            name: 'Ньингма',
+            version: '1.0.0',
+            tradition: 'vajrayana',
+            modules: ['tracker'],
+            practices: [
+              PresetPractice(
+                id: 'ngondro_prostrations',
+                name: 'Простирания',
+                type: 'counter',
+                target: 100000,
+                unit: 'повторений',
+              ),
+            ],
+            eventPacks: [],
+            contentPacks: [],
+          ));
+
+      final rows = await db.select(db.practices).get();
+      expect(rows, hasLength(2),
+          reason: 'одна одноимённая практика из пресета и одна пользовательская '
+              '— это два разных трекера, а не дубли');
+      final stillCustom =
+          rows.singleWhere((r) => r.presetPracticeId == null);
+      expect(stillCustom.currentCount, 21000,
+          reason: 'счёт пользователя остался на своей строке');
+      expect(stillCustom.target, 100);
+      final presetRow = rows.singleWhere(
+          (r) => r.presetPracticeId == 'ngondro_prostrations');
+      expect(presetRow.currentCount, 0);
+
+      // История привязана к пользовательской строке и не переезжала.
+      final history = await db.select(db.countHistory).get();
+      expect(history.single.practiceId, stillCustom.id);
+      expect(history.single.count, 21000);
+
+      await db.close();
+    });
   });
 }
+
+/// Популяция C4: строки, у которых пресетный источник указан, а стабильный id
+/// практики — нет. Именно они невидимы upsert-ключу материализации.
+Future<int> _presetRowsWithoutStableId(GeneratedDatabase db) async {
+  final rows = await db.customSelect(
+    'SELECT COUNT(*) AS c FROM practices '
+    'WHERE preset_id IS NOT NULL AND preset_practice_id IS NULL',
+  ).get();
+  return rows.single.read<int>('c');
+}
+

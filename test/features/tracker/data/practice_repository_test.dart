@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:dharma_toolkit/core/db/app_database.dart';
 import 'package:dharma_toolkit/features/tracker/data/practice_repository.dart';
 import 'package:dharma_toolkit/features/tracker/domain/practice.dart';
+import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -316,6 +317,71 @@ void main() {
         final p = (await repo.getByTradition('test')).single;
         expect(p.currentCount, 6);
 
+        await db.close();
+      });
+    });
+
+    // C4 (D-45): строка с `preset_id` без `preset_practice_id` невидима
+    // upsert-ключу материализации (tradition_tag, preset_practice_id), а
+    // уникальный индекс SQLite на NULL не конфликтует → первый же applyPreset
+    // кладёт двойника, и счёт рассекается. Инвариант держится на слое записи,
+    // а не веткой миграции: по истории кода такое состояние не порождается
+    // (см. обоснование в PracticeRepository.create и D-45).
+    group('C4/D-45: create не заводит пресетных строк', () {
+      test('presetId != null → ArgumentError, в БД ни следа', () async {
+        final db = AppDatabase.forTesting(
+            NativeDatabase.memory(setup: enableForeignKeys));
+        final repo = PracticeRepository(db);
+        final now = DateTime.now();
+
+        await expectLater(
+          repo.create(PracticeEntity(
+            name: 'Простирания',
+            type: 'counter',
+            traditionTag: 'nyingma',
+            presetId: 'nyingma',
+            createdAt: now,
+            updatedAt: now,
+          )),
+          throwsArgumentError,
+        );
+
+        expect(await db.select(db.practices).get(), isEmpty,
+            reason: 'отклонённая запись не должна оставлять строку без '
+                'preset_practice_id');
+        await db.close();
+      });
+
+      test('пресетную строку, прочитанную из БД, нельзя пересоздать через create',
+          () async {
+        // Лазейка: materialization пишет preset_id сама, entity умеет нести
+        // presetId (fromRow) — и кто-то может подать этот entity в create.
+        final db = AppDatabase.forTesting(
+            NativeDatabase.memory(setup: enableForeignKeys));
+        final repo = PracticeRepository(db);
+        final now = DateTime.now();
+
+        await db.into(db.practices).insert(PracticesCompanion.insert(
+              presetId: const Value('nyingma'),
+              presetPracticeId: const Value('ngondro_prostrations'),
+              name: 'Простирания',
+              type: 'counter',
+              traditionTag: 'nyingma',
+              createdAt: Value(now),
+              updatedAt: Value(now),
+            ));
+        final asEntity =
+            PracticeEntity.fromRow(await db.select(db.practices).getSingle());
+        expect(asEntity.presetId, 'nyingma');
+
+        await expectLater(
+          repo.create(asEntity.copyWith(id: null, name: 'Копия')),
+          throwsArgumentError,
+        );
+
+        final rows = await db.select(db.practices).get();
+        expect(rows, hasLength(1), reason: 'лазейки в инварианте нет');
+        expect(rows.single.presetPracticeId, 'ngondro_prostrations');
         await db.close();
       });
     });
