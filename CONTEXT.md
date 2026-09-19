@@ -1,6 +1,6 @@
 # Быстрый контекст проекта "Дхарма-тулкит"
 
-> _Freshness — owner: пользователь · reviewed: 2026-09-20 (пакет FIX-1) · verified-by: `flutter analyze --fatal-infos` (0) / `flutter test` (**533/533**) / `./scripts/check_docs.sh` (PASSED). Сборка (`flutter build apk --debug|--release`) сертифицирована на 501/501 (2026-09-19) и на дереве FIX-1 не переверена — закрывает CI-сборка после пуша._
+> _Freshness — owner: пользователь · reviewed: 2026-09-20 (пакет FIX-1) · verified-by: `flutter analyze --fatal-infos` (0) / `flutter test` (**533/533**) / `./scripts/check_docs.sh` (PASSED). Сборка (`flutter build apk --debug|--release`) сертифицирована на 501/501 (2026-09-19) и на дереве FIX-1 не переверена: CI #56 (analyze + build_runner + drift-gate + Test) APK не собирает._
 
 ## Суть
 Мобильное приложение — универсальный буддийский тулкит: Тхеравада, Махаяна,
