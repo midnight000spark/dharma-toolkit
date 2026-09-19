@@ -1,6 +1,6 @@
 # Быстрый контекст проекта "Дхарма-тулкит"
 
-> _Freshness — owner: пользователь · reviewed: 2026-09-17 · verified-by: `flutter analyze --fatal-infos` (0) / `flutter test` (499/499) / `./scripts/check_docs.sh` (PASSED) / `flutter build apk --debug|--release` (exit 0)._
+> _Freshness — owner: пользователь · reviewed: 2026-09-19 · verified-by: `flutter analyze --fatal-infos` (0) / `flutter test` (501/501) / `./scripts/check_docs.sh` (PASSED) / `flutter build apk --debug|--release` (exit 0)._
 
 ## Суть
 Мобильное приложение — универсальный буддийский тулкит: Тхеравада, Махаяна,
@@ -60,7 +60,7 @@ debug-хук `+1 мин`; печатаемый демо-харнес; R-26, F-66
 не пуст»; проводка на Riverpod без биндинга в `main.dart` (`4376fac`); фолбэк FR-CNT-3
 собственными формулировками в коде, реальных паков в ассетах пока нет (Q3). Критерий этапа
 не закрыт — нужен UI чтения дня (SCR-13).
-499 тестов зелёные, analyze --fatal-infos 0, CI на пине Flutter 3.47.4 с drift-gate.
+501 тест зелёный, analyze --fatal-infos 0, CI на пине Flutter 3.47.4 с drift-gate.
 
 ## Открытые баги и угрозы (главное)
 - Багов уровня блокер/высокий нет; хвосты ревью 2026-09-01 закрыты пакетом
@@ -75,7 +75,7 @@ debug-хук `+1 мин`; печатаемый демо-харнес; R-26, F-66
   (max-ошибка фазы 0.0002 против astronomia); H-3 подтверждена (5a)
 
 - R-26: vendor-политики против exact-будильников (Samsung 500 alarms, OEM-killers, Android 14+ SCHEDULE_EXACT_ALARM) — открыта, митигация в D-36 (inexact-fallback)
-- R-27: флейк полного прогона тестов (один красный при зелёном файле в изоляции) — наблюдение, порог «≥2» достигнут, разбор отдельным пакетом `fix-r27`
+- R-27: флейк полного прогона тестов (recovery-тест) — **закрыта** (fix-r27, 2026-09-19): причина — тайминговый артефакт теста, починка на слое теста
 
 ## Ключевые решения (кратко)
 D-2 Flutter; D-4+D-22 Riverpod = единственная DI; D-5 модульность папками +
