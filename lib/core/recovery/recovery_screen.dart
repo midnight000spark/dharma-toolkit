@@ -34,6 +34,14 @@ Future<void> wipeLocalState() async {
   }
 }
 
+/// Операция аварийного стирания локального состояния.
+///
+/// Инжектируема (R-27): экран восстановления уже принимает [RecoveryApp.onRetry]
+/// и [RecoveryApp.onReset] извне, а стирание было зашито внутрь — из-за этого
+/// widget-тест вынужденно ждал реального I/O платформенных каналов фиксированным
+/// окном и флейкал. По умолчанию — реальный [wipeLocalState].
+typedef WipeLocalState = Future<void> Function();
+
 /// Корень приложения, когда данные не прочитаны (B-5): вместо чёрного
 /// экрана — два пути: повторить попытку или стереть локальное состояние.
 class RecoveryApp extends StatelessWidget {
@@ -41,11 +49,15 @@ class RecoveryApp extends StatelessWidget {
   final Future<void> Function() onRetry;
   final Future<void> Function() onReset;
 
+  /// Стирание до вызова [onReset]; по умолчанию — реальный [wipeLocalState].
+  final WipeLocalState wipe;
+
   const RecoveryApp({
     super.key,
     required this.error,
     required this.onRetry,
     required this.onReset,
+    this.wipe = wipeLocalState,
   });
 
   @override
@@ -62,6 +74,7 @@ class RecoveryApp extends StatelessWidget {
         error: error,
         onRetry: onRetry,
         onReset: onReset,
+        wipe: wipe,
       ),
     );
   }
@@ -73,14 +86,18 @@ class RecoveryScreen extends StatefulWidget {
   final Object error;
   final Future<void> Function() onRetry;
 
-  /// Вызывается ПОСЛЕ [wipeLocalState] — обычно это повторный bootstrap.
+  /// Вызывается ПОСЛЕ [wipe] — обычно это повторный bootstrap.
   final Future<void> Function() onReset;
+
+  /// Аварийное стирание локального состояния (по умолчанию [wipeLocalState]).
+  final WipeLocalState wipe;
 
   const RecoveryScreen({
     super.key,
     required this.error,
     required this.onRetry,
     required this.onReset,
+    this.wipe = wipeLocalState,
   });
 
   @override
@@ -125,7 +142,7 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
     );
     if (confirmed == true && mounted) {
       await _run(() async {
-        await wipeLocalState();
+        await widget.wipe();
         await widget.onReset();
       });
     }
