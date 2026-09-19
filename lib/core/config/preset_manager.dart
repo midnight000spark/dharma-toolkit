@@ -7,6 +7,7 @@ import '../db/app_database.dart';
 import '../events/event_bus.dart';
 import '../events/preset_events.dart';
 import '../module/app_module.dart';
+import '../module/module_registry.dart';
 import '../storage/storage_module.dart';
 import 'preset_schema.dart';
 
@@ -20,7 +21,7 @@ import 'preset_schema.dart';
 /// - повторное применение того же пресета восстанавливает те же строки
 ///   с сохранёнными счётчиками;
 /// - удаление — только явное действие пользователя (с каскадом истории, B-11).
-class PresetManager implements AppModule {
+class PresetManager implements AppModule, ReportsOwnFailures {
   @override
   String get id => 'preset_manager';
 
@@ -33,6 +34,10 @@ class PresetManager implements AppModule {
   final AppDatabase Function() _databaseGetter;
   final StorageModule _storage;
   PresetSchema? _activePreset;
+  final List<ModuleInitFailure> _ownFailures = [];
+
+  @override
+  List<ModuleInitFailure> get ownFailures => List.unmodifiable(_ownFailures);
 
   /// Шина для события [PresetChanged] (D-21/D-36).
   ///
@@ -55,16 +60,51 @@ class PresetManager implements AppModule {
 
   @override
   Future<void> init() async {
+    _ownFailures.clear();
     // Load active preset from storage
     final activePresetId = _storage.getString('active_preset_id');
-    if (activePresetId != null) {
+    if (activePresetId == null) return;
+    try {
       _activePreset = await _loadPresetFromDb(activePresetId);
+    } catch (error, stack) {
+      // C1(1): «в колонке presets.data лежит JSON, который не проходит текущую
+      // схему» — штатное состояние (blob не версионирован: тесты держат там и
+      // `data: '{"id":"nyingma"}'`), и лечится оно БЕЗ потери данных. Раньше
+      // такой отказ был фатальным, а единственный механизм на экране
+      // восстановления — снести файл БД вместе с историей простираний (B-5).
+      //
+      // Теперь: активная традиция снимается (только ключ в настройках — строки
+      // пресета и счётчики не трогаются, D-26), старт продолжается в состоянии
+      // «активной традиции нет», и отказ докладывается наверх через
+      // [ReportsOwnFailures] — молчать он не вправе (класс R-11/R-13/R-20).
+      _ownFailures.add(ModuleInitFailure(
+        id,
+        error,
+        stack,
+        kind: FailureKind.activePresetUnreadable,
+        subject: activePresetId,
+      ));
+      _activePreset = null;
+      try {
+        await _storage.remove('active_preset_id');
+      } catch (removeError, removeStack) {
+        // Снятие ключа не удалось — при следующем старте отказ повторится;
+        // это отдельная строка отчёта, а не тишина.
+        _ownFailures.add(ModuleInitFailure(
+          id,
+          removeError,
+          removeStack,
+          kind: FailureKind.activePresetUnreadable,
+          subject: 'ключ active_preset_id не снят',
+        ));
+      }
     }
   }
 
   @override
   Future<void> dispose() async {
     _activePreset = null;
+    _ownFailures.clear();
   }
 
   /// Apply a preset: save to DB, materialize its practices, set as active.

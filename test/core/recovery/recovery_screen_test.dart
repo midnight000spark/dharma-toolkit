@@ -221,4 +221,149 @@ void main() {
     expect(outcome.ok, isTrue);
     expect(outcome.degradedModules.map((f) => f.moduleId), ['aux']);
   });
+
+  // C2: `ErrorWidget.builder` вызывают и для сбоев выше MaterialApp, где
+  // предка Directionality нет. Прежняя заглушка падала сама, фреймворк
+  // подставлял замену для замены — рекурсия и тот же чёрный экран (класс
+  // 5.3/B-5), ради которого её и вводили.
+  //
+  // Форма теста — прогон самого виджета-замены в качестве корня: test binding
+  // запрещает подменять `ErrorWidget.builder` внутри теста
+  // (`_verifyErrorWidgetBuilderUnset`), а само свойство, которое надо
+  // проверить, — «заглушка достраивается без каких-либо предков».
+  testWidgets('замена красного экрана достраивается без Directionality-предка '
+      '(C2)', (tester) async {
+    await tester.pumpWidget(
+      humanErrorWidget(
+        FlutterErrorDetails(exception: StateError('падение до первого кадра')),
+      ),
+    );
+    await tester.pump();
+
+    expect(tester.takeException(), isNull,
+        reason: 'Text без Directionality-предка упал бы сам — и фреймворк '
+            'взял бы замену для замены (рекурсия builder\'а)');
+    expect(
+      find.textContaining('Ошибка интерфейса. Приложение продолжит работу'),
+      findsOneWidget,
+    );
+  });
+
+  // S12-min: degradedModules из вердикта старта до экрана не доезжали.
+  testWidgets('ограниченный режим показывается списком с классом отказа '
+      '(S12-min)', (tester) async {
+    await tester.pumpWidget(RecoveryApp(
+      error: StateError('повреждённые данные'),
+      degradations: [
+        ModuleInitFailure(
+          'config',
+          StateError('FormatException…'),
+          StackTrace.empty,
+          kind: FailureKind.presetAssetSkipped,
+          subject: 'presets/broken.json',
+        ),
+      ],
+      onRetry: () async {},
+      onReset: () async {},
+      wipe: () async {},
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Приложение работает в ограниченном режиме:'),
+        findsOneWidget);
+    expect(
+      find.byKey(
+          const ValueKey('degradation-presetAssetSkipped-presets/broken.json')),
+      findsOneWidget,
+    );
+    expect(find.textContaining('пресет пропущен'), findsOneWidget,
+        reason: 'класс отказа человекочитаем');
+    expect(find.textContaining('FormatException'), findsNothing,
+        reason: 'B-19: сырые детали исключения остаются в логе');
+  });
+
+  testWidgets('без деградаций экрана-баннера нет (не выдуманная тревога)',
+      (tester) async {
+    await tester.pumpWidget(RecoveryApp(
+      error: StateError('повреждённые данные'),
+      onRetry: () async {},
+      onReset: () async {},
+      wipe: () async {},
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Приложение работает в ограниченном режиме:'),
+        findsNothing);
+  });
+
+  // C3: у _run не было catch — отказ повторной попытки уходил в лог зоны
+  // (а там корень уже смонтирован, то есть никуда), кнопка гасла на кадр и
+  // становилась активной снова: «бесполезная кнопка / стереть всё».
+  testWidgets('неудачная повторная попытка видна и считается (C3)',
+      (tester) async {
+    var attempts = 0;
+    await tester.pumpWidget(RecoveryApp(
+      error: StateError('повреждённые данные'),
+      onRetry: () async {
+        attempts++;
+        throw StateError('опять не поднялись');
+      },
+      onReset: () async {},
+      wipe: () async {},
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Попробовать снова'));
+    await tester.pumpAndSettle();
+
+    expect(attempts, 1);
+    expect(
+      find.byKey(const ValueKey('retry-failure')),
+      findsOneWidget,
+      reason: 'отказ обязан стать видимым сообщением на экране',
+    );
+    expect(find.textContaining('Повторная попытка не удалась (попытка 1)'),
+        findsOneWidget);
+    expect(find.textContaining('опять не поднялись'), findsNothing,
+        reason: 'B-19: детали — в лог');
+
+    await tester.tap(find.text('Попробовать снова'));
+    await tester.pumpAndSettle();
+
+    expect(attempts, 2);
+    expect(find.textContaining('попытка 2'), findsOneWidget,
+        reason: 'счётчик попыток виден: retry не выглядит молчаливым');
+    expect(
+      tester.widget<ElevatedButton>(find.byType(ElevatedButton)).onPressed,
+      isNotNull,
+      reason: 'после отказа кнопка снова доступна (не зависла в _busy)',
+    );
+  });
+
+  testWidgets('удачная попытка снимает сообщение о прошлом отказе (C3)',
+      (tester) async {
+    var failNext = true;
+    await tester.pumpWidget(RecoveryApp(
+      error: StateError('повреждённые данные'),
+      onRetry: () async {
+        if (failNext) {
+          throw StateError('первая попытка упала');
+        }
+      },
+      onReset: () async {},
+      wipe: () async {},
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Попробовать снова'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('retry-failure')), findsOneWidget);
+
+    failNext = false;
+    await tester.tap(find.text('Попробовать снова'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('retry-failure')), findsNothing,
+        reason: 'сообщение об отказе не должно висеть после успешной попытки');
+  });
 }

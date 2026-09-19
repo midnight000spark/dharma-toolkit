@@ -2,6 +2,8 @@ import 'package:dharma_toolkit/core/config/preset_manager.dart';
 import 'package:dharma_toolkit/core/config/preset_schema.dart';
 import 'package:dharma_toolkit/core/db/app_database.dart';
 import 'package:dharma_toolkit/core/module/app_module.dart';
+import 'package:dharma_toolkit/core/module/module_registry.dart';
+import 'package:dharma_toolkit/core/recovery/startup.dart';
 import 'package:dharma_toolkit/core/storage/storage_module.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -170,6 +172,74 @@ void main() {
       expect(newManager.activePreset!.id, 'persistent');
 
       await newManager.dispose();
+    });
+  });
+
+  // C1(1): «в колонке presets.data лежит JSON, который не проходит текущую
+  // схему» — штатное состояние (blob в БД не версионирован: тесты миграций
+  // держат там же `data: '{"id":"nyingma"}'`), а не повод валить старт на
+  // экран восстановления с единственным механизмом «стереть всё» (B-5).
+  group('C1(1): неполный blob деградирует, а не роняет старт', () {
+    Future<void> seedBrokenPreset() async {
+      await database.into(database.presets).insert(
+            PresetsCompanion.insert(
+              id: 'nyingma',
+              name: 'Ньингма',
+              version: '1.0.0',
+              tradition: 'vajrayana',
+              data: '{"id":"nyingma"}', // нет name/version/tradition/practices
+            ),
+          );
+      await storageModule.setString('active_preset_id', 'nyingma');
+    }
+
+    test('init не бросает: традиция снята, данные целы, отказ доложен',
+        () async {
+      await seedBrokenPreset();
+      final manager = PresetManager(() => database, storageModule);
+
+      await manager.init();
+
+      expect(manager.activePreset, isNull,
+          reason: 'состояние «активной традиции нет» — рабочий, а не отказ');
+      expect(storageModule.getString('active_preset_id'), isNull,
+          reason: 'ключ снят, иначе следующий старт повторил бы тот же отказ');
+      final rows = await database.select(database.presets).get();
+      expect(rows, hasLength(1),
+          reason: 'снимается настройка, а не данные (D-26)');
+      expect(
+          manager.ownFailures.single.kind, FailureKind.activePresetUnreadable);
+      expect(manager.ownFailures.single.subject, 'nyingma');
+
+      await manager.dispose();
+    });
+
+    test('доклад доходит до StartupOutcome.degradedModules; ok == true',
+        () async {
+      await seedBrokenPreset();
+      final registry = ModuleRegistry.instance;
+      await registry.disposeAll();
+      addTearDown(registry.disposeAll);
+      final manager = PresetManager(() => database, storageModule);
+      registry.register(manager);
+
+      final outcome = await bootstrapModules(registry);
+
+      expect(outcome.ok, isTrue,
+          reason: 'критичный модуль пережил отказ внутри себя и не уводит на '
+              'экран стирания (C1)');
+      expect(outcome.degradedModules, hasLength(1));
+      expect(outcome.degradedModules.single.moduleId, 'preset_manager');
+      expect(outcome.degradedModules.single.kind.label,
+          'активная традиция не прочитана');
+    });
+
+    test('без ключа активной традиции отказов нет (не выдуманная деградация)',
+        () async {
+      final manager = PresetManager(() => database, storageModule);
+      await manager.init();
+      expect(manager.ownFailures, isEmpty);
+      await manager.dispose();
     });
   });
 }

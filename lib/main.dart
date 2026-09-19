@@ -60,39 +60,48 @@ Future<void> main() async {
   // перехватывает асинхронные отказы.
   FlutterError.onError = FlutterError.presentError;
 
-  var rootMounted = false;
-  void mount(Widget root) {
-    rootMounted = true;
-    runApp(root);
+  /// Что сейчас смонтировано в корне (C3): условие «корень не рабочий», а не
+  /// «что-нибудь смонтировано».
+  var mountedRoot = MountedRoot.none;
+
+  /// Контроль потока старта живёт в `runStartupCycle` (C3) — здесь только
+  /// монтирование конкретных корней.
+  // Объявление наперед: `start` и `mountRecoveryRoot` ссылаются друг на друга
+  // (кнопка «Попробовать снова» вызывает цикл, а цикл монтирует экран).
+  late final Future<void> Function() start;
+
+  void mountRecoveryRoot(Object error, StartupOutcome outcome) {
+    mountedRoot = MountedRoot.recovery;
+    runApp(RecoveryApp(
+      error: error,
+      // S12-min: ограниченный режим виден и при фатальном отказе — что именно
+      // приложение пережило, до того как пользователь решит стирать данные.
+      degradations: outcome.degradedModules,
+      onRetry: start,
+      onReset: start,
+    ));
   }
 
   /// Полный цикл старта; повтор вызывается и кнопкой «Попробовать снова»,
-  /// и после аварийного стирания (screen сам затирает до [onReset]).
-  Future<void> start() async {
-    final (services, outcome) = await bootstrapServices();
-    if (!outcome.ok || services == null) {
-      mount(RecoveryApp(
-        error: outcome.fatalFailures.isNotEmpty
-            ? outcome.fatalFailures.first.error
-            : StateError('Инициализация не завершена'),
-        onRetry: start,
-        onReset: start,
-      ));
-      return;
-    }
-    final scheduler = await initNotifications();
-    mount(
-      ProviderScope(
-        overrides: [
-          appDatabaseProvider.overrideWithValue(services.database),
-          configModuleProvider.overrideWithValue(services.config),
-          presetManagerProvider.overrideWithValue(services.presetManager),
-          ...platformPortOverrides(scheduler: scheduler),
-        ],
-        child: const DharmaToolkitApp(),
-      ),
+  /// и после аварийного стирания (экран сам затирает до [onReset]).
+  start = () async {
+    mountedRoot = await runStartupCycle<AppServices>(
+      bootstrap: bootstrapServices,
+      mountApp: (services) async {
+        final scheduler = await initNotifications();
+        runApp(ProviderScope(
+          overrides: [
+            appDatabaseProvider.overrideWithValue(services.database),
+            configModuleProvider.overrideWithValue(services.config),
+            presetManagerProvider.overrideWithValue(services.presetManager),
+            ...platformPortOverrides(scheduler: scheduler),
+          ],
+          child: const DharmaToolkitApp(),
+        ));
+      },
+      mountRecovery: mountRecoveryRoot,
     );
-  }
+  };
 
   runZonedGuarded<void>(
     () async {
@@ -100,11 +109,15 @@ Future<void> main() async {
     },
     (error, stack) {
       debugPrint('Необработанная ошибка: $error\n$stack');
-      // До монтирования корня асинхронный отказ = всё ещё чёрный экран:
-      // показываем восстановление. После монтирования — только лог
-      // (один сбойный виджет не должен уносить приложение).
-      if (!rootMounted) {
-        mount(RecoveryApp(error: error, onRetry: start, onReset: start));
+      // Пока в корне нет РАБОЧЕГО приложения, асинхронный отказ = всё ещё
+      // чёрный экран: показываем восстановление (принудительно, повторно —
+      // C3). После — только лог (один сбойный виджет не должен уносить
+      // приложение).
+      if (mountedRoot != MountedRoot.app) {
+        mountRecoveryRoot(
+          error,
+          const StartupOutcome(fatalFailures: [], degradedModules: []),
+        );
       }
     },
   );
@@ -170,8 +183,16 @@ Future<NotificationScheduler> initNotifications() async {
 /// Возвращает сервисы (null при фатальном отказе) и вердикт старта.
 Future<(AppServices?, StartupOutcome)> bootstrapServices() async {
   final registry = ModuleRegistry.instance;
-  if (registry.all.isNotEmpty) {
+  // C3: очистка прошлой попытки обязана состояться при любом исходе и не
+  // имеет права отменить пересоздание реестра. `disposeAll` намеренно
+  // переподнимает первую ошибку диспоза (строгая семантика для тестов) — но
+  // здесь вызов идёт с экрана восстановления, где отказ диспоза ленивой базы
+  // превращал «Попробовать снова» в вечный отказ. Лог + продолжение.
+  try {
     await registry.disposeAll();
+  } catch (error, stack) {
+    debugPrint('Реестр очистился с ошибкой, пересоздаём всё равно: '
+        '$error\n$stack');
   }
 
   final databaseModule = DatabaseModule();

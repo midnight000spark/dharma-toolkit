@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../shared/l10n/l10n.dart';
 import '../../shared/utils/error_text.dart';
 import '../db/app_database.dart' show kAppDatabaseFileName;
+import '../module/module_registry.dart' show ModuleInitFailure;
 
 /// Аварийное стирание локального состояния (B-5).
 ///
@@ -49,6 +50,10 @@ class RecoveryApp extends StatelessWidget {
   final Future<void> Function() onRetry;
   final Future<void> Function() onReset;
 
+  /// Отказы, которые приложение пережило в ограниченном режиме (S12-min):
+  /// без строки на экране «работаем не полностью» неотличимо от «всё плохо».
+  final List<ModuleInitFailure> degradations;
+
   /// Стирание до вызова [onReset]; по умолчанию — реальный [wipeLocalState].
   final WipeLocalState wipe;
 
@@ -57,6 +62,7 @@ class RecoveryApp extends StatelessWidget {
     required this.error,
     required this.onRetry,
     required this.onReset,
+    this.degradations = const [],
     this.wipe = wipeLocalState,
   });
 
@@ -74,6 +80,7 @@ class RecoveryApp extends StatelessWidget {
         error: error,
         onRetry: onRetry,
         onReset: onReset,
+        degradations: degradations,
         wipe: wipe,
       ),
     );
@@ -89,6 +96,9 @@ class RecoveryScreen extends StatefulWidget {
   /// Вызывается ПОСЛЕ [wipe] — обычно это повторный bootstrap.
   final Future<void> Function() onReset;
 
+  /// Ограниченный режим старта (S12-min): список пережитых отказов с классом.
+  final List<ModuleInitFailure> degradations;
+
   /// Аварийное стирание локального состояния (по умолчанию [wipeLocalState]).
   final WipeLocalState wipe;
 
@@ -97,6 +107,7 @@ class RecoveryScreen extends StatefulWidget {
     required this.error,
     required this.onRetry,
     required this.onReset,
+    this.degradations = const [],
     this.wipe = wipeLocalState,
   });
 
@@ -107,11 +118,34 @@ class RecoveryScreen extends StatefulWidget {
 class _RecoveryScreenState extends State<RecoveryScreen> {
   bool _busy = false;
 
+  /// Сколько попыток подряд не удалось (C3): без счётчика пользователь
+  /// нажимал «Попробовать снова» в никуда и не видел, что что-то меняется.
+  int _attempts = 0;
+
+  /// Что показать после неудачной попытки (C3). Только текст для человека:
+  /// детали исключения уходят в лог (B-19).
+  String? _retryFailure;
+
   Future<void> _run(Future<void> Function() action) async {
     if (_busy) return;
     setState(() => _busy = true);
     try {
       await action();
+      if (mounted) setState(() => _retryFailure = null);
+    } catch (error) {
+      // C3: раньше у экрана не было catch — отказ повторной попытки уходил
+      // в зон только с логом (а там `rootMounted == true`, то есть вообще
+      // ничего), кнопка гасла на кадр и становилась активной снова.
+      if (mounted) {
+        setState(() {
+          _attempts++;
+          _retryFailure = userFacingErrorText(
+            'Повторная попытка не удалась (попытка $_attempts). '
+            'Можно попробовать ещё раз или стереть локальное состояние.',
+            details: error,
+          );
+        });
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -148,6 +182,31 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
     }
   }
 
+  /// Ограниченный режим (S12-min): что именно приложение пережило, классом
+  /// отказа, а не сырым исключением (B-19). Раньше `degradedModules` из
+  /// вердикта старта (`StartupOutcome`) до экрана не доезжали — пользователь
+  /// видел либо «не удалось прочитать данные», либо ничего.
+  List<Widget> _limitedModeLines() {
+    if (widget.degradations.isEmpty) return const [];
+    return [
+      const SizedBox(height: 16),
+      const Text(
+        'Приложение работает в ограниченном режиме:',
+        style: TextStyle(fontWeight: FontWeight.bold),
+        textAlign: TextAlign.center,
+      ),
+      const SizedBox(height: 4),
+      for (final failure in widget.degradations)
+        Text(
+          '${failure.kind.label} — ${failure.moduleId}'
+          '${failure.subject == null ? '' : ': ${failure.subject}'}',
+          key: ValueKey('degradation-${failure.kind.name}-${failure.subject}'),
+          style: Theme.of(context).textTheme.bodySmall,
+          textAlign: TextAlign.center,
+        ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -177,6 +236,16 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
                 maxLines: 4,
                 overflow: TextOverflow.ellipsis,
               ),
+              if (_retryFailure != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  _retryFailure!,
+                  key: const ValueKey('retry-failure'),
+                  style: Theme.of(context).textTheme.bodySmall,
+                  textAlign: TextAlign.center,
+                ),
+              ],
+              ..._limitedModeLines(),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: _busy ? null : () => _run(widget.onRetry),
@@ -197,18 +266,29 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
 
 /// Замена красного экрана Flutter (5.3): человекочитаемо, без падения кадра.
 /// Исключение логируется — разработчик его видит, пользователь — нет.
+///
+/// C2: `ErrorWidget.builder` вызывают и для сбоев **выше** `MaterialApp`,
+/// где предка `Directionality` ещё нет. `Text` → `RichText` без него падает
+/// сам, фреймворк подставляет замену для замены — рекурсия и всё тот же
+/// чёрный экран (класс 5.3/B-5), ради которого заглушку и вводили. Состав
+/// намеренно минимальный: ни theme, ни MediaQuery-зависимых виджетов.
+/// Рецепт был в проекте (`debug_notification_button.dart`) и в критический
+/// путь не переехал.
 Widget humanErrorWidget(FlutterErrorDetails details) {
   debugPrint('Ошибка виджета: ${details.exception}');
-  return const ColoredBox(
-    color: Color(0xFF1E1E1E),
-    child: Padding(
-      padding: EdgeInsets.all(16.0),
-      child: Center(
-        child: Text(
-          'Ошибка интерфейса. Приложение продолжит работу, '
-          'эта часть экрана временно не отображается.',
-          style: TextStyle(color: Color(0xFFEDEDED), fontSize: 13),
-          textAlign: TextAlign.center,
+  return const Directionality(
+    textDirection: TextDirection.ltr,
+    child: ColoredBox(
+      color: Color(0xFF1E1E1E),
+      child: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Center(
+          child: Text(
+            'Ошибка интерфейса. Приложение продолжит работу, '
+            'эта часть экрана временно не отображается.',
+            style: TextStyle(color: Color(0xFFEDEDED), fontSize: 13),
+            textAlign: TextAlign.center,
+          ),
         ),
       ),
     ),

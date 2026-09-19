@@ -1,8 +1,10 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../module/app_module.dart';
+import '../module/module_registry.dart';
 import 'preset_schema.dart';
 
 /// Традиция из дерева школ (tree.json, D-11 — плоский список).
@@ -29,7 +31,7 @@ class TraditionInfo {
 ///
 /// Каждый файл в `presets/` обязан иметь читателя: мёртвых ассетов
 /// быть не должно (урок аудита B-4).
-class ConfigModule implements AppModule {
+class ConfigModule implements AppModule, ReportsOwnFailures {
   @override
   String get id => 'config';
 
@@ -41,22 +43,47 @@ class ConfigModule implements AppModule {
 
   final Map<String, PresetSchema> _presets = {};
   List<TraditionInfo> _tree = const [];
+  final List<ModuleInitFailure> _ownFailures = [];
+
+  @override
+  List<ModuleInitFailure> get ownFailures => List.unmodifiable(_ownFailures);
 
   static const String _manifestAsset = 'presets/index.json';
   static const String _treeAsset = 'presets/tree.json';
 
   @override
   Future<void> init() async {
+    _ownFailures.clear();
     // 1. Манифест — единственный источник списка доступных пресетов.
+    //    Он читается вне try/catch: без манифеста неотличим «битый один
+    //    пресет» от «в сборке нет ни одного», и это отказ всей подсистемы
+    //    конфигурации, а не пофайловая деградация (C1(1)).
     final manifest =
         await _loadJson(_manifestAsset) as Map<String, dynamic>;
     final presetIds = (manifest['presets'] as List).cast<String>();
 
-    // 2. Сами пресеты из манифеста.
+    // 2. Сами пресеты из манифеста — пофайлово (C1(1)). Один бракованный
+    //    `presets/<id>.json` не имеет права валить загрузку всех остальных:
+    //    ровно так же честный пофайловый сбой уже реализован в
+    //    `EventPackLoader`/`ContentPackLoader`, а путь старта его не имел.
+    //    Отказ переживается внутри модуля и докладывается через
+    //    [ReportsOwnFailures] — на экран, а не в лог молча.
     for (final id in presetIds) {
-      final json = await _loadJson('presets/$id.json');
-      final preset = PresetSchema.fromJson(json as Map<String, dynamic>);
-      _presets[preset.id] = preset;
+      final asset = 'presets/$id.json';
+      try {
+        final json = await _loadJson(asset);
+        final preset = PresetSchema.fromJson(json as Map<String, dynamic>);
+        _presets[preset.id] = preset;
+      } catch (error, stack) {
+        _ownFailures.add(ModuleInitFailure(
+          this.id,
+          error,
+          stack,
+          kind: FailureKind.presetAssetSkipped,
+          subject: asset,
+        ));
+        debugPrint('Конфигурация: пресет $asset пропущен: $error');
+      }
     }
 
     // 3. Дерево школ для экрана выбора традиции.
@@ -77,6 +104,7 @@ class ConfigModule implements AppModule {
   Future<void> dispose() async {
     _presets.clear();
     _tree = const [];
+    _ownFailures.clear();
   }
 
   Future<Object?> _loadJson(String assetKey) async {

@@ -3,7 +3,10 @@ import 'dart:convert';
 import 'package:dharma_toolkit/core/config/config_module.dart';
 import 'package:dharma_toolkit/core/config/preset_schema.dart';
 import 'package:dharma_toolkit/core/module/app_module.dart';
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:dharma_toolkit/core/module/module_registry.dart';
+import 'package:dharma_toolkit/core/recovery/startup.dart';
+import 'package:flutter/services.dart'
+    show ByteData, Uint8List, rootBundle;
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -299,6 +302,104 @@ void main() {
       expect(module.id, 'config');
       expect(module.name, 'Конфигурация');
       expect(module.version, '1.0.0');
+    });
+  });
+
+  // C1(1): путь старта обязан различать «битый один элемент» и «подсистема не
+  // работает» — пофайловый сбой уже честен в EventPackLoader/ContentPackLoader.
+  // Ассеты подаются мок-обработчиком канала flutter/assets: реальные файлы
+  // сборки подделать нельзя, а молчаливая деградация проверяется именно на
+  // границе «один файл бракованный».
+  group('C1(1): пофайловый отказ конфигурации', () {
+    const goodPreset = '{"id":"good","name":"Хороший","version":"1.0.0",'
+        '"tradition":"vajrayana","modules":["tracker"],"practices":[],'
+        '"eventPacks":[],"contentPacks":[]}';
+    const tree = '{"traditions":[{"id":"vajrayana","name":"Ваджраяна",'
+        '"presets":["good"]}]}';
+
+    void serveAssets(Map<String, String> files) {
+      // Кэш rootBundle глобален на isolate файла: предыдущие тесты уже
+      // прочитали настоящий presets/tree.json, и без очистки мок его бы не
+      // перезаписал.
+      rootBundle.clear();
+      final messenger = TestDefaultBinaryMessengerBinding.instance
+          .defaultBinaryMessenger;
+      messenger.setMockMessageHandler('flutter/assets',
+          (ByteData? message) async {
+        final key = utf8.decode(message!.buffer.asUint8List());
+        final content = files[key];
+        if (content == null) return null;
+        final bytes = utf8.encode(content);
+        return ByteData.sublistView(Uint8List.fromList(bytes));
+      });
+      addTearDown(() {
+        messenger.setMockMessageHandler('flutter/assets', null);
+        // Корневой bundle кэширует строки: без очистки следующий тест в этом
+        // же файле увидел бы мок вместо настоящего ассета.
+        rootBundle.clear();
+      });
+    }
+
+    test('битый presets/broken.json пропускается, остальные загружены',
+        () async {
+      serveAssets({
+        'presets/index.json': '{"presets":["good","broken"]}',
+        'presets/good.json': goodPreset,
+        'presets/broken.json': '{"id":"broken"',
+        'presets/tree.json': tree,
+      });
+
+      final module = ConfigModule();
+      await module.init();
+
+      expect(module.availablePresetIds, contains('good'),
+          reason: 'один бракованный файл не имеет права валить загрузку всех');
+      expect(module.allPresets, hasLength(1));
+      expect(module.tree, hasLength(1));
+      expect(module.ownFailures.single.kind, FailureKind.presetAssetSkipped);
+      expect(module.ownFailures.single.subject, 'presets/broken.json');
+    });
+
+    test('битый манифест остаётся фатальным — «ни одного пресета» не тихий успех',
+        () async {
+      serveAssets({
+        'presets/index.json': 'не json',
+        'presets/tree.json': tree,
+      });
+
+      final module = ConfigModule();
+
+      await expectLater(module.init(), throwsA(isA<StateError>()));
+      expect(module.ownFailures, isEmpty,
+          reason: 'отказ всей подсистемы — не пофайловая деградация');
+    });
+
+    test('доклад доходит до StartupOutcome.degradedModules', () async {
+      serveAssets({
+        'presets/index.json': '{"presets":["broken1","broken2"]}',
+        'presets/broken1.json': ' битый ',
+        'presets/broken2.json': '{"id":',
+        'presets/tree.json': tree,
+      });
+
+      final registry = ModuleRegistry.instance;
+      await registry.disposeAll();
+      addTearDown(registry.disposeAll);
+      registry.register(ConfigModule());
+
+      final outcome = await bootstrapModules(registry);
+
+      expect(outcome.ok, isTrue,
+          reason: 'config пережил пофайловые отказы сам (C1)');
+      expect(outcome.degradedModules, hasLength(2));
+      expect(
+        outcome.degradedModules.map((f) => f.subject),
+        ['presets/broken1.json', 'presets/broken2.json'],
+      );
+      expect(
+        outcome.degradedModules.every((f) => f.kind == FailureKind.presetAssetSkipped),
+        isTrue,
+      );
     });
   });
 }

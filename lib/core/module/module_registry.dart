@@ -1,5 +1,27 @@
 import 'app_module.dart';
 
+/// Класс отказа (C1(1)): «подсистема не поднялась» и «один элемент битый,
+/// дальше работаем» — разные ситуации, и пользователь обязан видеть первую,
+/// а не молчаливую вторую (класс R-11/R-13/R-20).
+enum FailureKind {
+  /// Модуль бросил в [ModuleRegistry.initAll] — прежний единственный класс.
+  moduleDidNotInit('модуль не поднялся'),
+
+  /// Активная традиция не читается (битый или неполный blob в `presets.data`):
+  /// счёт и остальные данные не тронуты, активная традиция снята (C1(1)).
+  activePresetUnreadable('активная традиция не прочитана'),
+
+  /// Один ассет пресета бракованный, остальные загружены (C1(1): отказ
+  /// накапливается пофайлово, а не валит загрузку всех).
+  presetAssetSkipped('пресет пропущен'),
+  ;
+
+  const FailureKind(this.label);
+
+  /// Человекочитаемая часть для экрана восстановления (S12-min).
+  final String label;
+}
+
 /// Отказ инициализации одного модуля (B-5: деградация поодиночке, а не
 /// падение процесса).
 class ModuleInitFailure {
@@ -7,10 +29,34 @@ class ModuleInitFailure {
   final Object error;
   final StackTrace stackTrace;
 
-  const ModuleInitFailure(this.moduleId, this.error, this.stackTrace);
+  /// Класс отказа; по умолчанию — прежняя «модуль не поднялся» (C1(1)).
+  final FailureKind kind;
+
+  /// Что именно отказало внутри модуля (имя ассета, id пресета) — для лога и
+  /// строки на экране; `null`, если это весь модуль.
+  final String? subject;
+
+  const ModuleInitFailure(
+    this.moduleId,
+    this.error,
+    this.stackTrace, {
+    this.kind = FailureKind.moduleDidNotInit,
+    this.subject,
+  });
 
   @override
-  String toString() => 'Модуль "$moduleId" не инициализирован: $error';
+  String toString() => 'Модуль "$moduleId" не инициализирован'
+      '${subject == null ? '' : ' ($subject)'}: $error';
+}
+
+/// Модуль, который переживает часть отказа **внутри** себя вместо того,
+/// чтобы бросить (C1(1)). Такого отказа в отчёте [ModuleRegistry.initAll] не
+/// будет — реестр видит только брошенное, — поэтому модуль обязан доложить сам
+/// и получить за это строку на экране восстановления: молчаливая деградация
+/// запрещена.
+abstract interface class ReportsOwnFailures {
+  /// Отказы, пережитые модулем при инициализации.
+  List<ModuleInitFailure> get ownFailures;
 }
 
 /// Итог [ModuleRegistry.initAll]: какие модули не поднялись.
