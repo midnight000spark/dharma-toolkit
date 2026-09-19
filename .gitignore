@@ -50,6 +50,9 @@ app.*.map.json
 # Secrets
 gittoken.md
 
+# Reference materials: внешние источники (книги/PDF) не версионируются
+docs/reference/*.pdf
+
 # OpenCode / plugin artifacts
 .omo/
 .tmp/
