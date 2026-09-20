@@ -721,12 +721,32 @@
     `flutter_infra_release/releases/releases_linux.json` → `current_release.stable`
     = **3.47.4** (release_date 2026-09-11, Dart 3.13.3) — совпадает с локальным
     toolchain; пин CI (ранее 3.47.1) обновлён, AGENT/CONTEXT синхронизированы.
+  - **Amendment 2026-09-21 (fix1-accept): сборка падает не на дереве, а на окружении.**
+    Первый прогон `flutter build apk --debug` на `1336c9d` — exit 1 (28 s):
+    `LicenceNotAcceptedException: ndk;28.2.13676358` + строка `Using Android SDK:
+    /usr/lib/android-sdk`. Причина — `android/local.properties` (gitignored,
+    автогенерируемый, `android/.gitignore:6`) с `sdk.dir=/usr/lib/android-sdk`
+    и пустой `ANDROID_HOME`: в этом SDK нет NDK с принятыми лицензиями, они лежат
+    в `~/software/android_sdk`. Починка на слое окружения, не репозитория:
+    `flutter config --android-sdk /home/midnight/software/android_sdk` +
+    `flutter config --jdk-dir /usr/lib/jvm/java-17-openjdk-amd64` (первая опция
+    писана именно потому, что `local.properties` в git не живёт и на другой
+    машине воспроизводится только через `flutter config`). После — обе сборки exit 0.
+    **Вывод для сертификата**: «сборка не проходит» обязана проверяться вместе с
+    `flutter config --list` и содержимым `local.properties`, иначе отказ окружения
+    читается как отказ дерева (тот же класс, что C10).
+  - **Amendment 2026-09-21: число pending-напоминаний зависит от даты прогона.**
+    На 2026-09-16 зафиксировано 4 записи; прогон 2026-09-21 даёт **5** на том же
+    60-дневном горизонте (2026-09-21, 10-05, 10-21, 11-04, 11-19) — в окно вошёл
+    11-19. Это свойство плана (скользящее окно от «сегодня»), а не регрессия:
+    приёмочные ожидания надо формулировать как «≥1, все exact, время 08:00»,
+    а не фиксированным количеством.
 - **Источник**: пакет android-emu-0 (коммиты `6abda41`, `c255cd9`, `05b0d48`,
   `80a5511`); выводы `flutter build apk --debug/--release`, `adb shell dumpsys alarm`,
   `aapt2 dump permissions`, `flutter config --list`, `appops help`;
   Tier-0: README flutter_local_notifications 22.3.0 (gradle/manifest/desugaring),
   releases_linux.json Flutter
-- **Дата**: 2026-09-16
+- **Дата**: 2026-09-16 (amendments — 2026-09-21, приёмка fix1-accept)
 
 <a id="f-66"></a>
 ### F-66: техника приёмки плановых уведомлений на эмуляторе — time-travel, `dumpsys notification`, debug-хук
