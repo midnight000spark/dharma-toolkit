@@ -5,7 +5,9 @@
 #   1) цели внутренних markdown-ссылок [..](path[#anchor]) существуют;
 #   2) якоря #anchor резолвятся в целевом .md (GitHub-slug заголовка, <a id="..">, {#..});
 #   3) обратные указатели `docs/...md` и `тело: docs/...#anchor` не слепые;
-#   4) ссылки §N резолвятся в заголовок «N.» актуального БФТ (для БФТ — в нём самом).
+#   4) ссылки §N резолвятся в заголовок «N.» актуального БФТ (для БФТ — в нём самом);
+#   5) provenance freshness-строки STATE.md: хэш lock в сертификате совпадает с
+#      фактическим sha256 pubspec.lock (v2.18, P1 repro-restore; урок C10).
 #
 # Exit 0 = чисто, exit 1 = есть находки. Скрипт read-only, ничего не пишет.
 # Аттестован по уроку 1 (I-8): посадка битой ссылки → красный, снятие → зелёный.
@@ -151,6 +153,16 @@ for f in FILES:
         if not any(heading_for_section(c, n) for c in candidates):
             target = f if bft_key(f) != (-1, -1) else (latest_bft or "-")
             errors.append(f"{f}: [§] раздел §{n} не найден в {target}")
+
+if "STATE.md" in FILES:
+    import hashlib
+    state_text = open("STATE.md", encoding="utf-8").read()
+    m = re.search(r"lock sha256:([0-9a-f]{16,64})", state_text)
+    actual_lock = hashlib.sha256(open("pubspec.lock", "rb").read()).hexdigest()
+    if m is None:
+        errors.append("STATE.md: [provenance] сертификат устарел: в freshness-строке нет «lock sha256:<16>» — сертификат не привязан к дереву (v2.18)")
+    elif not actual_lock.startswith(m.group(1)):
+        errors.append(f"STATE.md: [provenance] сертификат устарел: lock sha256:{m.group(1)}… != фактический {actual_lock[:16]}…")
 
 if errors:
     for e in errors:
