@@ -252,7 +252,7 @@ FR-CNT-3 собственными формулировками **в коде** (
   - Состав 5.0.5: DI по D-22 (appDatabaseProvider, инъектируемый DatabaseModule — R-11/R-13),
     guard-тесты на оба вида импортов и core→features с исключением core/db (R-10, D-20),
     инстанцируемый EventBus с явной ошибкой publish-после-dispose (R-12),
-    flutter_localizations + intl ru (R-15, D-28), CI: Flutter 3.47.1, --fatal-infos,
+    flutter_localizations + intl ru (R-15, D-28), CI: Flutter 3.47.1 (актуальный пин — v1.19), --fatal-infos,
     build_runner drift-gate, кэш pub (R-16)
 - 2026-09-01 — v1.6: подэтап 5.0 завершён полностью (5.0.6, тег stage-5.0.6; v1.5 занята пакетом 5.0.5)
   - Этапы 3/4 помечены «перекрыт в 5.0.2» в таблице этапов; 5.0.3–5.0.6 закрыты ✅
@@ -385,3 +385,9 @@ FR-CNT-3 собственными формулировками **в коде** (
     не таблица, §13 — R-27 + R-26 остаётся открытой, §14 — прогресс этапа 7, NFR-TEST-1 → 499),
     AGENT **v2.17** (`core/content` в структуре), указатели в CONTEXT/docs/README переведены
     на v1.14; 499 тестов зелёных, analyze --fatal-infos 0, linkcheck PASSED
+- 2026-09-21 — v1.19: пакет P1 repro-restore (FIX-PLAN, C10-хвост); **план не менялся**
+  - пин тулчейна синхронизирован с окружением: ci.yml Flutter 3.47.4 → 3.47.5
+    (Dart 3.13.4), упоминания пина в AGENT **v2.18** / CONTEXT переведены на 3.47.5;
+    историческая строка v1.5 («CI: Flutter 3.47.1») аннотирована указателем на эту запись
+  - provenance-сертификат: freshness-строка STATE получает `@ <sha> / lock sha256:<16>`,
+    `check_docs.sh` FAIL'ит при несовпадении хэша lock (урок C10)
