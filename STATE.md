@@ -40,8 +40,9 @@
 ## ФАКТЫ
 
 > **Индекс фактов (D-38).** Тела — в `docs/reference/facts.md` (read-only), адресно по якорю;
-> номера F-1…F-70 (тела F-1…F-58 — там же, по диапазону), номера не переиспользуются.
+> номера F-1…F-71 (тела F-1…F-58 — там же, по диапазону), номера не переиспользуются.
 
+- **F-71**: статус jev-mcp v0.3.0 — тулы живы, баг схемы `jev_review` (`-32602`) не воспроизводится, `jev_screen` как trust-префильтр непригоден (нулевая дискриминация), `jev_verify` 9/10; пилот 30/30 вызовов (jev-pilot-0); `docs/reference/facts.md#f-71`
 - **F-70**: снимок схемы drift (format 1.3.0) — модель, а не DDL; публичного DDL-читателя в пине нет → stepByStep требует своего эмитера (FIX-1); `docs/reference/facts.md#f-70`
 - **F-69**: `LazyDatabase` пере-брасывает ошибку opener'а дважды — второй раз необработанной в зону; второй механизм «красный в прогоне / зелёный в изоляции» (FIX-1); `docs/reference/facts.md#f-69`
 - **F-68**: DateTime-колонки drift — **секунды** (`millisecondsSinceEpoch ~/ 1000`, `strftime('%s',…)`), а не мс; опровергает W27/условие FIX-1 (FIX-1); `docs/reference/facts.md#f-68`
@@ -104,6 +105,7 @@
 - **D-43**: `desugar_jdk_libs` 2.1.4 (Maven) — build-зависимость Android-сборки по F-55 — принято 2026-09-16; `docs/reference/decisions.md#d-43`
 - **D-44**: контракт чтения дня вынесен в `core/content`; порт `ContentSource` с неуспешным дефолтом (контракт «список чтений никогда не пуст», адаптер без логики, биндинг — 7.1) — принято 2026-09-17; `docs/reference/decisions.md#d-44`
 - **D-45**: C4 не лечится миграцией — инвариант «`preset_id` без `preset_practice_id` невозможен» на слое записи вместо ветки v5 (популяция пуста: история коммитов + живая БД; бэкфилл по имени крадёт счёт) — принято 2026-09-20; `docs/reference/decisions.md#d-45`
+- **D-46**: Jev (TypeSafe System One, jev-mcp) — совещательный слой **только для opencode-сессий**; вывод — `[ГИПОТЕЗА]`, не гейт/факт без детерминированной сверки; стек Qoder — без Jev; возврат в opencode → amendment D-19/D-42 (баг `jev_review` v0.3.0 не воспроизведён) — принято 2026-09-22; `docs/reference/decisions.md#d-46`
 
 ## УГРОЗЫ
 
@@ -291,6 +293,7 @@
 | 2026-09-20 | **FIX-1 (кодовый пакет, блоки 1–6)**: воспроизводимость дерева (откат дрейфа `pubspec.lock`, C10) + гарды миграций (транзакция `onUpgrade` W6, `PRAGMA foreign_keys` в `beforeOpen` W7, фикстура v2 из DDL-снимка W27, чек-лист в `MIGRATIONS.md` W26) + **C4 опровергнута** → инвариант на слое записи **D-45** + старт-поверхность без молчаливой деградации (`FailureKind`/`ReportsOwnFailures` C1(1), `Directionality` в `humanErrorWidget` C2, `runStartupCycle`/`MountedRoot` C3, ограниченный режим на экране S12-min, зонд БД и `WipeReport` с `rename` C1(2)/(3)); R-27 перепроверена (7 прогонов + `--concurrency=1/8`) → **F-69**. 14 мутаций красные, 3 теста починены на слое теста, 533 теста. `4142c97`/`bc89d3a`/`a2ab3d8`/`56744df`/`286df5f`. Verbatim-хроника блоков — `docs/archive/state-journal-fix-1.md` | Команда |
 | 2026-09-21 | **fix1-accept (приёмка FIX-1 на устройстве)**: `build apk --debug/--release` → exit 0 (132 s / 164 s) после починки окружения (`flutter config --android-sdk`, amendment к F-65); чистая установка release на API 35 → `/pick` из ассет-пресетов → 5 pending, все exact на 08:00 (`emu-verify --expect-exact`) → показ `id=100000` «10-й день тибетского месяца» в 08:00:03, часы возвращены trap'ом (`emu-fire`); wipe вживую: битая база → экран восстановления с классом отказа вместо чёрного, `rename` в `.corrupt-<ts>`, сайдкары сняты, рестарт на чистый `/pick` (цикл дважды). 533/533 и analyze 0 на этом же дереве. Найдено прогоном: **B-25**. Тег `fix-1` на `1336c9d`. Цитаты — `docs/archive/state-journal-fix-1.md` | Команда |
 | 2026-09-21 | **P1 repro-restore (FIX-PLAN)**: пины тулчейна синхронизированы с окружением — ci.yml Flutter 3.47.4 → 3.47.5 (Dart 3.13.4; предпроверка: `pub get` не двигает lock, `build_runner` на 3.47.5 без дрейфа сгенерированного кода), упоминания пина в AGENT **v2.18** / CONTEXT / ROADMAP (**v1.19**) переведены на 3.47.5; provenance-правило: freshness-строка STATE получает суффикс `@ <short-sha> / lock sha256:<16>`, `check_docs.sh` FAIL'ит «сертификат устарел» при подменённом/отсутствующем хэше lock (урок C10; гард красным на двух мутациях). Шаги 2–3 пакета (осознанный `.gitignore`, откат дрейфа lock) уже исполнены FIX-1 (`4142c97`) — проверены повторным прогоном | Команда |
+| 2026-09-22 | **jev-pilot-0 (docs/policy)**: гейт среды (ключ `TYPESAFE_API_KEY`, регистрация `jev-mcp` в `opencode.json`) + смоук; **`jev_review` работает — `-32602` не воспроизводится**; пилот 10×{`jev_screen`,`jev_evaluate`,`jev_verify`} — 30/30 вызовов (≈$0.00082): `jev_screen` нулевая дискриминация (trust-префильтр непригоден), `jev_evaluate` 7/10 (7/8 на дихотомии), `jev_verify` 9/10 (8/8); **D-46** (Jev — advisory, opencode-only) + **F-71**; AGENT **v2.19**; артефакты — `.tmp/research/jev-pilot/` | Команда |
 
 ---
 

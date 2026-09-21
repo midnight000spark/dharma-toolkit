@@ -887,3 +887,30 @@
   `docs/MIGRATIONS.md`, «Историческая фикстура v2».
 - **Источник**: пакет FIX-1, блок 2 (проверено на pub-cache пина + дампе v4)
 - **Дата**: 2026-09-20
+
+<a id="f-71"></a>
+### F-71: статус jev-mcp v0.3.0 на 2026-09-22 — тулы живы, баг схемы jev_review не воспроизводится, пилот jev_screen отрицательный
+- **Что**: на прогоне пакета `jev-pilot-0` (2026-09-22) снят фактический статус
+  MCP-сервера `jev-mcp` (v0.3.0, локальная установка):
+  - **живы 9 тулов**: `jev_evaluate`, `jev_assess_change_risk`, `jev_check_requirement`,
+    `jev_classify_issue`, `jev_coding_loop`, `jev_review`, `jev_verify`, `jev_screen`,
+    `jev_rank`;
+  - **баг схемы `jev_review` не воспроизводится**: ожидаемый `MCP error -32602`
+    (несериализуемый `z.union`) на окружении v0.3.0 / MCP SDK 1.30.0 / zod 4.6.5 /
+    node v22.23.2 не возник — `tools/list` отдаёт все тулы, `jev_review` исполняется по
+    legacy v1 (`deprecated_input_schema: "v1"`). Обход CLI-адаптером не нужен; у CLI
+    нет подкоманд `screen`/`review` (только `doctor`/`context`/`ci-shadow`/`eval`);
+  - **модель**: `jev-1.13.0` (alias `jev-latest`); доступны также `jev-preview`;
+  - **`jev_screen` не отдаёт `confidence`** — только `probabilities` (injection /
+    substance / relevance) и рекомендацию `pass|review|block|skip`;
+  - **результат пилота (Block 1)**: `jev_evaluate` 7/10 (7/8 на дихотомии
+    reject/authoritative), `jev_verify` 9/10 (8/8 на дихотомии); `jev_screen` —
+    нулевая дискриминация (все 10 сниппетов `pass`), как trust-префильтр непригоден;
+    `jev_verify` пригоден только против детерминированного evidence-bundle;
+  - **расположение ключа**: `~/.config/opencode/server.env` (права 600, вне репо),
+    инжект в opencode через `{env:TYPESAFE_API_KEY}`; в репо/отчёты не попадает;
+  - **бюджет**: 30/30 вызовов пилота (19 540 input / 1 454 output tok, ≈ $0.00082).
+- **Источник**: пакет `jev-pilot-0`; артефакты — `.tmp/research/jev-pilot/`
+  (report.md, log.md, raw-results.json, corpus.json, agreement-table.md); вызовы —
+  MCP stdio-адаптер на `@modelcontextprotocol/sdk`
+- **Дата**: 2026-09-22
