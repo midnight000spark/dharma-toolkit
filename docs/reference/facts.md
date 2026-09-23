@@ -914,3 +914,29 @@
   (report.md, log.md, raw-results.json, corpus.json, agreement-table.md); вызовы —
   MCP stdio-адаптер на `@modelcontextprotocol/sdk`
 - **Дата**: 2026-09-22
+
+<a id="f-72"></a>
+### F-72: trace-mcp 3.31.4 — для Dart только regex-символы, Flutter вне 88 интеграций; установка `npm install -g trace-mcp`
+- **Что**: сверка кандидата стека `trace-mcp` (nikolai-vysotskyi) по первоисточникам
+  2026-09-24 (README GitHub, `trace-mcp.com/supported-frameworks.html` от 2026-09-09,
+  `npm view trace-mcp`, локальный PATH):
+  - **Dart = «Regex-based (symbol extraction)»** (низший из двух уровней авторов):
+    classes, mixins, enums, functions, getters/setters, factory constructors; **без**
+    call/import/type edges → `get_call_graph` / call-aware `find_usages` для Dart пусты;
+  - **Flutter отсутствует** во всех 88 интеграциях (backend/frontend/UI/ORM/state/testing);
+    `get_request_flow`, ORM-схема из миграций, component trees, DI-дерево для нашего
+    стека **не работают**;
+  - **заявленные «72.7% fewer tokens» не переносятся**: измерены на `hono, axios,
+    express, requests, flask, got`; их же quality-бенчмарк — понимание 67% vs 65%, но
+    **false positives 0.80 vs 0.58 (хуже наивного чтения)**;
+  - **установка**: `npm install -g trace-mcp` (3.31.4, MIT, изменён 2026-09-23) →
+    команда `trace` (алиас `trace-mcp`; на macOS `/usr/bin/trace` конфликтует с
+    системным); state — `~/.trace/`, проект чистится `.traceignore`;
+  - **вендор исправлял свою метрику публично** (сломанный счётчик `× 0.15`, PR #915;
+    пересадка кадра 21%→67.4% с препринтом, опубликованы проигрышные PR);
+  - **markdown-vault**: wikilinks/tags/frontmatter индексируются как граф — гипотетическая
+    зона пользы для `docs/` dharma-toolkit (не проверена);
+  - **в дереве**: бинарник `trace` не установлен (`which trace` → not found).
+- **Источник**: исследование «стек среды» (вердикт по `docs/research/stek.md`);
+  `jev_screen` README — pass (injection 0.03 / substance 0.92 / relevance 0.95)
+- **Дата**: 2026-09-24
