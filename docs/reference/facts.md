@@ -937,6 +937,6 @@
   - **markdown-vault**: wikilinks/tags/frontmatter индексируются как граф — гипотетическая
     зона пользы для `docs/` dharma-toolkit (не проверена);
   - **в дереве**: бинарник `trace` не установлен (`which trace` → not found).
-- **Источник**: исследование «стек среды» (вердикт по `docs/research/stek.md`);
+- **Источник**: исследование стека dev-среды (файл `stek.md`, вне репо: `.tmp/research/`);
   `jev_screen` README — pass (injection 0.03 / substance 0.92 / relevance 0.95)
 - **Дата**: 2026-09-24
