@@ -15,6 +15,14 @@
     "dart": {
       "type": "local",
       "command": ["dart", "mcp-server"]
+    },
+    "jev-mcp": {
+      "type": "local",
+      "command": ["node", "/home/midnight/.local/share/jev-mcp/dist/index.js"],
+      "environment": {
+        "TYPESAFE_API_KEY": "{env:TYPESAFE_API_KEY}"
+      },
+      "enabled": true
     }
   },
   "agent": {
