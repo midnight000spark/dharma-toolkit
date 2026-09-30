@@ -60,6 +60,11 @@ abstract class NotificationGateway {
   /// Доступно ли *точное* планирование (Android 14+, F-57). Платформа без
   /// такого понятия отвечает `false` — «точность не обещана».
   Future<bool> canScheduleExactNotifications();
+
+  /// Запросить рантайм-разрешение на показ уведомлений (Android 13+,
+  /// `POST_NOTIFICATIONS`, W1). `null` — на платформе такого понятия нет
+  /// («спрашивать нечего»), а не «отказано».
+  Future<bool?> requestNotificationsPermission();
 }
 
 /// Транспорт поверх `FlutterLocalNotificationsPlugin` — единственное место,
@@ -135,6 +140,15 @@ class FlutterLocalNotificationsGateway implements NotificationGateway {
     // Не-Android (или Android без платформенной реализации) точности не
     // обещает: `null` — «спросить не у кого», а не «разрешено».
     return await android?.canScheduleExactNotifications() ?? false;
+  }
+
+  @override
+  Future<bool?> requestNotificationsPermission() async {
+    final android = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    // На Android < 13 запрос — no-op плагина (разрешения не существует);
+    // не-Android — `null`: спрашивать нечего (W1).
+    return android?.requestNotificationsPermission();
   }
 }
 

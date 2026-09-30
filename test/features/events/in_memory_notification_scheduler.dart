@@ -15,6 +15,16 @@ import 'package:dharma_toolkit/features/events/domain/notification_scheduler.dar
 
 /// Планировщик в памяти: ничего не показывает, всё помнит.
 class InMemoryNotificationScheduler implements NotificationScheduler {
+  InMemoryNotificationScheduler({
+    this.permission = NotificationPermission.granted,
+  });
+
+  /// Что вернёт запрос разрешения (W1): тесты проверяют и отказ, и согласие.
+  NotificationPermission permission;
+
+  /// Сколько раз спрашивали разрешение (запрос обязан состояться — W1).
+  int permissionRequests = 0;
+
   final Map<int, NotificationPlanItem> scheduled = {};
 
   /// Сколько раз вызывали `cancelRange` (видно идемпотентность переплана).
@@ -48,4 +58,10 @@ class InMemoryNotificationScheduler implements NotificationScheduler {
 
   @override
   Future<List<int>> pendingIds() async => scheduled.keys.toList()..sort();
+
+  @override
+  Future<NotificationPermission> requestNotificationsPermission() async {
+    permissionRequests++;
+    return permission;
+  }
 }

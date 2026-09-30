@@ -26,10 +26,13 @@ import 'package:dharma_toolkit/features/calendar/data/calendar_special_days_sour
 import 'package:dharma_toolkit/features/calendar/presentation/providers/calendar_providers.dart';
 import 'package:dharma_toolkit/features/events/domain/notification_scheduler.dart';
 import 'package:dharma_toolkit/features/events/domain/notification_settings.dart';
+import 'package:dharma_toolkit/features/events/platform/degraded_notification_scheduler.dart';
+import 'package:dharma_toolkit/features/events/presentation/notification_permission_banner.dart';
 import 'package:dharma_toolkit/features/events/presentation/providers/event_providers.dart';
 import 'package:dharma_toolkit/main.dart';
 import 'package:dharma_toolkit/shared/providers/app_providers.dart';
 import 'package:drift/native.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -152,6 +155,76 @@ void main() {
       tags.add('');
       await pumpEventQueue();
       expect(container.read(activeSpecialDaysSourceProvider), isNull);
+    });
+  });
+
+  group('W1 — разрешение на уведомления: запрос при первом входе', () {
+    ProviderContainer permissionContainer(NotificationScheduler scheduler) {
+      final container = ProviderContainer(overrides: [
+        ...platformPortOverrides(scheduler: scheduler),
+      ]);
+      addTearDown(container.dispose);
+      return container;
+    }
+
+    test('отказ: запрос состоялся, состояние denied (честно, не тишина)',
+        () async {
+      final scheduler = InMemoryNotificationScheduler(
+          permission: NotificationPermission.denied);
+      final container = permissionContainer(scheduler);
+
+      final result =
+          await container.read(notificationPermissionProvider.future);
+
+      expect(result, NotificationPermission.denied);
+      expect(scheduler.permissionRequests, 1,
+          reason: 'разрешение обязано быть запрошено приложением (W1)');
+    });
+
+    test('согласие: granted; повторное чтение не запрашивает снова', () async {
+      final scheduler = InMemoryNotificationScheduler();
+      final container = permissionContainer(scheduler);
+
+      expect(await container.read(notificationPermissionProvider.future),
+          NotificationPermission.granted);
+      expect(await container.read(notificationPermissionProvider.future),
+          NotificationPermission.granted);
+      expect(scheduler.permissionRequests, 1,
+          reason: 'запрос — один раз на жизнь провайдера');
+    });
+
+    test('деградация платформы: unavailable, а не молчаливое «всё хорошо»',
+        () async {
+      final container = permissionContainer(
+          DegradedNotificationScheduler(reason: 'нет плагина', warn: (_) {}));
+
+      expect(await container.read(notificationPermissionProvider.future),
+          NotificationPermission.unavailable);
+    });
+
+    testWidgets('баннер виден при отказе и скрыт при разрешении (UI-статус)',
+        (tester) async {
+      Future<void> pumpWith(NotificationPermission permission) async {
+        // Сброс дерева: иначе ProviderScope переиспользует контейнер с
+        // прежним оверрайдом (смена оверрайдов после создания не поддержана).
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pumpWidget(ProviderScope(
+          overrides: [
+            notificationPermissionProvider
+                .overrideWith((ref) async => permission),
+          ],
+          child: const MaterialApp(
+            home: Scaffold(body: NotificationPermissionBanner()),
+          ),
+        ));
+        await tester.pumpAndSettle();
+      }
+
+      await pumpWith(NotificationPermission.denied);
+      expect(find.textContaining('не придут'), findsOneWidget);
+
+      await pumpWith(NotificationPermission.granted);
+      expect(find.textContaining('не придут'), findsNothing);
     });
   });
 

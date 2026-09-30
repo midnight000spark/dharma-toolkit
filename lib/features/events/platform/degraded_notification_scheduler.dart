@@ -45,4 +45,12 @@ class DegradedNotificationScheduler implements NotificationScheduler {
     _notify('перечисление ожидающих');
     return const [];
   }
+
+  @override
+  Future<NotificationPermission> requestNotificationsPermission() async {
+    _notify('запрос разрешения на уведомления');
+    // Деградация платформенного слоя: показ невозможен независимо от
+    // разрешения — «недоступно», а не «отказано» (W1).
+    return NotificationPermission.unavailable;
+  }
 }

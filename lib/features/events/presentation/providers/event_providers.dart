@@ -161,6 +161,20 @@ final notificationSchedulerProvider = Provider<NotificationScheduler>((ref) {
   );
 });
 
+/// Рантайм-разрешение на показ уведомлений (W1).
+///
+/// Запрос выполняется **один раз** при первом чтении провайдера — читателем
+/// выступает баннер в composition root, то есть UI-контекст первого входа
+/// (диалог платформы требует Activity; на Этапе 8 точка переедет в SCR-14).
+/// Результат — честное состояние: `denied`/`unavailable` обязаны быть видны
+/// на экране, а не раствориться в тишине.
+final notificationPermissionProvider =
+    FutureProvider<NotificationPermission>((ref) async {
+  return ref
+      .watch(notificationSchedulerProvider)
+      .requestNotificationsPermission();
+});
+
 /// План по активному **на момент вызова** пресету (пакет 6.2).
 ///
 /// Единственный путь сборки плана для перепланирования: активный пресет

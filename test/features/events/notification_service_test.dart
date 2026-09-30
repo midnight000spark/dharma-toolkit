@@ -196,4 +196,34 @@ void main() {
       expect(gateway.cancelled, [100005]);
     });
   });
+
+  group('разрешение на показ (W1)', () {
+    test('запрос делегируется платформе; согласие — true', () async {
+      final granted = await serviceWith().requestNotificationsPermission();
+
+      expect(granted, isTrue);
+      expect(gateway.permissionRequests, 1);
+    });
+
+    test('отказ пользователя — false (честное состояние, не тишина)', () async {
+      gateway.notificationsPermission = false;
+
+      expect(await serviceWith().requestNotificationsPermission(), isFalse);
+    });
+
+    test('платформа без понятия разрешения (не-Android) — true: спрашивать '
+        'нечего', () async {
+      gateway.notificationsPermission = null;
+
+      expect(await serviceWith().requestNotificationsPermission(), isTrue);
+    });
+
+    test('отказ платформенного запроса — false и предупреждение в лог',
+        () async {
+      gateway.permissionError = StateError('канал недоступен');
+
+      expect(await serviceWith().requestNotificationsPermission(), isFalse);
+      expect(warnings.single, contains('разрешения'));
+    });
+  });
 }

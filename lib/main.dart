@@ -23,6 +23,7 @@ import 'features/events/platform/notification_gateway.dart';
 import 'features/events/platform/notification_scheduler_adapter.dart';
 import 'features/events/platform/notification_service.dart';
 import 'features/events/presentation/dev/debug_notification_button.dart';
+import 'features/events/presentation/notification_permission_banner.dart';
 import 'features/events/presentation/providers/event_providers.dart';
 import 'shared/l10n/l10n.dart';
 import 'shared/providers/app_providers.dart';
@@ -296,6 +297,15 @@ class _DharmaToolkitAppState extends ConsumerState<DharmaToolkitApp> {
             right: 16,
             bottom: 96,
             child: DebugNotificationButton(),
+          ),
+          // W1: запрос рантайм-разрешения на уведомления при первом входе и
+          // честный статус отказа на экране. Запрос идёт первым чтением
+          // провайдера из баннера — это и есть UI-контекст (Activity).
+          const Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: NotificationPermissionBanner(),
           ),
         ],
       ),

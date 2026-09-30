@@ -68,10 +68,18 @@ class FakeNotificationGateway implements NotificationGateway {
   /// Отвечает ли платформа, что точное планирование разрешено (Android 14+).
   bool exactAllowed = false;
 
+  /// Ответ на запрос разрешения на показ (W1); `null` — платформа без такого
+  /// понятия (не-Android), а не «отказано».
+  bool? notificationsPermission = true;
+
+  /// Сколько раз спрашивали разрешение на показ (W1).
+  int permissionRequests = 0;
+
   /// Чем сыграть отказ: `UnimplementedError` — платформа без планировщика
   /// (Linux, F-57).
   Object? zonedScheduleError;
   Object? pendingIdsError;
+  Object? permissionError;
 
   @override
   Future<void> initialize({
@@ -131,6 +139,14 @@ class FakeNotificationGateway implements NotificationGateway {
 
   @override
   Future<bool> canScheduleExactNotifications() async => exactAllowed;
+
+  @override
+  Future<bool?> requestNotificationsPermission() async {
+    final error = permissionError;
+    if (error != null) throw error;
+    permissionRequests++;
+    return notificationsPermission;
+  }
 }
 
 /// Таймзона устройства, подставленная тестом (в тестовом процессе метод-канал

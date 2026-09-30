@@ -39,6 +39,14 @@ class NotificationSchedulerAdapter implements NotificationScheduler {
   @override
   Future<List<int>> pendingIds() => _service.pendingIds();
 
+  @override
+  Future<NotificationPermission> requestNotificationsPermission() async {
+    final granted = await _service.requestNotificationsPermission();
+    return granted
+        ? NotificationPermission.granted
+        : NotificationPermission.denied;
+  }
+
   static void _ensureOwnRange(int id) {
     if (id < NotificationPlan.idRangeStart || id > NotificationPlan.idRangeEnd) {
       throw ArgumentError.value(
