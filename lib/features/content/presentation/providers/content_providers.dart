@@ -103,6 +103,9 @@ final dailyReadingServiceProvider = Provider<DailyReadingService>((ref) {
     traditionTag: tag,
     packs: loaded?.packs ?? const [],
     source: ref.watch(specialDaysSourceProvider),
+    // C8б: сбой пака доходит до чтения дня причиной, а не глушится общим
+    // фолбэком (user-safe — в notes, полная — в debugNotes).
+    packFailures: loaded?.failures ?? const [],
   );
 });
 

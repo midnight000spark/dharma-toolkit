@@ -64,6 +64,13 @@ class ContentPackFailure {
     return 'пак не прочитан';
   }
 
+  /// Строка пользовательского канала (C8г/C8б): единая формулировка для ленты
+  /// и чтения дня — два пути не расходятся.
+  String get userNote => 'Контент-пак не загружен: $userReason.';
+
+  /// Строка диагностики: ключ ассета и техническая причина (C8г/C8б).
+  String get debugNote => 'Пак не загружен ($assetKey): $reason';
+
   @override
   String toString() => '$assetKey: $reason';
 }

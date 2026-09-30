@@ -265,6 +265,24 @@ void main() {
 
       expect(day.notes.join('\n'), contains('тибетских дат не знает'));
     });
+
+    test(
+        'C8б: сбой пака виден в чтении дня — тип в notes, путь ассета в debugNotes',
+        () async {
+      final container = containerWith(
+        packAssets: const ['assets/content_packs/missing.json'],
+      );
+
+      await container.read(contentPacksProvider.future);
+      final day = container.read(dailyReadingProvider);
+
+      expect(day.notes.join('\n'), contains('файл пака недоступен'),
+          reason: 'пользователь видит причину сбоя, а не общее '
+              '«источник недоступен»');
+      expect(day.notes.join('\n'), isNot(contains('missing.json')),
+          reason: 'внутренний путь ассета не уходит в пользовательский канал');
+      expect(day.debugNotes.join('\n'), contains('missing.json'));
+    });
   });
 
   group('contentFeedProvider — лента на окне', () {

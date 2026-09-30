@@ -23,6 +23,7 @@ library;
 
 import '../../../core/calendar/special_days_source.dart';
 import '../../../../core/content/daily_reading.dart';
+import '../data/content_pack_loader.dart';
 import 'content_fallbacks.dart';
 import 'content_pack.dart';
 import 'content_rotation.dart';
@@ -34,6 +35,7 @@ class DailyReadingService {
     required this.traditionTag,
     required this.packs,
     this.source,
+    this.packFailures = const [],
   });
 
   /// Тег активного пресета (принцип №3): по нему отбираются паки. Ни одного
@@ -47,22 +49,41 @@ class DailyReadingService {
   /// (тогда правило `tibetan` неразрешимо, и это честно сообщается).
   final SpecialDaysSource? source;
 
+  /// Сбои загрузки паков (C8б): пользователь видит причину без путей и id
+  /// ([ContentPackFailure.userNote]), диагностика — полную
+  /// ([ContentPackFailure.debugNote]). Формулировки едины с лентой (C8г) —
+  /// «пак не доехал» не подменяется общим «источника нет».
+  final List<ContentPackFailure> packFailures;
+
   /// Чтения дня [day] (время аргумента не значимо).
   DailyReadings readingsFor(DateTime day) {
     final date = DateTime(day.year, day.month, day.day);
     final notes = <String>[];
+    final debugNotes = <String>[];
     final readings = <ContentReading>[];
 
     final active = _activePacks(notes);
     _addDateBound(date, active, readings, notes);
     _addRotated(date, active, readings);
 
+    // C8б: сбой пака объясняется, а не глушится: тип отказа — пользователю,
+    // путь поля и ключ ассета — диагностике (единые формулировки с лентой).
+    for (final failure in packFailures) {
+      notes.add(failure.userNote);
+      debugNotes.add(failure.debugNote);
+    }
+
     if (readings.isEmpty) {
       readings.add(_fallback(date));
       notes.add(ContentFallbacks.note);
     }
 
-    return DailyReadings(date: date, readings: readings, notes: notes);
+    return DailyReadings(
+      date: date,
+      readings: readings,
+      notes: notes,
+      debugNotes: debugNotes,
+    );
   }
 
   /// Паки активной традиции; чужой тег — пропуск с причиной (изоляция, №3).

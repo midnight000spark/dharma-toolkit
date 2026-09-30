@@ -11,6 +11,7 @@ library;
 
 import 'package:dharma_toolkit/core/calendar/special_day.dart';
 import 'package:dharma_toolkit/core/calendar/special_days_source.dart';
+import 'package:dharma_toolkit/features/content/data/content_pack_loader.dart';
 import 'package:dharma_toolkit/features/content/domain/content_fallbacks.dart';
 import 'package:dharma_toolkit/features/content/domain/content_pack.dart';
 import 'package:dharma_toolkit/core/content/daily_reading.dart';
@@ -89,11 +90,13 @@ DailyReadingService serviceOf({
   String traditionTag = 'nyingma',
   List<ContentPack>? packs,
   SpecialDaysSource? source,
+  List<ContentPackFailure> failures = const [],
 }) =>
     DailyReadingService(
       traditionTag: traditionTag,
       packs: packs ?? [packOf(entries: poolOf(3))],
       source: source,
+      packFailures: failures,
     );
 
 void main() {
@@ -293,6 +296,51 @@ void main() {
         expect(reading.title, 'Пуловое',
             reason: 'привязанная запись не участвует в ротации пула');
       }
+    });
+  });
+
+  group('DailyReadingService — сбои паков в чтении дня (C8б)', () {
+    test('битый пак: тип отказа в notes, путь поля и ассет — в debugNotes', () {
+      final day = serviceOf(packs: const [], failures: const [
+        ContentPackFailure(
+          'assets/content_packs/broken.json',
+          'запись отвергнута — поле "entries[2].title": '
+              'обязательное поле отсутствует',
+        ),
+      ]).readingsFor(_today);
+
+      expect(day.isFallback, isTrue,
+          reason: 'живых паков нет — показана собственная формулировка');
+      expect(
+        day.notes.any((n) => n.contains('часть записей пака повреждена')),
+        isTrue,
+        reason: 'пользователь видит тип отказа, а не только «источника нет»; '
+            'общее «источник недоступен» без причины недопустимо',
+      );
+      expect(day.notes.any((n) => n.contains('entries[')), isFalse,
+          reason: 'путь поля — внутренняя деталь, ему место в диагностике');
+      expect(day.notes.any((n) => n.contains('assets/')), isFalse);
+      expect(day.debugNotes.single, contains('entries[2].title'));
+      expect(
+          day.debugNotes.single, contains('assets/content_packs/broken.json'));
+    });
+
+    test('битый JSON: user-строка без сырой причины и пути', () {
+      final day = serviceOf(packs: const [], failures: const [
+        ContentPackFailure('assets/content_packs/b.json', 'битый JSON: ...'),
+      ]).readingsFor(_today);
+
+      expect(day.notes.any((n) => n.contains('пак повреждён: не читается')),
+          isTrue);
+      expect(day.notes.any((n) => n.contains('битый JSON')), isFalse);
+      expect(day.debugNotes.single, contains('битый JSON'));
+    });
+
+    test('без сбоев диагностика пуста, фолбэк-поведение не меняется', () {
+      final day = serviceOf(packs: const []).readingsFor(_today);
+
+      expect(day.notes, contains(ContentFallbacks.note));
+      expect(day.debugNotes, isEmpty);
     });
   });
 

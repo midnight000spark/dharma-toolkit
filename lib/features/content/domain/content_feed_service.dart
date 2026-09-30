@@ -37,10 +37,9 @@ class ContentFeedService {
   /// Источник тибетских дат активной традиции (для правила `tibetan`).
   final SpecialDaysSource? source;
 
-  /// Сбои загрузки паков (блок A) — расщепляются по каналам (C8г):
-  /// пользователю уходит [ContentPackFailure.userReason] без внутренних путей
-  /// и id, диагностике — полная строка с ключом ассета и причиной. Пользователь
-  /// видит «пак не загружен», а не тихую пустоту и не файловый путь.
+  /// Сбои загрузки паков (блок A) — уходят в чтение дня (C8б), а оттуда в оба
+  /// канала ленты: пользователю — причина без путей и id, диагностике —
+  /// полная строка. Пользователь видит «пак не загружен», а не тихую пустоту.
   final List<ContentPackFailure> packFailures;
 
   /// Окно по умолчанию: сегодня + 7 дней **включительно** (8 календарных дней) —
@@ -54,6 +53,7 @@ class ContentFeedService {
       traditionTag: traditionTag,
       packs: packs,
       source: source,
+      packFailures: packFailures,
     );
 
     final from = DateTime(today.year, today.month, today.day);
@@ -72,13 +72,7 @@ class ContentFeedService {
       final day = service.readingsFor(date);
       days.add(day);
       _mergeNotes(userNotes, day.notes);
-    }
-
-    for (final failure in packFailures) {
-      // C8г: два канала — «что сказать человеку» и «что оставить в логе».
-      _mergeNotes(debugNotes,
-          ['Пак не загружен (${failure.assetKey}): ${failure.reason}']);
-      _mergeNotes(userNotes, ['Контент-пак не загружен: ${failure.userReason}.']);
+      _mergeNotes(debugNotes, day.debugNotes);
     }
 
     return ContentFeed(days: days, userNotes: userNotes, debugNotes: debugNotes);
