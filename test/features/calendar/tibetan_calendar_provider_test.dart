@@ -84,12 +84,12 @@ void main() {
         2027: DateTime(2027, 2, 7),
       };
       for (final e in expected.entries) {
-        expect(TibetanCalendarProvider.losarDate(e.key), e.value,
+        expect(provider.losarDate(e.key), e.value,
             reason: 'Лосар ${e.key}');
       }
       // Перекрёстно: те же даты отдает фикстура.
       for (final l in losars) {
-        expect(TibetanCalendarProvider.losarDate(l.tibetanYear), l.gregorian,
+        expect(provider.losarDate(l.tibetanYear), l.gregorian,
             reason: 'Лосар ${l.tibetanYear} vs фикстура');
       }
     });
@@ -210,7 +210,7 @@ void main() {
       expect(() => tibetanToGregorian(TibetanDate(
           year: 1935, month: 1, isLeapMonth: false, day: 1, isLeapDay: false)),
           throwsA(isA<NoSuchTibetanDayException>()));
-      expect(TibetanCalendarProvider.losarDate(1935), DateTime(1935, 2, 4));
+      expect(provider.losarDate(1935), DateTime(1935, 2, 4));
       final days = provider.getSpecialDays(
           DateTime(1935, 2, 1), DateTime(1935, 2, 10));
       final losar =
@@ -224,7 +224,7 @@ void main() {
       // Обычный 1/1 существует (07.03) и НЕ является праздником —
       // широкий окно ловит мутацию «отметить оба инстанса».
       expect(gregorianToTibetan(DateTime(2019, 3, 7)).isLeapMonth, isFalse);
-      expect(TibetanCalendarProvider.losarDate(2019), DateTime(2019, 2, 5));
+      expect(provider.losarDate(2019), DateTime(2019, 2, 5));
       final narrow = provider.getSpecialDays(
           DateTime(2019, 2, 1), DateTime(2019, 2, 10));
       expect(
@@ -241,7 +241,7 @@ void main() {
       expect(() => tibetanToGregorian(TibetanDate(
           year: 2084, month: 1, isLeapMonth: true, day: 1, isLeapDay: false)),
           throwsA(isA<NoSuchTibetanDayException>()));
-      expect(TibetanCalendarProvider.losarDate(2084), DateTime(2084, 3, 7));
+      expect(provider.losarDate(2084), DateTime(2084, 3, 7));
       final days = provider.getSpecialDays(
           DateTime(2084, 3, 1), DateTime(2084, 3, 10));
       final losar =
@@ -267,36 +267,126 @@ void main() {
       }
     });
 
-    test('sweep 1900–2100: losarDate landing-ит на 1/1; набор лет без Лосара точен', () {
-      // Инвариант конвенции: первая существующая 1/1 landing-ится прямым
-      // ходом g2t обратно в 1/1 того же года. Дыры конвенции известны и
-      // точны: в 1901 и 1977 1/1 не существует ни в одном из инстансов
-      // 1-го месяца (сверено прогоном tibcal 01591b5, не портом) — там
-      // Лосар бросает StateError. Любой ДРУГОЙ год с дырой или пропажа
-      // дыры — красный тест (защита от дрейфа порта за границами ручных
-      // векторов).
+    test('sweep 1900–2100: дефолт — поздняя половина пары; набор лет без Лосара точен', () {
+      // Конвенция C6 (решение владельца 30.09): когда день 1/1 удвоен,
+      // дефолт — поздняя половина (обычный день, isLeapDay: false); ранняя
+      // (вставной день) доступна настройкой LosarHalf.early. Инварианты:
+      // обе стратегии landing-ятся обратно в 1/1 того же года, «поздняя» не
+      // раньше «ранней», а где половины различимы — дефолт обязан нести
+      // isLeapDay: false, ранняя isLeapDay: true. Годы без 1/1: в окне —
+      // 1901/1977 (подтверждено прогоном tibcal 01591b5, не портом).
+      final late = TibetanCalendarProvider(traditionTag: 'nyingma');
+      final early = TibetanCalendarProvider(
+          traditionTag: 'nyingma', losarHalf: LosarHalf.early);
       final expectedHoles = {1901, 1977};
       final actualHoles = <int>{};
-      var doubledLosarYears = 0;
+      var doubledDayYears = 0;
+      var doubledMonthYears = 0;
       for (var y = 1900; y <= 2100; y++) {
-        DateTime? l;
+        final DateTime dateLate;
         try {
-          l = TibetanCalendarProvider.losarDate(y);
+          dateLate = late.losarDate(y);
         } on StateError {
           actualHoles.add(y);
           continue;
         }
-        final back = gregorianToTibetan(l);
-        expect(back.month, 1, reason: 'losarDate($y) вне 1-го месяца');
-        expect(back.day, 1, reason: 'losarDate($y) вне 1-го дня');
-        expect(back.year, y, reason: 'losarDate($y) уехал в год ${back.year}');
-        if (back.isLeapMonth) doubledLosarYears++;
+        // Если существует хоть один инстанс 1/1, обе стратегии обязаны
+        // найти его: ранняя не может потерять год, найденный поздней.
+        final dateEarly = early.losarDate(y);
+        for (final d in [dateLate, dateEarly]) {
+          final back = gregorianToTibetan(d);
+          expect(back.year, y, reason: 'Лосар($y)=$d уехал в год ${back.year}');
+          expect(back.month, 1, reason: 'Лосар($y)=$d вне 1-го месяца');
+          expect(back.day, 1, reason: 'Лосар($y)=$d вне 1-го дня');
+        }
+        final backLate = gregorianToTibetan(dateLate);
+        final backEarly = gregorianToTibetan(dateEarly);
+        expect(dateLate.isBefore(dateEarly), isFalse,
+            reason: 'дефолт($dateLate) раньше ранней($dateEarly) в $y');
+        if (dateLate != dateEarly) {
+          // Половины различимы — это ровно удвоенный день 1/1.
+          doubledDayYears++;
+          expect(backLate.isLeapDay, isFalse,
+              reason: 'дефолт в $y обязан быть поздней (обычной) половиной');
+          expect(backEarly.isLeapDay, isTrue,
+              reason: 'ранняя стратегия в $y обязана взять вставной день');
+        } else if (backLate.isLeapMonth) {
+          doubledMonthYears++;
+        }
       }
       expect(actualHoles, expectedHoles,
           reason: 'набор лет без 1/1 обязан быть точным');
-      // Нетривиальность: удвоенные 1-е месяцы в окне есть (иначе sweep не
-      // проверяет новую конвенцию против старой — пустой прогон).
-      expect(doubledLosarYears, greaterThan(0));
+      // Нетривиальность свипа: обе ветки удвоения в окне есть.
+      expect(doubledDayYears, greaterThan(0),
+          reason: 'удвоенные дни 1/1 (2036, 2037) обязаны быть в окне');
+      expect(doubledMonthYears, greaterThan(0),
+          reason: 'удвоенные 1-е месяцы (2019) обязаны быть в окне');
+    });
+
+    test('дыры конвенции вне свипа: 2146, 2165, 2184 — полный список', () {
+      // Полный список лет без 1/1 за окном свипа (сверка tibcal 01591b5,
+      // C6): тест фиксирует его, чтобы дрейф порта не остался незамеченным.
+      final late = TibetanCalendarProvider(traditionTag: 'nyingma');
+      for (final y in [2146, 2165, 2184]) {
+        expect(() => late.losarDate(y), throwsStateError, reason: 'дыра $y');
+      }
+      for (final y in [2145, 2147, 2164, 2166, 2183, 2185]) {
+        expect(late.losarDate(y), isNotNull, reason: '$y не дыра');
+      }
+    });
+  });
+
+  group('C6 — конвенция половины удвоенного 1/1 (решение владельца 30.09)', () {
+    // Векторы сверены прямым прогоном tibcal 01591b5 (MIT, тот же источник,
+    // что F-45), зонд cal_verify: 2036 — вставная половина 27.02, обычная
+    // 28.02; 2037 — 15.02/16.02; 2019 — удвоен МЕСЯЦ (вставной 05.02,
+    // обычный 07.03), половина дня на него не влияет.
+    final late = TibetanCalendarProvider(traditionTag: 'nyingma');
+    final early = TibetanCalendarProvider(
+        traditionTag: 'nyingma', losarHalf: LosarHalf.early);
+
+    test('2036: дефолт — поздняя 28.02; ранняя — вставной 27.02', () {
+      expect(gregorianToTibetan(DateTime(2036, 2, 27)).isLeapDay, isTrue);
+      expect(gregorianToTibetan(DateTime(2036, 2, 28)).isLeapDay, isFalse);
+      expect(late.losarDate(2036), DateTime(2036, 2, 28));
+      expect(early.losarDate(2036), DateTime(2036, 2, 27));
+    });
+
+    test('2037: дефолт — поздняя 16.02; ранняя — вставной 15.02', () {
+      expect(gregorianToTibetan(DateTime(2037, 2, 15)).isLeapDay, isTrue);
+      expect(gregorianToTibetan(DateTime(2037, 2, 16)).isLeapDay, isFalse);
+      expect(late.losarDate(2037), DateTime(2037, 2, 16));
+      expect(early.losarDate(2037), DateTime(2037, 2, 15));
+    });
+
+    test('2019: удвоенный месяц — обе стратегии 05.02 (регрессия)', () {
+      // Обе половины года заданы явно: вставной месяц 05.02 и обычный
+      // 07.03; конвенция C6 выбирает половину ДНЯ и изменение месяца не
+      // допускает.
+      expect(gregorianToTibetan(DateTime(2019, 2, 5)).isLeapMonth, isTrue);
+      expect(gregorianToTibetan(DateTime(2019, 3, 7)).isLeapMonth, isFalse);
+      for (final p in [late, early]) {
+        expect(p.losarDate(2019), DateTime(2019, 2, 5));
+      }
+    });
+
+    test('getSpecialDays уважает конвенцию: отметка на выбранной половине', () {
+      // Дефолт: праздник 28.02; вставная половина 27.02 без отметки.
+      final lateDays = late.getSpecialDays(
+          DateTime(2036, 2, 25), DateTime(2036, 3, 1));
+      expect(
+          lateDays
+              .where((d) => d.type == SpecialDayType.festival)
+              .map((d) => d.date),
+          [DateTime(2036, 2, 28)]);
+      // Ранняя: отметка 27.02; обычная половина 28.02 без отметки.
+      final earlyDays = early.getSpecialDays(
+          DateTime(2036, 2, 25), DateTime(2036, 3, 1));
+      expect(
+          earlyDays
+              .where((d) => d.type == SpecialDayType.festival)
+              .map((d) => d.date),
+          [DateTime(2036, 2, 27)]);
     });
   });
 
