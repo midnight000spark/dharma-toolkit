@@ -17,10 +17,12 @@
 | `BFT-v1.0.md` … `BFT-v1.13.md` | история требований | адресно | reference (read-only) |
 | `MIGRATIONS.md` | процедура миграций БД (D-17) | при изменении схемы | reference |
 | `REVIEW-2026-08-31.md` | внешний аудит (B-3…B-11, R-8…R-17) | адресно | reference |
+| `REMEDIATION-PLAN-2026-09-30.md` | план исправления по аудитам 19–24.09 (реестр живых находок, пакеты, приёмка/гарды) | при взятии пакета в работу | active |
 | `dcp.md` | механика DCP/compress: refs, диагностика «not available», регресс serve-auth и фикс | при работе с compress / поломках контекст-менеджмента | reference |
 | `archive/state-journal-phases-0-5.md` | хроника журнала фаз 0–5 | адресно | archive (read-only) |
 | `archive/state-journal-phases-6.md` | хроника журнала фазы 6 (2026-09-02…2026-09-17) | адресно | archive (read-only) |
 | `archive/state-journal-phases-7.md` | хроника журнала фазы 7 (пакет 7.0) | адресно | archive (read-only) |
+| `archive/state-journal-post-7.md` | хроника журнала после 7.0 (2026-09-18…24: state-unload-3 … linkcheck-инцидент) | адресно | archive (read-only) |
 | `archive/state-journal-fix-1.md` | хроника пакета FIX-1 (воспроизводимость + целостность данных) | адресно | archive (read-only) |
 | `archive/state-closed-hypotheses.md` | тела завершённых гипотез H- | адресно по якорю | archive (read-only) |
 | `archive/r18-chronicle.md` | хроника обрывов сессий R-18 (#12–#16) | адресно | archive (read-only) |
