@@ -96,6 +96,9 @@ void main() {
     // дожидается первого эвента (в приложении подписчиком выступает UI).
     container.listen(activePresetStreamProvider, (_, _) {});
     container.listen(activeTraditionTagProvider, (_, _) {});
+    // Настройки — поток: с C9 план не подставляет дефолт «включено, 08:00»
+    // до прихода первого эвента, поэтому подписка должна быть живой.
+    container.listen(notificationSettingsProvider, (_, _) {});
     return container;
   }
 
@@ -168,6 +171,9 @@ void main() {
       );
 
       await container.read(eventPacksProvider.future);
+      // Первый эвент настроек доезжает микротаском: без этого шага план был бы
+      // пуст (C9: «ещё ничего не планируем» вместо дефолта).
+      await pumpEventQueue();
       final plan = container.read(notificationPlanProvider);
 
       expect(plan.items.single.scheduledAt, DateTime(2026, 6, 2, 8));

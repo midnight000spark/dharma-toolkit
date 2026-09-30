@@ -165,6 +165,9 @@ void main() {
     // Потоковые провайдеры живут между read-вызовами (паттерн 5b.6).
     container.listen(activeTraditionTagProvider, (_, _) {});
     container.listen(activePresetStreamProvider, (_, _) {});
+    // Настройки — тоже поток: с C9 план не фабрикует дефолт до первого эвента
+    // («ещё ничего не планируем»), поэтому подписка держится живой.
+    container.listen(notificationSettingsProvider, (_, _) {});
   });
 
   tearDown(() async {
