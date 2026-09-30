@@ -179,7 +179,10 @@ void main() {
       await container.read(contentPacksProvider.future);
       final feed = container.read(contentFeedProvider);
 
-      expect(feed.notes.join('\n'), contains('missing.json'));
+      expect(feed.debugNotes.join('\n'), contains('missing.json'));
+      expect(feed.userNotes.join('\n'), isNot(contains('missing.json')),
+          reason: 'внутренний путь ассета не уходит в пользовательский канал');
+      expect(feed.userNotes.join('\n'), contains('не загружен'));
       expect(feed.usesFallback, isTrue,
           reason: 'пака нет — работает фолбэк FR-CNT-3');
     });

@@ -37,8 +37,10 @@ class ContentFeedService {
   /// Источник тибетских дат активной традиции (для правила `tibetan`).
   final SpecialDaysSource? source;
 
-  /// Сбои загрузки паков (блок A) — попадают в [ContentFeed.notes] как есть:
-  /// пользователь видит «пак не прочитан», а не тихую пустоту.
+  /// Сбои загрузки паков (блок A) — расщепляются по каналам (C8г):
+  /// пользователю уходит [ContentPackFailure.userReason] без внутренних путей
+  /// и id, диагностике — полная строка с ключом ассета и причиной. Пользователь
+  /// видит «пак не загружен», а не тихую пустоту и не файловый путь.
   final List<ContentPackFailure> packFailures;
 
   /// Окно по умолчанию: сегодня + 7 дней **включительно** (8 календарных дней) —
@@ -58,7 +60,8 @@ class ContentFeedService {
     final to = DateTime(from.year, from.month, from.day + window.inDays);
 
     final days = <DailyReadings>[];
-    final notes = <String>[];
+    final userNotes = <String>[];
+    final debugNotes = <String>[];
 
     // Идём по календарю, а не по «дню + Duration(days: 1)»: при переходе на
     // летнее время сутки бывают не 24 часа, и приращение длительностью
@@ -68,14 +71,17 @@ class ContentFeedService {
         date = DateTime(date.year, date.month, date.day + 1)) {
       final day = service.readingsFor(date);
       days.add(day);
-      _mergeNotes(notes, day.notes);
+      _mergeNotes(userNotes, day.notes);
     }
 
     for (final failure in packFailures) {
-      _mergeNotes(notes, ['Пак не загружен (${failure.assetKey}): ${failure.reason}']);
+      // C8г: два канала — «что сказать человеку» и «что оставить в логе».
+      _mergeNotes(debugNotes,
+          ['Пак не загружен (${failure.assetKey}): ${failure.reason}']);
+      _mergeNotes(userNotes, ['Контент-пак не загружен: ${failure.userReason}.']);
     }
 
-    return ContentFeed(days: days, notes: notes);
+    return ContentFeed(days: days, userNotes: userNotes, debugNotes: debugNotes);
   }
 
   /// Пояснения без дублей: одна и та же причина (например, «пак не подтверждён»)

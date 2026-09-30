@@ -43,6 +43,27 @@ class ContentPackFailure {
 
   const ContentPackFailure(this.assetKey, this.reason);
 
+  /// Человеческая причина сбоя — без внутренних путей, путей полей и id (C8г):
+  /// именно она показывается пользователю; техническая строка [reason]
+  /// остаётся диагностике. Вид сбоя известен по формулировке загрузчика
+  /// (строки контрактно закреплены тестами загрузчика).
+  String get userReason {
+    final text = reason;
+    if (text.startsWith('ассет не прочитан')) return 'файл пака недоступен';
+    if (text.startsWith('битый JSON')) return 'пак повреждён: не читается';
+    if (text.startsWith('ожидался объект пака')) {
+      return 'пак повреждён: неверный формат';
+    }
+    if (text.startsWith('Контент-пак невалиден')) {
+      return 'пак не прошёл проверку схемы';
+    }
+    if (text.startsWith('дубль packId')) return 'пак пропущен: дубликат';
+    if (text.startsWith('запись отвергнута')) {
+      return 'часть записей пака повреждена';
+    }
+    return 'пак не прочитан';
+  }
+
   @override
   String toString() => '$assetKey: $reason';
 }

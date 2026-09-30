@@ -133,19 +133,40 @@ void main() {
   });
 
   group('ContentFeedService — честные пояснения', () {
-    test('сбой загрузки пака попадает в notes ленты', () {
+    test('C8г: сбой пака — userNotes без пути/id, debugNotes с путём и причиной',
+        () {
       final feed = serviceOf(failures: const [
         ContentPackFailure('assets/content_packs/broken.json', 'битый JSON'),
       ]).build(today: _today);
 
+      expect(feed.userNotes.any((n) => n.contains('assets/')), isFalse,
+          reason: 'внутренний путь ассета не показывается пользователю');
+      expect(feed.userNotes.any((n) => n.contains('битый JSON')), isFalse,
+          reason: 'сырая техническая причина остаётся в диагностике');
       expect(
-        feed.notes.any((n) =>
-            n.contains('assets/content_packs/broken.json') &&
-            n.contains('битый JSON')),
+        feed.userNotes.any((n) => n.contains('Контент-пак не загружен')),
         isTrue,
         reason: 'пользователь обязан узнать, что пак не прочитан, а не видеть '
             'тихую пустоту',
       );
+      expect(feed.debugNotes.single,
+          contains('assets/content_packs/broken.json'));
+      expect(feed.debugNotes.single, contains('битый JSON'));
+    });
+
+    test('C8г: отказ записи — без пути поля в userNotes, с путём в debugNotes',
+        () {
+      final feed = serviceOf(failures: const [
+        ContentPackFailure(
+          'p.json',
+          'запись отвергнута — поле "entries[2].title": '
+              'обязательное поле отсутствует',
+        ),
+      ]).build(today: _today);
+
+      expect(feed.userNotes.any((n) => n.contains('entries[')), isFalse);
+      expect(feed.userNotes.any((n) => n.contains('часть записей')), isTrue);
+      expect(feed.debugNotes.single, contains('entries[2].title'));
     });
 
     test('повторяющаяся причина звучит один раз, а не восемь', () {
@@ -154,7 +175,7 @@ void main() {
       ]).build(today: _today);
 
       final aboutPack =
-          feed.notes.where((n) => n.contains('не подтверждён')).toList();
+          feed.userNotes.where((n) => n.contains('не подтверждён')).toList();
       expect(aboutPack, hasLength(1));
     });
 
@@ -163,7 +184,7 @@ void main() {
         packOf(packId: 'foreign', traditionTag: 'theravada', entries: poolOf(2)),
       ]).build(today: _today);
 
-      expect(feed.notes.any((n) => n.contains('изоляция данных')), isTrue);
+      expect(feed.userNotes.any((n) => n.contains('изоляция данных')), isTrue);
     });
 
     test('пустой вход — честное «контента пока нет», а не ошибка', () {
@@ -171,7 +192,7 @@ void main() {
 
       expect(feed.isEmpty, isFalse, reason: 'фолбэк FR-CNT-3 даёт текст');
       expect(feed.usesFallback, isTrue);
-      expect(feed.notes, contains(ContentFallbacks.note));
+      expect(feed.userNotes, contains(ContentFallbacks.note));
       expect(feed.days.every((d) => d.readings.length == 1), isTrue);
       expect(feed.days.every((d) => d.isFallback), isTrue);
     });
