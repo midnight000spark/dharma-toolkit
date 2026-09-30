@@ -20,7 +20,7 @@
 - **W4**: ключ паков — тег пресета (решено) — `docs/REMEDIATION-PLAN-2026-09-30.md#w-content`
 - **W11**: кэш `losarDate` — `docs/REMEDIATION-PLAN-2026-09-30.md#w-calendar`
 - **W13**: контракт `SpecialDay.date` — `docs/REMEDIATION-PLAN-2026-09-30.md#w-calendar`
-- **Перечень остальных живых** — WARNING: W2, W3, W5, W8–W10, W12, W14–W23, W29–W34 — `docs/REMEDIATION-PLAN-2026-09-30.md#w-events`, `#w-calendar`, `#w-content`, `#w-robust`; SUGGESTION: S1–S15, §4.1(i)/(iii)/(iv) — `docs/REMEDIATION-PLAN-2026-09-30.md#suggestion-1`, `#tests-quality-1`; предэтап: Н1–Н6 — `docs/REMEDIATION-PLAN-2026-09-30.md#pre-stage-8`; обвязка P-/G- (🔒) — `docs/REMEDIATION-PLAN-2026-09-30.md#env`. Вне реестра (ведутся в STATE): B-15, B-25, R-18, R-25, R-26 — §12 плана.
+- **Перечень остальных живых** — WARNING: W2, W3, W5, W8–W10, W12, W14–W23, W29–W34 — `docs/REMEDIATION-PLAN-2026-09-30.md#w-events`, `#w-calendar`, `#w-content`, `#w-robust`; W24, W25, W28 — `docs/REMEDIATION-PLAN-2026-09-30.md#tests-quality-1`; SUGGESTION: S1–S15, §4.1(i)/(iii)/(iv) — `docs/REMEDIATION-PLAN-2026-09-30.md#suggestion-1`, `#tests-quality-1`; предэтап: Н1–Н6 — `docs/REMEDIATION-PLAN-2026-09-30.md#pre-stage-8`; обвязка P-/G- (🔒) — `docs/REMEDIATION-PLAN-2026-09-30.md#env`. Вне реестра (ведутся в STATE): B-15, B-25, R-18, R-25, R-26 — §12 плана.
 
 ## Прогресс по этапам
 
@@ -304,11 +304,12 @@
 | Дата | Изменение | Автор |
 |------|-----------|-------|
 | 2026-10-01 | **account-1/A1 (учёт, docs-only)**: разгрузка STATE (46 276 → 39 217 Б) — 10 строк журнала (2026-09-17…24) verbatim → `docs/archive/state-journal-post-7.md`; check_docs PASSED | Команда |
-| 2026-10-01 | **account-1/A2 (учёт, docs-only)**: реестр живых находок в STATE (C5–C9, W1, W4, W11, W13 + перечень) со ссылками на якоря `docs/REMEDIATION-PLAN-2026-09-30.md`; «Следующее действие» актуализировано; check_docs PASSED | Команда |
+| 2026-10-01 | **account-1/A2 (учёт, docs-only)**: реестр живых находок в STATE (C5–C9, W1, W4, W11, W13 + перечень) со ссылками на якоря `docs/REMEDIATION-PLAN-2026-09-30.md`; STATE 40 039 Б (≤ 40 960); «Следующее действие» актуализировано; check_docs PASSED | Команда |
+| 2026-10-01 | **account-1 (ревью)**: вердикт dharma-reviewer — «вернуть на доработку» (перечень: пропущены W24/W25/W28 из §7); адресовано: перечень дополнен (якорь `#tests-quality-1`), размер и формулировка ✅ уточнены; отчёт ревью — во временной папке сессии | Команда |
 
 ---
 
 ## Следующее действие
-**Пакет `account-1` ✅ (учёт, docs-only, 2026-10-01)**: STATE разгружен (46 276 → 39 217 Б, D-38) и получил реестр живых находок со ссылками на `docs/REMEDIATION-PLAN-2026-09-30.md`; A3 (профили) — blocked (нет «да» владельца), A4 — примечание (§11.6 плана; P8/P9).
+**Пакет `account-1`: A1/A2 ✅ (учёт, docs-only, 2026-10-01; приёмка — за владельцем)**: STATE разгружен (46 276 → 39 217 Б по A1; после вставки реестра — 40 039 Б ≤ 40 960) и получил реестр живых находок со ссылками на `docs/REMEDIATION-PLAN-2026-09-30.md`; A3 (профили) — blocked (нет «да» владельца), A4 — примечание (§11.6 плана; P8/P9).
 **Дальше — пакет `critical-1`** (C5–C9, W1; §4 плана) в свежей сессии (D-42); порядок пакетов — §1 плана. Этап 7: критерий не закрыт — UI чтения дня (SCR-13; состав 7.1/Этап 8 — решение владельца).
 Открытые вне реестра: B-15 (наблюдение), B-25; R-18, R-25 (процесс), R-26 (vendor-политики против exact-будильников). Хроника — §Журнал и `docs/archive/`.
