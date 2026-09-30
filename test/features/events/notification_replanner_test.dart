@@ -15,6 +15,22 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'in_memory_notification_scheduler.dart';
 
+/// Планировщик, падающий на выбранных id (C7): проверка per-item обработки —
+/// одно упавшее уведомление не срывает остальные.
+class _FailingScheduler extends InMemoryNotificationScheduler {
+  _FailingScheduler(this.failIds);
+
+  final Set<int> failIds;
+
+  @override
+  Future<void> schedule(NotificationPlanItem item) async {
+    if (failIds.contains(item.id)) {
+      throw StateError('пункт ${item.id} не поставлен');
+    }
+    return super.schedule(item);
+  }
+}
+
 void main() {
   late EventBus bus;
   late InMemoryNotificationScheduler scheduler;
@@ -156,5 +172,80 @@ void main() {
 
     expect(calls, 2);
     expect(scheduler.scheduled.keys, [100000]);
+  });
+
+  group('C7 — применение плана по пунктам (журнал, applied/degraded)', () {
+    test('отказ на пункте k не срывает остальные; отказ виден в журнале',
+        () async {
+      final failing = _FailingScheduler({100001});
+      final replanner = NotificationReplanner(
+        bus: bus,
+        scheduler: failing,
+        buildPlan: () async => NotificationPlan(
+          items: [
+            item(100000, 'A'),
+            item(100001, 'B'),
+            item(100002, 'C'),
+          ],
+          notes: const [],
+        ),
+        warn: warnings.add,
+      );
+      replanner.start();
+      await replanner.settled;
+
+      // Пункты после упавшего поставлены: один отказ не срывает план.
+      expect(failing.scheduled.keys, [100000, 100002]);
+      // Журнал: снимок последнего плана + исход по каждому пункту.
+      final journal = replanner.lastJournal!;
+      expect(journal.plan.items.map((i) => i.id), [100000, 100001, 100002]);
+      expect(journal.failedIds, [100001]);
+      expect(journal.isDegraded, isTrue);
+      expect(journal.items.firstWhere((i) => i.item.id == 100001).error,
+          isA<StateError>());
+      expect(warnings.single, contains('деградировало'));
+      // Метрики: degraded учтён, applied не растёт на деградации.
+      expect(replanner.appliedPlans, 0);
+      expect(replanner.degradedPlans, 1);
+    });
+
+    test('полное применение: applied растёт, журнал без отказов', () async {
+      final replanner = replannerWith(
+        buildPlan: () async => NotificationPlan(
+          items: [item(100000, 'A')],
+          notes: const [],
+        ),
+      );
+      replanner.start();
+      await replanner.settled;
+
+      expect(replanner.appliedPlans, 1);
+      expect(replanner.degradedPlans, 0);
+      expect(replanner.lastJournal!.isDegraded, isFalse);
+      expect(replanner.lastJournal!.failedIds, isEmpty);
+    });
+
+    test('сбой сборки плана журнал не подменяет', () async {
+      var calls = 0;
+      final replanner = replannerWith(buildPlan: () async {
+        calls++;
+        if (calls == 1) {
+          return NotificationPlan(items: [item(100000, 'A')], notes: const []);
+        }
+        throw StateError('пресет не прочитан');
+      });
+      replanner.start();
+      await replanner.settled;
+      final first = replanner.lastJournal;
+      expect(first, isNotNull);
+
+      bus.publish(PresetChanged(traditionTag: 'nyingma'));
+      await settle(replanner);
+
+      // Журнал остаётся снимком последнего применённого плана — W2 не должен
+      // потерять полосу из-за неудачной пересборки.
+      expect(identical(replanner.lastJournal, first), isTrue);
+      expect(replanner.appliedPlans, 1);
+    });
   });
 }

@@ -28,12 +28,68 @@ abstract class NotificationScheduler {
   Future<List<int>> pendingIds();
 }
 
-/// Применить план идемпотентно: снять свою полосу, затем поставить заново
-/// (D-36 — «cancelAll своего диапазона + schedule заново»).
+/// Исход применения одного пункта плана (C7).
+enum PlanItemOutcome {
+  /// Пункт принят планировщиком.
+  applied,
+
+  /// Планировщик отказал по этому пункту; остальные пункты не затронуты.
+  failed,
+}
+
+/// Судьба одного пункта в применении плана.
+class PlanItemApplication {
+  const PlanItemApplication({
+    required this.item,
+    required this.outcome,
+    this.error,
+  });
+
+  /// Пункт, который применялся.
+  final NotificationPlanItem item;
+
+  /// Исход пункта.
+  final PlanItemOutcome outcome;
+
+  /// Ошибка планировщика (заполнена только при [PlanItemOutcome.failed]).
+  final Object? error;
+}
+
+/// Журнал применения плана (C7): снимок плана + исход по каждому пункту.
 ///
-/// Повторный вызов на том же плане не создаёт дублей: сначала полоса
-/// очищается целиком, поэтому в pending остаются ровно пункты плана.
-Future<void> applyNotificationPlan(
+/// Снимок последнего плана — фундамент фикса W2 (снятие показанного по
+/// журналу): планировщик не помнит, что было запланировано, а журнал помнит.
+class NotificationApplicationJournal {
+  const NotificationApplicationJournal({
+    required this.plan,
+    required this.items,
+  });
+
+  /// План, который применялся (исход — в [items], а не в самом факте).
+  final NotificationPlan plan;
+
+  /// Исход по пунктам в порядке плана.
+  final List<PlanItemApplication> items;
+
+  /// Был ли хоть один отказ — деградация, а не отказ целиком.
+  bool get isDegraded => items.any((i) => i.outcome == PlanItemOutcome.failed);
+
+  /// Идентификаторы пунктов, по которым планировщик отказал.
+  List<int> get failedIds => [
+        for (final i in items)
+          if (i.outcome == PlanItemOutcome.failed) i.item.id,
+      ];
+}
+
+/// Применить план идемпотентно и **по пунктам** (C7): снять свою полосу,
+/// затем поставить каждый пункт, не прерывая остальные из-за одного отказа.
+///
+/// Возвращает журнал применения: снимок плана + исход по пунктам. Отказ по
+/// пункту — деградация, а не исключение (раньше один `try` на весь план
+/// срывал все оставшиеся уведомления). Отказ снятия полосы остаётся
+/// исключением: ставить план поверх неочищенной полосы — это дубли
+/// уведомлений, а не деградация.
+Future<NotificationApplicationJournal> applyNotificationPlan(
   NotificationScheduler scheduler,
   NotificationPlan plan,
 ) async {
@@ -41,7 +97,21 @@ Future<void> applyNotificationPlan(
     fromId: NotificationPlan.idRangeStart,
     toId: NotificationPlan.idRangeEnd,
   );
+  final applications = <PlanItemApplication>[];
   for (final item in plan.items) {
-    await scheduler.schedule(item);
+    try {
+      await scheduler.schedule(item);
+      applications.add(PlanItemApplication(
+        item: item,
+        outcome: PlanItemOutcome.applied,
+      ));
+    } catch (error) {
+      applications.add(PlanItemApplication(
+        item: item,
+        outcome: PlanItemOutcome.failed,
+        error: error,
+      ));
+    }
   }
+  return NotificationApplicationJournal(plan: plan, items: applications);
 }

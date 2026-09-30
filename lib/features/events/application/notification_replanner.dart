@@ -60,9 +60,18 @@ class NotificationReplanner {
   /// гонки B-8, только на слое планирования).
   Future<void> _queue = Future<void>.value();
 
-  /// Сколько раз план успешно применён (диагностика и тесты).
+  /// Журнал последнего применения плана (C7): снимок плана + исход по
+  /// пунктам. Фундамент W2 — снятие показанного по журналу последнего плана.
+  NotificationApplicationJournal? get lastJournal => _lastJournal;
+  NotificationApplicationJournal? _lastJournal;
+
+  /// Сколько применений плана завершилось без единого отказа (диагностика).
   int get appliedPlans => _appliedPlans;
   int _appliedPlans = 0;
+
+  /// Сколько применений деградировало (часть пунктов не поставлена; C7).
+  int get degradedPlans => _degradedPlans;
+  int _degradedPlans = 0;
 
   /// Отработали ли все полученные события (тесты ждут это, а не таймеры).
   Future<void> get settled => _queue;
@@ -107,8 +116,20 @@ class NotificationReplanner {
   Future<void> _replan() async {
     try {
       final plan = await buildPlan();
-      await applyNotificationPlan(scheduler, plan);
-      _appliedPlans++;
+      // Применение по пунктам (C7): одно упавшее уведомление не срывает
+      // остальные; исход каждого пункта — в журнале.
+      final journal = await applyNotificationPlan(scheduler, plan);
+      _lastJournal = journal;
+      if (journal.isDegraded) {
+        // Частичный отказ: деградация видима в логе и метрике, поставленное
+        // не откатывается (часть напоминаний полезнее пустоты).
+        _degradedPlans++;
+        warn?.call('Перепланирование уведомлений деградировало: не поставлено '
+            '${journal.failedIds.length} из ${plan.items.length} '
+            '(ids: ${journal.failedIds.join(', ')})');
+      } else {
+        _appliedPlans++;
+      }
     } catch (error, stack) {
       warn?.call('Перепланирование уведомлений не выполнено: $error\n$stack');
     }
