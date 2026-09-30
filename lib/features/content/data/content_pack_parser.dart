@@ -12,6 +12,12 @@
 /// диагностироваться по имени поля (как в `PresetValidationException` и
 /// `EventPackFormatException`).
 ///
+/// **Гранулярность «запись ≠ пак» (C8а):** испорченная запись не роняет пак
+/// целиком — она попадает в [ContentPackParseResult.failures] с путём поля, а
+/// остальные записи живут. Пак невалиден целиком только если сломан сам пак
+/// (битый JSON / нет обязательного поля пака / `entries` не список) или **ни
+/// одна** запись не разобрана: тогда терять в паке больше нечего.
+///
 /// Неизвестные поля объекта молча игнорируются: расширение пака не должно
 /// ломать старую сборку.
 library;
@@ -32,14 +38,47 @@ class ContentPackFormatException implements Exception {
   String toString() => 'Контент-пак невалиден: поле "$field" — $reason';
 }
 
+/// Итог разбора пака: живые записи и отвергнутые (с путями полей).
+///
+/// Возвращается всегда, когда пак состоялся: частичные потери не прячутся —
+/// каждая отвергнутая запись названа в [failures] (C8а).
+class ContentPackParseResult {
+  /// Пак из записей, прошедших схему.
+  final ContentPack pack;
+
+  /// Отвергнутые записи — по одной на запись, порядок исходный.
+  final List<ContentPackEntryFailure> failures;
+
+  const ContentPackParseResult({required this.pack, required this.failures});
+
+  /// Есть ли хоть одна отвергнутая запись.
+  bool get hasFailures => failures.isNotEmpty;
+}
+
+/// Запись, не прошедшая схему: путь проблемного поля и причина.
+class ContentPackEntryFailure {
+  /// Путь поля внутри пака (`entries[2].title`).
+  final String field;
+
+  /// Почему запись не принята.
+  final String reason;
+
+  const ContentPackEntryFailure(this.field, this.reason);
+
+  @override
+  String toString() => 'поле "$field" — $reason';
+}
+
 /// Разборщик схемы контент-пака v1. Состояния не хранит: статические функции.
 abstract final class ContentPackParser {
   /// Разобрать декодированный JSON пака.
   ///
-  /// Бросает [ContentPackFormatException] с путём поля при первом нарушении
-  /// схемы: отсутствующее/нестроковое/пустое обязательное поле, неизвестный
-  /// `dateRule.kind`, дата вне допустимых границ, дубль `entries[].id`.
-  static ContentPack parse(Map<String, dynamic> json) {
+  /// Бросает [ContentPackFormatException] с путём поля при нарушении схемы
+  /// **пака** (отсутствующее/нестроковое/пустое обязательное поле, `entries`
+  /// не список) и когда **ни одна** запись не разобрана. Испорченные записи,
+  /// которые не роняют пак, приходят в [ContentPackParseResult.failures]
+  /// (путь вида `entries[2].title`), остальные записи остаются живыми.
+  static ContentPackParseResult parse(Map<String, dynamic> json) {
     final packId = _requiredNonEmptyString(json, 'packId');
     final traditionTag = _requiredNonEmptyString(json, 'traditionTag');
     final version = _requiredNonEmptyString(json, 'version');
@@ -65,31 +104,50 @@ abstract final class ContentPackParser {
     }
 
     final entries = <ContentEntry>[];
+    final failures = <ContentPackEntryFailure>[];
     final seenIds = <String>{};
     for (var i = 0; i < entriesRaw.length; i++) {
+      final path = 'entries[$i]';
       final raw = entriesRaw[i];
       if (raw is! Map) {
-        throw ContentPackFormatException(
-            'entries[$i]', 'ожидался объект записи');
+        failures.add(ContentPackEntryFailure(path, 'ожидался объект записи'));
+        continue;
       }
-      final entry =
-          _parseEntry(Map<String, dynamic>.from(raw), path: 'entries[$i]');
+      final ContentEntry entry;
+      try {
+        entry = _parseEntry(Map<String, dynamic>.from(raw), path: path);
+      } on ContentPackFormatException catch (e) {
+        failures.add(ContentPackEntryFailure(e.field, e.reason));
+        continue;
+      }
       if (!seenIds.add(entry.id)) {
-        throw ContentPackFormatException(
-          'entries[$i].id',
+        failures.add(ContentPackEntryFailure(
+          '$path.id',
           'дубль идентификатора "${entry.id}": id — ключ записи, '
               'дубликат делает атрибуцию неоднозначной',
-        );
+        ));
+        continue;
       }
       entries.add(entry);
     }
 
-    return ContentPack(
-      packId: packId,
-      traditionTag: traditionTag,
-      version: version,
-      verified: verified,
-      entries: entries,
+    if (entries.isEmpty && failures.isNotEmpty) {
+      // Все записи отвергнуты — пак не несёт ни одного текста, терять больше
+      // нечего: это невалидность пака целиком, причина первой записи называет
+      // поле (как и до C8а).
+      final first = failures.first;
+      throw ContentPackFormatException(first.field, first.reason);
+    }
+
+    return ContentPackParseResult(
+      pack: ContentPack(
+        packId: packId,
+        traditionTag: traditionTag,
+        version: version,
+        verified: verified,
+        entries: entries,
+      ),
+      failures: failures,
     );
   }
 

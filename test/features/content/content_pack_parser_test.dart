@@ -70,7 +70,7 @@ void main() {
         'dateRule': {'kind': 'tibetan', 'month': 10, 'day': 25},
       });
 
-      final pack = ContentPackParser.parse(json);
+      final pack = ContentPackParser.parse(json).pack;
 
       expect(pack.packId, 'synthetic_demo');
       expect(pack.traditionTag, 'nyingma');
@@ -87,7 +87,7 @@ void main() {
     test('запись без dateRule легальна: текст живёт в пуле ротации', () {
       final json = packWithEntry((entry) => entry.remove('dateRule'));
 
-      final pack = ContentPackParser.parse(json);
+      final pack = ContentPackParser.parse(json).pack;
 
       expect(pack.entries.single.dateRule, isNull);
     });
@@ -95,7 +95,7 @@ void main() {
     test('пустой entries легален: пак-заготовка честно ничего не обещает', () {
       final json = validPackJson()..['entries'] = <dynamic>[];
 
-      final pack = ContentPackParser.parse(json);
+      final pack = ContentPackParser.parse(json).pack;
 
       expect(pack.entries, isEmpty);
     });
@@ -115,7 +115,7 @@ void main() {
           }
         ];
 
-      final pack = ContentPackParser.parse(json);
+      final pack = ContentPackParser.parse(json).pack;
 
       expect(pack.entries.single.id, 'c1');
     });
@@ -293,14 +293,16 @@ void main() {
           contains('вне диапазона'));
     });
 
-    test('дубль entries[].id отвергается — id есть ключ записи', () {
+    test('дубль entries[].id: первая запись живёт, дубль отвергнут (C8а)', () {
       final json = validPackJson();
       final first = (json['entries'] as List).first as Map<String, dynamic>;
       (json['entries'] as List).add({...first, 'title': 'Другой заголовок'});
 
-      final reason = expectRejected(json, 'entries[1].id');
+      final result = ContentPackParser.parse(json);
 
-      expect(reason, contains('дубль идентификатора'));
+      expect(result.pack.entries.single.id, 'c1');
+      expect(result.failures.single.field, 'entries[1].id');
+      expect(result.failures.single.reason, contains('дубль идентификатора'));
     });
 
     test('сообщение об ошибке несёт путь поля и причину', () {
@@ -313,6 +315,54 @@ void main() {
         expect(e.toString(), contains('entries[0].title'));
         expect(e.toString(), contains('Контент-пак невалиден'));
       }
+    });
+  });
+
+  group('ContentPackParser — гранулярность «запись ≠ пак» (C8а)', () {
+    test('пак из 3 записей, одна битая → 2 живут + failure с путём поля', () {
+      final json = validPackJson();
+      (json['entries'] as List).addAll([
+        {
+          'id': 'c2',
+          'type': 'quote',
+          'title': 'Живая цитата',
+          'body': 'Синтетический текст.',
+          'source': 'синтетическая фикстура теста',
+        },
+        {
+          'id': 'c3',
+          'type': 'daily_reading',
+          'body': 'Синтетический текст.',
+          'source': 'синтетическая фикстура теста',
+          // title отсутствует — запись битая
+        },
+      ]);
+
+      final result = ContentPackParser.parse(json);
+
+      expect(result.pack.entries.map((e) => e.id), ['c1', 'c2']);
+      expect(result.failures, hasLength(1));
+      expect(result.failures.single.field, 'entries[2].title');
+      expect(result.failures.single.reason, contains('отсутствует'));
+      expect(result.hasFailures, isTrue);
+    });
+
+    test('битый элемент списка — тоже только запись, остальные живут', () {
+      final json = validPackJson();
+      (json['entries'] as List).add('строка');
+
+      final result = ContentPackParser.parse(json);
+
+      expect(result.pack.entries.single.id, 'c1');
+      expect(result.failures.single.field, 'entries[1]');
+      expect(result.failures.single.reason, contains('объект записи'));
+    });
+
+    test('все записи битые → пак отвергается целиком (терять нечего)', () {
+      final json = packWithEntry((entry) => entry.remove('title'));
+
+      expect(expectRejected(json, 'entries[0].title'),
+          contains('отсутствует'));
     });
   });
 }

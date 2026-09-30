@@ -7,6 +7,11 @@
 /// источником, либо честный фолбэк (FR-CNT-3), а не пустоту без объяснения
 /// (UX-A-4).
 ///
+/// **Гранулярность «запись ≠ пак» (C8а):** испорченная запись не уносит пак —
+/// живые записи доезжают, а каждая отвергнутая становится отдельным
+/// [ContentPackFailure] с путём поля (`entries[2].title`). Опечатка в одной
+/// записи не должна обнулять весь текст традиции.
+///
 /// **Список паков приходит данными** — из `preset.contentPacks` активного
 /// пресета (поле уже в схеме пресета, D-9), а не из хардкода и не из
 /// «магического» пути. Пустой список легален: в сборке может не быть ни одного
@@ -28,7 +33,7 @@ import 'content_pack_parser.dart';
 /// Читатель ассета по ключу (продовый дефолт — `rootBundle.loadString`).
 typedef ContentPackAssetReader = Future<String> Function(String assetKey);
 
-/// Почему конкретный пак не доехал до модели.
+/// Почему конкретный пак (или запись внутри пака) не доехал до модели.
 class ContentPackFailure {
   /// Ключ ассета, на котором споткнулись.
   final String assetKey;
@@ -47,7 +52,8 @@ class ContentPackLoadResult {
   /// Успешно разобранные паки в порядке объявления.
   final List<ContentPack> packs;
 
-  /// Сбои — по одной записи на пак; порядок соответствует списку ассетов.
+  /// Сбои — по одной записи на сбой (пак или отвергнутая запись пака);
+  /// порядок соответствует списку ассетов.
   final List<ContentPackFailure> failures;
 
   const ContentPackLoadResult({required this.packs, required this.failures});
@@ -101,14 +107,15 @@ class ContentPackLoader {
         continue;
       }
 
-      final ContentPack pack;
+      final ContentPackParseResult parsed;
       try {
-        pack = ContentPackParser.parse(Map<String, dynamic>.from(decoded));
+        parsed = ContentPackParser.parse(Map<String, dynamic>.from(decoded));
       } on ContentPackFormatException catch (e) {
         failures.add(ContentPackFailure(assetKey, e.toString()));
         continue;
       }
 
+      final ContentPack pack = parsed.pack;
       if (!seenPackIds.add(pack.packId)) {
         failures.add(ContentPackFailure(
           assetKey,
@@ -116,6 +123,15 @@ class ContentPackLoader {
               '(атрибуция стала бы неоднозначной)',
         ));
         continue;
+      }
+      // Отвергнутые записи не прячутся: пак доехал, но каждая потеря названа
+      // путём поля (C8а) — пользователь видит причину, а не молчаливую дыру.
+      for (final entryFailure in parsed.failures) {
+        failures.add(ContentPackFailure(
+          assetKey,
+          'запись отвергнута — поле "${entryFailure.field}": '
+              '${entryFailure.reason}',
+        ));
       }
       packs.add(pack);
     }

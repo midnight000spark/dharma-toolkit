@@ -124,6 +124,65 @@ void main() {
       expect(result.failures.single.reason, contains('entries[0].source'));
     });
 
+    test('C8а: битая запись не роняет пак — 2 живут, failure с путём поля',
+        () async {
+      final partial = packJson(packId: 'partial', entries: [
+        {
+          'id': 'c1',
+          'type': 'daily_reading',
+          'title': 'Живое чтение 1',
+          'body': 'Синтетический текст.',
+          'source': 'синтетическая фикстура теста',
+        },
+        {
+          'id': 'c2',
+          'type': 'daily_reading',
+          'title': 'Живое чтение 2',
+          'body': 'Синтетический текст.',
+          'source': 'синтетическая фикстура теста',
+        },
+        {
+          'id': 'c3',
+          'type': 'daily_reading',
+          'body': 'Синтетический текст.',
+          'source': 'синтетическая фикстура теста',
+          // title отсутствует — битая запись
+        },
+      ]);
+
+      final result = await ContentPackLoader(
+              readAsset: readerOf({'p.json': partial}))
+          .load(['p.json']);
+
+      expect(result.packs, hasLength(1));
+      expect(result.packs.single.entries, hasLength(2));
+      expect(result.failures, hasLength(1));
+      expect(result.failures.single.assetKey, 'p.json');
+      expect(result.failures.single.reason, contains('entries[2].title'));
+      expect(result.hasFailures, isTrue);
+    });
+
+    test('C8а: все записи битые → пак отвергнут целиком, не пустой «успех»',
+        () async {
+      final allBad = packJson(packId: 'all_bad', entries: [
+        {
+          'id': 'c1',
+          'type': 'daily_reading',
+          'body': 'Синтетический текст.',
+          'source': 'синтетическая фикстура теста',
+          // title отсутствует — битая запись
+        },
+      ]);
+
+      final result = await ContentPackLoader(
+              readAsset: readerOf({'p.json': allBad}))
+          .load(['p.json']);
+
+      expect(result.packs, isEmpty);
+      expect(result.failures, hasLength(1));
+      expect(result.failures.single.reason, contains('entries[0].title'));
+    });
+
     test('дубль packId отвергается, первый пак сохранён', () async {
       final result = await ContentPackLoader(readAsset: readerOf({
         'a.json': packJson(packId: 'same', verified: true),
