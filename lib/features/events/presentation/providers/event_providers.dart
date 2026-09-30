@@ -41,7 +41,14 @@ final eventPackLoaderProvider =
 /// Список приходит **данными из пресета**, а не из хардкода: пустой список —
 /// легальное «в сборке нет паков» (продукт честно молчит, SCR-12).
 final activeEventPackAssetsProvider = Provider<List<String>>((ref) {
-  final preset = ref.watch(activePresetStreamProvider).value;
+  // C9: явные состояния вместо `.value`; отказ потока пресетов выходит наружу.
+  final preset = ref.watch(activePresetStreamProvider).when(
+        data: (value) => value,
+        loading: () => null,
+        error: (error, stackTrace) =>
+            Error.throwWithStackTrace(error, stackTrace),
+        skipLoadingOnReload: true,
+      );
   return preset?.eventPacks ?? const [];
 });
 
@@ -60,8 +67,21 @@ final eventPacksProvider = FutureProvider<EventPackLoadResult>((ref) async {
 
 /// Сервис ленты: календарь через порт ядра + паки активного пресета.
 final eventFeedServiceProvider = Provider<EventFeedService>((ref) {
-  final tag = ref.watch(activeTraditionTagProvider).value ?? '';
-  final loaded = ref.watch(eventPacksProvider).value;
+  // C9: явные состояния вместо `.value`; отказ паков выходит наружу.
+  final tag = ref.watch(activeTraditionTagProvider).when(
+        data: (value) => value,
+        loading: () => '',
+        error: (error, stackTrace) =>
+            Error.throwWithStackTrace(error, stackTrace),
+        skipLoadingOnReload: true,
+      );
+  final loaded = ref.watch(eventPacksProvider).when(
+        data: (value) => value,
+        loading: () => null,
+        error: (error, stackTrace) =>
+            Error.throwWithStackTrace(error, stackTrace),
+        skipLoadingOnReload: true,
+      );
   return EventFeedService(
     traditionTag: tag,
     source: ref.watch(specialDaysSourceProvider),
@@ -92,7 +112,14 @@ final notificationSettingsStoreProvider =
 /// триггер перепланирования (D-36), поэтому именно поток, а не разовое чтение.
 final notificationSettingsProvider =
     StreamProvider<NotificationSettings>((ref) {
-  final tag = ref.watch(activeTraditionTagProvider).value ?? '';
+  // C9: явные состояния вместо `.value`; отказ потока тегов выходит наружу.
+  final tag = ref.watch(activeTraditionTagProvider).when(
+        data: (value) => value,
+        loading: () => '',
+        error: (error, stackTrace) =>
+            Error.throwWithStackTrace(error, stackTrace),
+        skipLoadingOnReload: true,
+      );
   if (tag.isEmpty) {
     // Традиции нет — настраивать нечего; дефолт D-36 честнее «пустоты».
     return Stream.value(NotificationSettings.defaults);
@@ -109,12 +136,17 @@ final notificationPlanBuilderProvider =
 
 /// План уведомлений активной традиции на текущий момент.
 final notificationPlanProvider = Provider<NotificationPlan>((ref) {
-  final settings =
-      ref.watch(notificationSettingsProvider).value ??
-          NotificationSettings.defaults;
-  return ref.watch(notificationPlanBuilderProvider).build(
-        now: ref.watch(eventsClockProvider)(),
-        settings: settings,
+  final builder = ref.watch(notificationPlanBuilderProvider);
+  final now = ref.watch(eventsClockProvider)();
+  // C9: явные состояния вместо `.value`. Пока настройки не пришли, дефолт
+  // «включено, 08:00» не обещается — возвращается пустой план («ещё ничего
+  // не планируем»); отказ настроек выходит наружу, а не глушится дефолтом.
+  return ref.watch(notificationSettingsProvider).when(
+        data: (settings) => builder.build(now: now, settings: settings),
+        loading: () => NotificationPlan.empty,
+        error: (error, stackTrace) =>
+            Error.throwWithStackTrace(error, stackTrace),
+        skipLoadingOnReload: true,
       );
 });
 

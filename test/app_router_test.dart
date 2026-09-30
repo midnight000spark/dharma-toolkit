@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dharma_toolkit/app_router.dart';
 import 'package:dharma_toolkit/core/config/preset_manager.dart';
 import 'package:dharma_toolkit/core/config/preset_schema.dart';
@@ -5,6 +7,7 @@ import 'package:dharma_toolkit/core/db/app_database.dart';
 import 'package:dharma_toolkit/core/storage/storage_module.dart';
 import 'package:dharma_toolkit/features/tracker/data/practice_repository.dart';
 import 'package:dharma_toolkit/features/tracker/presentation/providers/practice_provider.dart';
+import 'package:dharma_toolkit/features/tracker/presentation/screens/practice_list_screen.dart';
 import 'package:dharma_toolkit/shared/providers/app_providers.dart';
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -115,6 +118,57 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Практики'), findsOneWidget);
+
+    await settleDown(tester);
+  });
+
+  // C9: `.value` схлопывал загрузку тега в фолбэк '' — первым кадром
+  // строился пустой список «как будто практик нет». Загрузка обязана
+  // оставаться загрузкой до первого значения потока.
+  testWidgets('C9: первый кадр — загрузка тега, а не фолбэк-список',
+      (tester) async {
+    final tagController = StreamController<String>();
+    addTearDown(tagController.close);
+
+    SharedPreferences.setMockInitialValues({});
+    database = AppDatabase.forTesting(
+      NativeDatabase.memory(setup: enableForeignKeys),
+    );
+    storage = StorageModule();
+    await storage.init();
+    final presetManager = PresetManager(() => database, storage);
+    await presetManager.init();
+    await presetManager.applyPreset(nyingma);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          presetManagerProvider.overrideWithValue(presetManager),
+          practiceRepositoryProvider
+              .overrideWithValue(PracticeRepository(database)),
+          // Поток тега под контролем теста: первый кадр — до первого эвента.
+          activeTraditionTagProvider.overrideWith((ref) => tagController.stream),
+        ],
+        child: Consumer(
+          builder: (context, ref, _) => MaterialApp.router(
+            routerConfig: ref.watch(routerProvider),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    expect(find.byType(PracticeListScreen), findsNothing,
+        reason: 'фолбэк-список с пустым тегом не показывается первым кадром');
+    expect(find.byType(CircularProgressIndicator), findsOneWidget,
+        reason: 'первый кадр обязан быть загрузкой');
+
+    tagController.add('nyingma');
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PracticeListScreen), findsOneWidget);
+    expect(find.text('Простирания'), findsOneWidget);
 
     await settleDown(tester);
   });

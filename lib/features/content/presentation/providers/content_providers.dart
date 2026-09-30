@@ -48,7 +48,14 @@ final contentPackLoaderProvider = Provider<ContentPackLoader>((ref) {
 /// легальное «в сборке нет паков» (тогда работает фолбэк FR-CNT-3, а не
 /// молчаливая пустота).
 final activeContentPackAssetsProvider = Provider<List<String>>((ref) {
-  final preset = ref.watch(activePresetStreamProvider).value;
+  // C9: явные состояния вместо `.value`; отказ потока пресетов выходит наружу.
+  final preset = ref.watch(activePresetStreamProvider).when(
+        data: (value) => value,
+        loading: () => null,
+        error: (error, stackTrace) =>
+            Error.throwWithStackTrace(error, stackTrace),
+        skipLoadingOnReload: true,
+      );
   return preset?.contentPacks ?? const [];
 });
 
@@ -75,8 +82,23 @@ final contentPacksProvider = FutureProvider<ContentPackLoadResult>((ref) async {
 /// R-11/R-13/R-20. Деградация «календарь не знает тибетских дат» — это `null`
 /// **значение** порта, и она обрабатывается доменом с пояснением.
 final dailyReadingServiceProvider = Provider<DailyReadingService>((ref) {
-  final tag = ref.watch(activeTraditionTagProvider).value ?? '';
-  final loaded = ref.watch(contentPacksProvider).value;
+  // C9: явные состояния вместо `.value` (при `hasValue` ошибка глушилась и
+  // сервис строился из устаревших данных). Отказ паков выходит наружу; до
+  // первого значения — «данных ещё нет» (`''`/`null`), как и раньше.
+  final tag = ref.watch(activeTraditionTagProvider).when(
+        data: (value) => value,
+        loading: () => '',
+        error: (error, stackTrace) =>
+            Error.throwWithStackTrace(error, stackTrace),
+        skipLoadingOnReload: true,
+      );
+  final loaded = ref.watch(contentPacksProvider).when(
+        data: (value) => value,
+        loading: () => null,
+        error: (error, stackTrace) =>
+            Error.throwWithStackTrace(error, stackTrace),
+        skipLoadingOnReload: true,
+      );
   return DailyReadingService(
     traditionTag: tag,
     packs: loaded?.packs ?? const [],
@@ -93,8 +115,21 @@ final dailyReadingProvider = Provider<DailyReadings>((ref) {
 
 /// Лента контента активной традиции на текущий день (окно по умолчанию — 7 дней).
 final contentFeedServiceProvider = Provider<ContentFeedService>((ref) {
-  final tag = ref.watch(activeTraditionTagProvider).value ?? '';
-  final loaded = ref.watch(contentPacksProvider).value;
+  // C9: явные состояния вместо `.value` — см. dailyReadingServiceProvider.
+  final tag = ref.watch(activeTraditionTagProvider).when(
+        data: (value) => value,
+        loading: () => '',
+        error: (error, stackTrace) =>
+            Error.throwWithStackTrace(error, stackTrace),
+        skipLoadingOnReload: true,
+      );
+  final loaded = ref.watch(contentPacksProvider).when(
+        data: (value) => value,
+        loading: () => null,
+        error: (error, stackTrace) =>
+            Error.throwWithStackTrace(error, stackTrace),
+        skipLoadingOnReload: true,
+      );
   return ContentFeedService(
     traditionTag: tag,
     packs: loaded?.packs ?? const [],

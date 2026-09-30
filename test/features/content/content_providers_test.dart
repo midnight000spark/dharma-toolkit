@@ -18,6 +18,7 @@ import 'package:dharma_toolkit/core/calendar/special_day.dart';
 import 'package:dharma_toolkit/core/calendar/special_days_source.dart';
 import 'package:dharma_toolkit/core/content/content_source.dart';
 import 'package:dharma_toolkit/core/content/daily_reading.dart';
+import 'package:dharma_toolkit/features/content/data/content_pack_loader.dart';
 import 'package:dharma_toolkit/features/content/domain/content_fallbacks.dart';
 import 'package:dharma_toolkit/features/content/presentation/providers/content_providers.dart';
 import 'package:dharma_toolkit/shared/providers/app_providers.dart';
@@ -330,6 +331,44 @@ void main() {
 
       expect(() => container.read(dailyReadingServiceProvider),
           throwsStateError);
+    });
+  });
+
+  // C9: при ошибке обновления `.value` молча отдаёт сохранённое значение
+  // (`hasValue == true`), и сервис строится из устаревших данных — «пусто»
+  // вместо ошибки. Ошибка обязана выходить наружу.
+  group('C9 — ошибка загрузки паков не глушится', () {
+    test('отказ обновления паков выходит наружу, а не подменяется «пусто»',
+        () async {
+      final failPacks = StateProvider<bool>((ref) => false);
+      final container = ProviderContainer(overrides: [
+        contentClockProvider.overrideWithValue(() => _now),
+        activeTraditionTagProvider.overrideWith((ref) => Stream.value('nyingma')),
+        activePresetStreamProvider.overrideWith(
+            (ref) => Stream.value(presetWithContentPacks(const []))),
+        specialDaysSourceProvider
+            .overrideWithValue(_StubSource('nyingma')),
+        contentPacksProvider.overrideWith((ref) async {
+          if (ref.watch(failPacks)) {
+            throw StateError('пак не прочитался: битый ассет');
+          }
+          return ContentPackLoadResult.empty;
+        }),
+      ]);
+      addTearDown(container.dispose);
+      container.listen(activePresetStreamProvider, (_, _) {});
+      container.listen(activeTraditionTagProvider, (_, _) {});
+
+      // Первая загрузка успешна — появляется предыдущее значение…
+      await container.read(contentPacksProvider.future);
+
+      // …а обновление падает: ошибка обязана дойти до потребителя.
+      container.read(failPacks.notifier).state = true;
+      await expectLater(
+          container.read(contentPacksProvider.future), throwsStateError);
+
+      expect(() => container.read(dailyReadingProvider), throwsStateError,
+          reason: 'сохранённое «пусто» не имеет права маскировать отказ');
     });
   });
 }

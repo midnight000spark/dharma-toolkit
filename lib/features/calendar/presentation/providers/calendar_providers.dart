@@ -73,7 +73,16 @@ final calendarProviderForTagProvider =
 /// `resetPreset` (покрывается потоком [activeTraditionTagProvider]).
 /// `null` — активного пресета нет или для него нет календаря в реестре.
 final activeCalendarProviderProvider = Provider<CalendarProvider?>((ref) {
-  final tag = ref.watch(activeTraditionTagProvider).value ?? '';
+  // C9: явные состояния вместо `.value`. Ошибка потока тегов выходит наружу
+  // (при `hasValue` `.value` молча отдавал устаревший тег); до первого эвента
+  // тега — «нет данных» (`null`), как и раньше, но ветвью, а не схлопыванием.
+  final tag = ref.watch(activeTraditionTagProvider).when(
+        data: (value) => value,
+        loading: () => '',
+        error: (error, stackTrace) =>
+            Error.throwWithStackTrace(error, stackTrace),
+        skipLoadingOnReload: true,
+      );
   if (tag.isEmpty) return null;
   return ref.watch(calendarProviderForTagProvider(tag));
 });
@@ -96,7 +105,14 @@ final calendarSpecialDaysSourceForTagProvider =
 /// Реактивен, как и [activeCalendarProviderProvider]: смена пресета без
 /// перезапуска переключает и источник дней.
 final activeSpecialDaysSourceProvider = Provider<SpecialDaysSource?>((ref) {
-  final tag = ref.watch(activeTraditionTagProvider).value ?? '';
+  // C9: явные состояния вместо `.value` — см. activeCalendarProviderProvider.
+  final tag = ref.watch(activeTraditionTagProvider).when(
+        data: (value) => value,
+        loading: () => '',
+        error: (error, stackTrace) =>
+            Error.throwWithStackTrace(error, stackTrace),
+        skipLoadingOnReload: true,
+      );
   if (tag.isEmpty) return null;
   return ref.watch(calendarSpecialDaysSourceForTagProvider(tag));
 });

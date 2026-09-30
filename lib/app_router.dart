@@ -48,20 +48,28 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/',
         builder: (context, state) => Consumer(
-          builder: (context, ref, _) => PracticeListScreen(
-            // Тег реактивен (R-21): до первого эвента потока — пустая строка,
-            // список перестроится сам, когда придёт активный пресет.
-            traditionTag: ref.watch(activeTraditionTagProvider).value ?? '',
-          ),
+          builder: (context, ref, _) =>
+              // C9: состояния потока различаются явно. Пока тег не пришёл,
+              // фолбэк-список с пустым тегом не строится (это был бы ложный
+              // «практик нет» первым кадром); отказ потока выходит наружу.
+              ref.watch(activeTraditionTagProvider).when(
+                    data: (tag) => PracticeListScreen(traditionTag: tag),
+                    loading: () => const _TagLoadingScreen(),
+                    error: (error, stackTrace) =>
+                        Error.throwWithStackTrace(error, stackTrace),
+                  ),
         ),
       ),
       GoRoute(
         path: '/create',
         builder: (context, state) => Consumer(
-          builder: (context, ref, _) => CreatePracticeScreen(
-            // Реактивный тег (R-21) — см. комментарий в маршруте '/'.
-            traditionTag: ref.watch(activeTraditionTagProvider).value ?? '',
-          ),
+          builder: (context, ref, _) =>
+              ref.watch(activeTraditionTagProvider).when(
+                    data: (tag) => CreatePracticeScreen(traditionTag: tag),
+                    loading: () => const _TagLoadingScreen(),
+                    error: (error, stackTrace) =>
+                        Error.throwWithStackTrace(error, stackTrace),
+                  ),
         ),
       ),
       GoRoute(
@@ -78,6 +86,18 @@ final routerProvider = Provider<GoRouter>((ref) {
     ],
   );
 });
+
+/// Заглушка на время, пока поток тега традиции не дал первого значения (C9).
+///
+/// Показывается вместо экрана с фолбэк-тегом `''`: «данные ещё грузятся» —
+/// не то же самое, что «практик нет» (C9).
+class _TagLoadingScreen extends StatelessWidget {
+  const _TagLoadingScreen();
+
+  @override
+  Widget build(BuildContext context) =>
+      const Center(child: CircularProgressIndicator());
+}
 
 /// Экран неизвестного маршрута (B-7): вместо падения — внятное сообщение
 /// и кнопка «Назад», уводящая на список (редирект сам решит, `/` или `/pick`).
