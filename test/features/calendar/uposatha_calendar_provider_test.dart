@@ -151,4 +151,48 @@ void main() {
           'custom_tag');
     });
   });
+
+  // C5: падинг окна `_window` обрезал серию кандидатов на границах запроса —
+  // день упосатхи зависел от окна (годовой прогон терял дни против помесячной
+  // склейки). После фикса день определяется бисекцией по знаковому `dist`
+  // в расширенном окне, поэтому год == склейка месяцев.
+  group('C5 — день не зависит от окна запроса', () {
+    test('год == склейка месяцев (свип 2020–2030)', () {
+      for (var y = 2020; y <= 2030; y++) {
+        final yearly = provider.getSpecialDays(
+            DateTime(y, 1, 1), DateTime(y, 12, 31));
+        final monthly = <SpecialDay>[];
+        for (var m = 1; m <= 12; m++) {
+          monthly.addAll(provider.getSpecialDays(
+              DateTime(y, m, 1), DateTime(y, m + 1, 0)));
+        }
+        expect(monthly, yearly,
+            reason: 'год $y: склейка месяцев разошлась с годовым окном');
+      }
+    });
+
+    test('регрессия 2022/2026: край месяца не даёт фантомный день', () {
+      // Пересечения у границ месяцев (падинг `_window` обрезал серию по краю
+      // запроса): день обязан быть ближайшим полднем (UTC) — 01.04, 30.04,
+      // 01.11, 01.12, — а не «последним днём месяца внутри окна».
+      List<DateTime> monthDays(int y, int m) => provider
+          .getSpecialDays(DateTime(y, m, 1), DateTime(y, m + 1, 0))
+          .map((d) => d.date)
+          .toList();
+
+      expect(monthDays(2022, 3), isNot(contains(DateTime(2022, 3, 31))),
+          reason: 'новолуние принадлежит 01.04.2022 (ближайший полдень)');
+      expect(monthDays(2022, 4), contains(DateTime(2022, 4, 1)));
+      expect(monthDays(2022, 5), isNot(contains(DateTime(2022, 5, 1))),
+          reason: 'новолуние принадлежит 30.04.2022');
+      expect(monthDays(2022, 4), contains(DateTime(2022, 4, 30)));
+      expect(monthDays(2022, 10), isNot(contains(DateTime(2022, 10, 31))),
+          reason: 'первая четверть принадлежит 01.11.2022');
+      expect(monthDays(2022, 11), contains(DateTime(2022, 11, 1)));
+
+      expect(monthDays(2026, 11), isNot(contains(DateTime(2026, 11, 30))),
+          reason: 'последняя четверть принадлежит 01.12.2026');
+      expect(monthDays(2026, 12), contains(DateTime(2026, 12, 1)));
+    });
+  });
 }

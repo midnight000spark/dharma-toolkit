@@ -2,11 +2,14 @@
 ///
 /// Четыре дня обета на лунный месяц: новолуние, первая четверть, полнолуние,
 /// последняя четверть. День упосатхи = календарный день (UTC), полдень
-/// которого ближе всех к точному моменту фазы (окно ±0.03 доли фазы,
-/// ~±0.9 дня); внутри перекрывающегося окна выбирается ближайший день, так
-/// что каждое событие фазы даёт ровно одну упосатху.
+/// которого ближе всех к точному моменту фазы; иначе: календарный день, в
+/// который произошло пересечение целевой фазы. Событие определяется
+/// **бисекцией по знаковому расстоянию фазы до цели** в расширенном на ±2 дня
+/// окне (C5), поэтому результат не зависит от границ запроса: годовой прогон
+/// равен склейке помесячных (раньше падинг окна ±0.03 обрезал серию
+/// кандидатов на границах и терял дни — «2026-11-30» и др.).
 ///
-/// Конвенция дня — UTC (F-49): национальные календари (Тайland/Шри-Ланка)
+/// Конвенция дня — UTC (F-49): национальные календари (Тайланд/Шри-Ланка)
 /// могут сдвигать день на ±1 из-за таймзоны и вставных месяцев — допуск
 /// тест-векторов это учитывает. Тхеравадский календарь в MVP показывает
 /// астрономические упосатхи, а не государственные праздничные паки.
@@ -23,11 +26,6 @@ class UposathaCalendarProvider implements CalendarProvider {
 
   @override
   final String traditionTag;
-
-  /// Окно распознавания фазы, в долях фазы. Суточный ход фазы ≈ 1/29.53 ≈
-  /// 0.034, поэтому окно 0.03 покрывает ±~0.9 суток; перекрытие окон
-  /// соседних дней снимается выбором минимума в серии (см. _uposathaDays).
-  static const double _window = 0.03;
 
   static const List<(double, String)> _targets = [
     (0.0, 'новолуние'),
@@ -51,46 +49,74 @@ class UposathaCalendarProvider implements CalendarProvider {
 
   List<SpecialDay> _uposathaDays(DateTime a, DateTime b) {
     final result = <SpecialDay>[];
-    // Ход по календарным дням сравнением `!d.isAfter(b)`, а не счётчиком
-    // `difference().inDays + 1`: в DST-таймзоне spring-forward урезает
-    // длительность окна на час и последний день молча выпадал из скана
-    // (B-17); DateTime(y, m, d + 1) — календарная арифметика, переходами
-    // не искажается (детерминированный тест — uposatha_dst_test).
-    // Для каждого целевой фазы сканируем дни окна и из непрерывной серии
-    // дней-кандидатов берём ближайший к моменту фазы.
     for (final (target, label) in _targets) {
-      DateTime? runStart;
-      var best = 0.0;
-      var bestDate = DateTime(1970);
-      void flushRun() {
-        if (runStart != null) {
-          result.add(SpecialDay(
-            date: bestDate,
+      result.addAll(_daysForTarget(a, b, target, label));
+    }
+    return result;
+  }
+
+  /// Упосатхи фазы [target] для диапазона [a, b]: по одной на каждое
+  /// пересечение цели в расширенном окне [a−2, b+2] (C5).
+  ///
+  /// Расширение нужно потому, что ближайший день пересечения может лежать
+  /// внутри запрошенного диапазона, тогда как само пересечение — у его
+  /// границы; фильтр `[a, b]` оставляет ровно дни запроса. Ход — календарной
+  /// арифметикой `DateTime(y, m, d + 1)`, а не счётчиком дней: DST-таймзона
+  /// spring-forward урезала бы окно на час (B-17).
+  List<SpecialDay> _daysForTarget(
+      DateTime a, DateTime b, double target, String label) {
+    final days = <SpecialDay>[];
+    DateTime? prevNoon;
+    double? prevDist;
+
+    DateTime shift(DateTime d, int n) =>
+        DateTime(d.year, d.month, d.day + n);
+
+    for (var d = shift(a, -2); !d.isAfter(shift(b, 2)); d = shift(d, 1)) {
+      final noon = DateTime.utc(d.year, d.month, d.day, 12);
+      final dist = _signedDistance(noon, target);
+      // Ход фазы положителен: пересечение цели — переход − → +.
+      // Разрыв +0.5 → −0.5 (анти-цель) даёт обратный знак и не ловится.
+      if (prevDist != null && prevDist < 0 && dist >= 0) {
+        final crossing = _bisectCrossing(prevNoon!, noon, target);
+        final day = DateTime(
+            crossing.year, crossing.month, crossing.day); // день (UTC) события
+        if (!day.isBefore(a) && !day.isAfter(b)) {
+          days.add(SpecialDay(
+            date: day,
             type: SpecialDayType.uposatha,
             name: 'Упосатха ($label)',
             description: 'День обета: $label (момент фазы ближайший '
                 'к этому дню, UTC)',
           ));
-          runStart = null;
         }
       }
-
-      for (var d = a; !d.isAfter(b); d = DateTime(d.year, d.month, d.day + 1)) {
-        final phase = moonPhase(DateTime.utc(d.year, d.month, d.day, 12));
-        final dist = (phase - target + 0.5) % 1.0 - 0.5; // знаковое, [-0.5;0.5)
-        final abs = dist.abs();
-        if (abs <= _window) {
-          if (runStart == null || abs < best) {
-            runStart ??= d;
-            best = abs;
-            bestDate = d;
-          }
-        } else {
-          flushRun();
-        }
-      }
-      flushRun();
+      prevNoon = noon;
+      prevDist = dist;
     }
-    return result;
+    return days;
+  }
+
+  /// Знаковое расстояние фазы до цели, в долях фазы `[-0.5, 0.5)`:
+  /// около цели локально монотонно растёт через ноль (C5).
+  static double _signedDistance(DateTime moment, double target) =>
+      (moonPhase(moment) - target + 0.5) % 1.0 - 0.5;
+
+  /// Момент пересечения цели между полуднями [lo] (dist < 0) и [hi]
+  /// (dist ≥ 0); бисекция по знаковому расстоянию до секунды.
+  static DateTime _bisectCrossing(DateTime lo, DateTime hi, double target) {
+    var l = lo.millisecondsSinceEpoch;
+    var h = hi.millisecondsSinceEpoch;
+    while (h - l > 1000) {
+      final mid = l + (h - l) ~/ 2;
+      final dist = _signedDistance(
+          DateTime.fromMillisecondsSinceEpoch(mid, isUtc: true), target);
+      if (dist < 0) {
+        l = mid;
+      } else {
+        h = mid;
+      }
+    }
+    return DateTime.fromMillisecondsSinceEpoch(h, isUtc: true);
   }
 }
