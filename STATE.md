@@ -1,10 +1,10 @@
 # Состояние проекта "Дхарма-тулкит"
 
-> _Freshness — owner: пользователь · reviewed: 2026-09-21 (приёмка fix1-accept) · verified-by: `flutter analyze --fatal-infos` (0) / `flutter test` (**533/533**, лог в файл; 7 полных прогонов + `--concurrency=1/8`) / `./scripts/check_docs.sh` (PASSED) / **сборка и устройство на дереве `1336c9d`** — `apk --debug`/`--release` exit 0, чистая установка release на API 35, `emu-verify --expect-exact`, `emu-fire` (показ), сценарий wipe; цитаты — `docs/archive/state-journal-fix-1.md#приёмка-fix1-accept-2026-09-21--живой-прогон-на-устройстве` · @ 3fc6e7e / lock sha256:463d9b23e6ddb0c2._
+> _Freshness — owner: пользователь · reviewed: 2026-10-01 (пакет `warning-3a`) · verified-by: `flutter analyze --fatal-infos` (0) / `flutter test` (**591/591**, лог в файл) / `./scripts/check_docs.sh` (PASSED) · устройство — дерево FIX-1 (`1336c9d`), цитаты — `docs/archive/state-journal-fix-1.md#приёмка-fix1-accept-2026-09-21--живой-прогон-на-устройстве` · @ 8d6d402 / lock sha256:463d9b23e6ddb0c2._
 
 ## Текущий статус
 **Этап**: 7 «Контент» — ⏳ в работе; 7.0 ✅ (данные/домен, тег `stage-7.0` на `67dc4cc`); предыдущие: этап 6 ✅ (тег `stage-6`), этап 5 ✅ (тег `stage-5b`). Критерий этапа 7 не закрыт — нужен UI чтения дня (SCR-13).
-**Последнее обновление**: 2026-10-01 (**critical-1-resume**: ревью адресовано — находки 1/4/5/6; W1 device-мутант прогнан; analyze 0, **565/565**; приёмка владельца ✅); хроника — §Журнал и `docs/archive/`.
+**Последнее обновление**: 2026-10-01 (**warning-3a**: W10–W13, W30, S14, §4.1(iii) исполнены; analyze 0, **591/591**, check_docs PASSED; мутанты красные; task 7/7; ревью/приёмка — за оркестратором); хроника — §Журнал и `docs/archive/`.
 **Переверено после FIX-1 прогоном, а не пересчётом**: `analyze` 0, `flutter test` 533/533, `build apk --debug/--release`, `emu-verify --expect-exact`, `emu-fire`, wipe-сценарий — на дереве `1336c9d`; дыра C10 закрыта. **Не переверено**: OEM-устройства (R-26) и instrumentation-тесты на устройстве. **Открыто**: B-15 (наблюдение), **B-25**; R-18, R-25 (процесс); R-26.
 
 ## РЕЕСТР ЖИВЫХ НАХОДОК (аудиты 19–24.09)
@@ -13,9 +13,8 @@
 
 - **C5–C9, W1 — исправлены пакетом `critical-1`**, ревью адресовано `critical-1-resume` (2026-10-01; находки 4/5 — `36743bc`, 6 — `335158a`; W1 device-мутант прогнан — `.tmp/logs/critical-1-w1-mutant-device.txt`; приёмка владельца ✅); **C8в** открыт — вопрос Антохе (п. 11.4) — `docs/REMEDIATION-PLAN-2026-09-30.md#critical-1`
 - **W4**: ключ паков — тег пресета (решено) — `docs/REMEDIATION-PLAN-2026-09-30.md#w-content`
-- **W11**: кэш `losarDate` — `docs/REMEDIATION-PLAN-2026-09-30.md#w-calendar`
-- **W13**: контракт `SpecialDay.date` — `docs/REMEDIATION-PLAN-2026-09-30.md#w-calendar`
-- **Перечень остальных живых** — WARNING: W2, W3, W5, W8–W10, W12, W14–W23, W29–W34 — `docs/REMEDIATION-PLAN-2026-09-30.md#w-events`, `#w-calendar`, `#w-content`, `#w-robust`; W24, W25, W28 — `docs/REMEDIATION-PLAN-2026-09-30.md#tests-quality-1`; SUGGESTION: S1–S15, §4.1(i)/(iii)/(iv) — `docs/REMEDIATION-PLAN-2026-09-30.md#suggestion-1`, `#tests-quality-1`; предэтап: Н1–Н6 — `docs/REMEDIATION-PLAN-2026-09-30.md#pre-stage-8`; обвязка P-/G- (🔒) — `docs/REMEDIATION-PLAN-2026-09-30.md#env`. Вне реестра (ведутся в STATE): B-15, B-25, R-18, R-25, R-26 — §12 плана.
+- **W10–W13, W30, S14, §4.1(iii) — исполнены `warning-3a`** (2026-10-01; закрытие — по команде; коммиты `0c8cb31`…`8d6d402`; логи — `.tmp/logs/warning-3a-*`; итог — `facts.md#f-73`) — реестр: `docs/REMEDIATION-PLAN-2026-09-30.md#w-calendar`
+- **Перечень остальных живых** — WARNING: W2, W3, W5, W8, W9, W14–W23, W29–W34 — `docs/REMEDIATION-PLAN-2026-09-30.md#w-events`, `#w-calendar`, `#w-content`, `#w-robust`; W24, W25, W28 — `docs/REMEDIATION-PLAN-2026-09-30.md#tests-quality-1`; SUGGESTION: S1–S13, S15, §4.1(i)/(iv) — `docs/REMEDIATION-PLAN-2026-09-30.md#suggestion-1`, `#tests-quality-1`; предэтап: Н1–Н6 — `docs/REMEDIATION-PLAN-2026-09-30.md#pre-stage-8`; обвязка P-/G- (🔒) — `docs/REMEDIATION-PLAN-2026-09-30.md#env`. Вне реестра (ведутся в STATE): B-15, B-25, R-18, R-25, R-26 — §12 плана.
 
 ## Прогресс по этапам
 
@@ -50,8 +49,9 @@
 ## ФАКТЫ
 
 > **Индекс фактов (D-38).** Тела — в `docs/reference/facts.md` (read-only), адресно по якорю;
-> номера F-1…F-71 (тела F-1…F-58 — там же, по диапазону), номера не переиспользуются.
+> номера F-1…F-73 (тела F-1…F-58 — там же, по диапазону), номера не переиспользуются.
 
+- **F-73**: warning-3a — числа W30 (кэш дня), сверка эпох S14 с astronomia, покрытие векторов §4.1(iii) — `docs/reference/facts.md#f-73`
 - **F-72**: trace-mcp 3.31.4 — для Dart только regex-символы, Flutter вне 88 интеграций; заявленные 72.7% не переносятся (бенчи на JS/Python); установка `npm install -g trace-mcp` — `docs/reference/facts.md#f-72`
 - **F-71**: статус jev-mcp v0.3.0 — тулы живы, баг схемы `jev_review` (`-32602`) не воспроизводится, `jev_screen` как trust-префильтр непригоден (нулевая дискриминация), `jev_verify` 9/10; пилот 30/30 вызовов (jev-pilot-0); `docs/reference/facts.md#f-71`
 - **F-70**: снимок схемы drift (format 1.3.0) — модель, а не DDL; публичного DDL-читателя в пине нет → stepByStep требует своего эмитера (FIX-1); `docs/reference/facts.md#f-70`
@@ -286,10 +286,10 @@
 
 | Дата | Изменение | Автор |
 |------|-----------|-------|
-| 2026-10-01 | **account-1/A1 (учёт, docs-only)**: разгрузка STATE (46 276 → 39 217 Б) — 10 строк журнала (2026-09-17…24) verbatim → `docs/archive/state-journal-post-7.md`; check_docs PASSED | Команда |
-| 2026-10-01 | **account-1/A2 (учёт, docs-only)**: реестр живых находок в STATE (C5–C9, W1, W4, W11, W13 + перечень) со ссылками на якоря `docs/REMEDIATION-PLAN-2026-09-30.md`; STATE 40 039 Б (≤ 40 960); «Следующее действие» актуализировано; check_docs PASSED | Команда |
-| 2026-10-01 | **account-1 (ревью)**: вердикт dharma-reviewer — «вернуть на доработку» (перечень: пропущены W24/W25/W28 из §7); адресовано: перечень дополнен (якорь `#tests-quality-1`), размер и формулировка ✅ уточнены; отчёт ревью — во временной папке сессии | Команда |
-| 2026-10-01 | **account-1-close (долги ревью)**: сняты дубли-стабы закрытых R-19/22/23/24 (сведения — в индексе ниже и `docs/archive/state-closed-risks.md`); счётчики §1 плана сверены (W 34/30, S 19/18); запас D-38 восстановлен | Команда |
+| 2026-10-01 | **account-1 (A1/A2/ревью/close)** — строки verbatim в `docs/archive/state-journal-post-7.md` | Команда |
+| 2026-10-01 | **warning-3a (W10–W13, календарь)**: контракт UTC в `moon_phase` (ArgumentError), кэш `losarDate` со счётчиком, `List.unmodifiable` кэша месяцев, `SpecialDay.date` → UTC-полночь + потребители событий по полям; W10/W12 красными первыми; мутанты красные; `0c8cb31`, `cc89573`, `9d23d1a`, `b2d7fe8` | Команда |
+| 2026-10-01 | **warning-3a (W30, S14, §4.1(iii))**: кэш дня сетки (лента 200→8; 10k тёплых 70→7 мс; холодный месяц 67.3→50.2 мс <100) + `Set` в notes; реформа 1582 + ΔT + домен 0001–9999, astronomia: 86 событий пяти эпох; векторы 2025/2019Q1/1935Q1/удвоенный день C6 (g2t 731→1457); мутанты красные; `73712c1`, `ea19e8b`, `8d6d402`; **F-73** | Команда |
+| 2026-10-01 | **warning-3a: приёмка** — analyze 0, **591/591**, check_docs PASSED; task 7/7; пас dharma-reviewer ⏳ | Команда |
 | 2026-10-01 | **OPEN-QUESTIONS**: заведён реестр нерешённых вопросов (продукт/техника/процесс/среда) со ссылками на владельцев; индекс — `docs/README.md` | Команда |
 | 2026-10-01 | **critical-1 (C5–C9, W1) исполнен** (приёмка владельца ⏳): C9 `.value`→`.when` (14 мест), C5 бисекция упосатха, C6 Лосар late/early (дефолт late), C7 журнал плана, C8а/г/б контент, W1 POST_NOTIFICATIONS; коммиты `a08e5bf`…`2c4c4ca` | Команда |
 | 2026-10-01 | **critical-1: приёмка** — analyze 0, 563/563, check_docs; мутанты красные (логи `.tmp/logs/critical-1-*`); W1 устройство: диалог→deny→баннер (`emu-w1-check` exit 0), устройство-мутант НЕ прогнан (эмулятор нестабилен — честная пометка) | Команда |
@@ -298,6 +298,6 @@
 ---
 
 ## Следующее действие
-**Пакет `critical-1` ✅ исполнен, ревью адресовано** (critical-1-resume: находки 1/4/5/6; device-мутант W1 прогнан; приёмка владельца ✅).
-**Дальше — пакет `warning-3a`** (свежая сессия, D-42; порядок — §1 плана). C8в — открытый вопрос к Антохе (п. 11.4). Этап 7: критерий не закрыт — UI чтения дня (SCR-13; состав 7.1/Этап 8 — решение владельца).
+**Пакет `warning-3a` ✅ исполнен** (W10–W13, W30, S14, §4.1(iii); analyze 0, 591/591; мутанты красные; task 7/7; числа — `docs/reference/facts.md#f-73`). Ревью и приёмка — за оркестратором.
+**Дальше — пакет `warning-3b`** (свежая сессия, D-42; порядок — §1 плана). C8в — открытый вопрос к Антохе (п. 11.4). Этап 7: критерий не закрыт — UI чтения дня (SCR-13; состав 7.1/Этап 8 — решение владельца).
 Открытые вне реестра: B-15 (наблюдение), B-25; R-18, R-25 (процесс), R-26 (vendor-политики против exact-будильников). Решения, ждущие владельца (в т.ч. 🔒-гейты среды), — `docs/OPEN-QUESTIONS.md`. Хроника — §Журнал и `docs/archive/`.
