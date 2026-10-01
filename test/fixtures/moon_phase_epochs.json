@@ -1,6 +1,6 @@
 {
  "generatedBy": "scripts/gen_moon_epoch_vectors.mjs",
- "reference": "astronomia (MIT), Meeus ch.49; deltaT = Espenak-Meeus polynomial (same as gen_uposatha_vectors.mjs)",
+ "reference": "astronomia (MIT), Meeus ch.49; deltaT = Espenak-Meeus piecewise (as deltaTSeconds in moon_phase.dart)",
  "jdRefs": {
   "julian1582-10-04": 2299159.5,
   "greg1582-10-15": 2299160.5,

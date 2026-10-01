@@ -1,7 +1,7 @@
 {
  "generatedBy": "scripts/gen_uposatha_vectors.mjs",
  "reference": "astronomia 4.1.1 (MIT), Meeus ch.49 exact phase times; the same package date-tibetan (F-19/F-44) depends on",
- "convention": "utcDate = Gregorian UTC day of the exact phase moment (JDE minus polynomial deltaT)",
+ "convention": "utcDate = Gregorian UTC day of the exact phase moment (JDE minus Espenak-Meeus piecewise deltaT)",
  "count": 149,
  "events": [
   {

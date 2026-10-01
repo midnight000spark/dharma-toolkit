@@ -8,7 +8,8 @@
 //
 // Выход: test/fixtures/moon_phase_vectors.json — события 4 фаз на каждый
 // лунный месяц 2024-01-01..2026-12-31. utcDate = григорианский UTC-день
-// точного момента фазы (TT минус полиномиальная ΔT; конвенция F-49).
+// точного момента фазы (TT минус ΔT по кусочной модели Эспенака–Мееуса;
+// конвенция F-49).
 //
 // Воспроизведение:
 //   ASTRONOMIA_DIR=/path/to/node_modules/astronomia \
@@ -24,10 +25,29 @@ const julian = require(`${ASTRO}/lib/julian.cjs`);
 const moonphase = require(`${ASTRO}/lib/moonphase.cjs`);
 const pkg = require(`${ASTRO}/package.json`);
 
-// ΔT = TT − UT, сек; полином Эспенака–Мееуса (1900–2100); ~69 с для 2024-26.
+// ΔT = TT − UT, сек: кусочно-полиномиальная модель Эспенака–Мееуса (NASA
+// GSFC, «Polynomial Expressions for Delta T», 2006) — копия `deltaTSeconds`
+// из lib/features/calendar/data/uposatha/moon_phase.dart: фикстуры стоят на
+// той же модели, что и код (сверка — группа «S14/ΔT» в
+// test/features/calendar/moon_phase_meeus_test.dart).
+function poly(x, ...c) { return c.reduceRight((acc, k) => acc * x + k); }
 function deltaTsec(year) {
-  const t = year - 2000;
-  return 62.92 + 0.32217 * t + 0.005589 * t * t;
+  const y = Number(year);
+  if (y < -500) { const u = (y - 1820) / 100; return -20 + 32 * u * u; }
+  if (y < 500) return poly(y / 100, 10583.6, -1014.41, 33.78311, -5.952053, -0.1798452, 0.022174192, 0.0090316521);
+  if (y < 1600) return poly((y - 1000) / 100, 1574.2, -556.01, 71.23472, 0.319781, -0.8503463, -0.005050998, 0.0083572073);
+  if (y < 1700) return poly(y - 1600, 120, -0.9808, -0.01532, 1 / 7129);
+  if (y < 1800) return poly(y - 1700, 8.83, 0.1603, -0.0059285, 0.00013336, -1 / 1174000);
+  if (y < 1860) return poly(y - 1800, 13.72, -0.332447, 0.0068612, 0.0041116, -0.00037436, 0.0000121272, -0.0000001699, 0.000000000875);
+  if (y < 1900) return poly(y - 1860, 7.62, 0.5737, -0.251754, 0.01680668, -0.0004473624, 1 / 233174);
+  if (y < 1920) return poly(y - 1900, -2.79, 1.494119, -0.0598939, 0.0061966, -0.000197);
+  if (y < 1941) return poly(y - 1920, 21.20, 0.84493, -0.076100, 0.0020936);
+  if (y < 1961) return poly(y - 1950, 29.07, 0.407, -1 / 233, 1 / 2547);
+  if (y < 1986) return poly(y - 1975, 45.45, 1.067, -1 / 260, -1 / 718);
+  if (y < 2005) return poly(y - 2000, 63.86, 0.3345, -0.060374, 0.0017275, 0.000651814, 0.00002373599);
+  if (y < 2050) return poly(y - 2000, 62.92, 0.32217, 0.005589);
+  const u = (y - 1820) / 100;
+  return y < 2150 ? poly(u, -205.72, 56.28, 32) : -20 + 32 * u * u;
 }
 
 // Meeus 7.a–7.g: JD (UT) -> григорианская дата UTC.
@@ -92,7 +112,7 @@ const out = {
   generatedBy: 'scripts/gen_uposatha_vectors.mjs',
   reference: `astronomia ${pkg.version} (MIT), Meeus ch.49 exact phase times; ` +
     'the same package date-tibetan (F-19/F-44) depends on',
-  convention: 'utcDate = Gregorian UTC day of the exact phase moment (JDE minus polynomial deltaT)',
+  convention: 'utcDate = Gregorian UTC day of the exact phase moment (JDE minus Espenak-Meeus piecewise deltaT)',
   count: events.length,
   events,
 };

@@ -13,6 +13,11 @@
 /// 0.25/0.75 с точностью ряда: замерено ≤0.0002 после правки против ≤0.0013
 /// до неё. Для новолуния/полнолуния конвенция даёт сдвиг |β|/360 (до 0.0145)
 /// — он покрыт отдельным, намеренно широким допуском.
+///
+/// Третий слой — независимые векторы ΔT (`delta_t_vectors.json`, astronomia
+/// 4.1.1): кусочная модель Эспенака–Мееуса против эталона. Конверсия JDE→UT
+/// ниже использует ту же модель (`deltaTSeconds`), поэтому фазовые слои
+/// проверяют ряд, а саму модель — отдельная группа ΔT.
 library;
 
 import 'dart:convert';
@@ -69,10 +74,32 @@ DateTime _jdToUtc(double jd) {
   return DateTime.utc(year.toInt(), month.toInt(), day, h, min, sec);
 }
 
-/// ΔT = TT − UT, сек: полином Эспенака–Мееуса, как в генераторе фикстуры.
-double _deltaTsec(int year) {
-  final t = (year - 2000).toDouble();
-  return 62.92 + 0.32217 * t + 0.005589 * t * t;
+/// Вектор ΔT из `delta_t_vectors.json`: год, эталонное значение astronomia,
+/// допуск (полиномиальные зоны — 0.01 с, табличные — 1.5 с) и метка ветки.
+class _DeltaTVector {
+  const _DeltaTVector(this.year, this.deltaT, this.tolerance, this.branch);
+  final int year;
+  final double deltaT;
+  final double tolerance;
+  final String branch;
+}
+
+List<_DeltaTVector> _loadDeltaTVectors() {
+  final raw = jsonDecode(
+          File('test/fixtures/delta_t_vectors.json').readAsStringSync())
+      as Map<String, dynamic>;
+  return [
+    for (final v in raw['vectors'] as List)
+      () {
+        final m = v as Map<String, dynamic>;
+        return _DeltaTVector(
+          m['year'] as int,
+          (m['deltaT'] as num).toDouble(),
+          (m['tol'] as num).toDouble(),
+          m['branch'] as String,
+        );
+      }(),
+  ];
 }
 
 List<_Event> _loadEvents() {
@@ -88,7 +115,7 @@ List<_Event> _loadEvents() {
         final ttYear = _jdToUtc(jde).year;
         return _Event(
           m['type'] as String,
-          _jdToUtc(jde - _deltaTsec(ttYear) / 86400.0),
+          _jdToUtc(jde - deltaTSeconds(ttYear) / 86400.0),
         );
       }(),
   ];
@@ -107,7 +134,7 @@ List<_EpochEvent> _loadEpochEvents() {
         return _EpochEvent(
           m['epoch'] as int,
           m['type'] as String,
-          _jdToUtc(jde - _deltaTsec(ttYear) / 86400.0),
+          _jdToUtc(jde - deltaTSeconds(ttYear) / 86400.0),
         );
       }(),
   ];
@@ -217,8 +244,15 @@ void main() {
       });
     });
 
-    test('домен дат: год вне 0001–9999 отклоняется', () {
+    test('домен дат: годы 0 и 10 000 отклоняются, 9999 принимается', () {
       expect(() => moonPhase(DateTime.utc(0, 1, 1)), throwsArgumentError);
+      expect(() => moonPhase(DateTime.utc(10000, 1, 1)), throwsArgumentError,
+          reason: 'верхняя граница домена обязана отсекаться (находка '
+              'ревью: мутант «снять g.year > 9999» не ловился)');
+      expect(
+          () => julianDayUtc(DateTime.utc(10000, 1, 1)), throwsArgumentError);
+      expect(moonPhase(DateTime.utc(9999, 12, 31)),
+          inInclusiveRange(0.0, 1.0));
     });
   });
 
@@ -259,6 +293,30 @@ void main() {
       }
       expect(violations, isEmpty,
           reason: 'расхождение с astronomia по эпохам: $violations');
+    });
+  });
+
+  group('S14/ΔT: кусочная модель Эспенака–Мееуса (эталон astronomia)', () {
+    final vectors = _loadDeltaTVectors();
+
+    test('фикстура: 27 годов покрывают все 14 достижимых веток модели', () {
+      expect(vectors, hasLength(27));
+      expect(vectors.map((v) => v.branch).toSet(), hasLength(14));
+    });
+
+    test('deltaTSeconds: расхождение с astronomia не больше допуска вектора',
+        () {
+      final violations = <String>[];
+      for (final v in vectors) {
+        final got = deltaTSeconds(v.year);
+        if ((got - v.deltaT).abs() > v.tolerance) {
+          violations.add('${v.year} (${v.branch}): got='
+              '${got.toStringAsFixed(4)}, astronomia='
+              '${v.deltaT.toStringAsFixed(4)}, допуск ${v.tolerance}');
+        }
+      }
+      expect(violations, isEmpty,
+          reason: 'модель ΔT разошлась с эталоном: $violations');
     });
   });
 
