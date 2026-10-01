@@ -13,12 +13,20 @@
 ///   "version": "1",
 ///   "verified": false,
 ///   "entries": [
-///     {"id": "c1", "type": "daily_reading", "title": "…", "body": "…",
+///     {"id": "c1", "title": "…", "body": "…",
 ///      "source": "…",
 ///      "dateRule": {"kind": "gregorian_yearly", "month": 1, "day": 1}}
 ///   ]
 /// }
 /// ```
+///
+/// **`type` убран из v1 (S4):** поле было обязательным, но поведения от него
+/// не зависело — парсер читал его, а потребителей не было ни у ленты, ни у
+/// чтения дня. Обязательное поле без потребителя — мёртвый груз схемы:
+/// категории (фильтр, отдельная лента) вводятся вместе с потребителем, а не
+/// вперёд него. Старый JSON с `type` продолжает разбираться: неизвестные поля
+/// игнорируются (см. `content_pack_parser.dart`), а полнота схемы держится
+/// сторожем `test/architecture/content_entry_orphan_guard_test.dart`.
 ///
 /// **Атрибуция — обязательная часть модели, а не украшение.** [ContentEntry.source]
 /// — не «опциональное поле на будущее», а механизм соблюдения авторских прав
@@ -121,13 +129,6 @@ class ContentEntry {
   /// Уникальный идентификатор внутри пака (ключ записи).
   final String id;
 
-  /// Категория записи — **открытая строка на v1**: D-35 закрывает перечислением
-  /// только `dateRule.kind`, поэтому закрывать категорию здесь значило бы
-  /// доизобретать схему. Валидируется как непустая строка; закрытый перечень
-  /// (`daily_reading` | `quote` | `sutra`) — вопрос следующей версии схемы, а
-  /// не мутации v1.
-  final String type;
-
   /// Заголовок записи (русский — единственный язык продукта, D-28: заголовок
   /// есть данные пака, не ключ локализации).
   final String title;
@@ -145,7 +146,6 @@ class ContentEntry {
 
   const ContentEntry({
     required this.id,
-    required this.type,
     required this.title,
     required this.body,
     required this.source,
@@ -156,14 +156,13 @@ class ContentEntry {
   bool operator ==(Object other) =>
       other is ContentEntry &&
       other.id == id &&
-      other.type == type &&
       other.title == title &&
       other.body == body &&
       other.source == source &&
       other.dateRule == dateRule;
 
   @override
-  int get hashCode => Object.hash(id, type, title, body, source, dateRule);
+  int get hashCode => Object.hash(id, title, body, source, dateRule);
 }
 
 /// Контент-пак: набор записей одной традиции с признаком подтверждённости.

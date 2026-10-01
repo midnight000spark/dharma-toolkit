@@ -23,7 +23,6 @@ ContentEntry entryOf({
 }) =>
     ContentEntry(
       id: id,
-      type: 'daily_reading',
       title: title,
       body: body,
       source: source,

@@ -48,7 +48,6 @@ String packJson({
           [
             {
               'id': 'c1',
-              'type': 'daily_reading',
               'title': 'Синтетическое чтение',
               'body': 'Синтетический текст фикстуры.',
               'source': 'синтетическая фикстура теста',
@@ -105,7 +104,6 @@ void main() {
         'entries': [
           {
             'id': 'c1',
-            'type': 'daily_reading',
             'title': 'Синтетическое чтение',
             'body': 'Синтетический текст.',
             'source': '',
@@ -129,21 +127,18 @@ void main() {
       final partial = packJson(packId: 'partial', entries: [
         {
           'id': 'c1',
-          'type': 'daily_reading',
           'title': 'Живое чтение 1',
           'body': 'Синтетический текст.',
           'source': 'синтетическая фикстура теста',
         },
         {
           'id': 'c2',
-          'type': 'daily_reading',
           'title': 'Живое чтение 2',
           'body': 'Синтетический текст.',
           'source': 'синтетическая фикстура теста',
         },
         {
           'id': 'c3',
-          'type': 'daily_reading',
           'body': 'Синтетический текст.',
           'source': 'синтетическая фикстура теста',
           // title отсутствует — битая запись
@@ -174,7 +169,6 @@ void main() {
       final allBad = packJson(packId: 'all_bad', entries: [
         {
           'id': 'c1',
-          'type': 'daily_reading',
           'body': 'Синтетический текст.',
           'source': 'синтетическая фикстура теста',
           // title отсутствует — битая запись

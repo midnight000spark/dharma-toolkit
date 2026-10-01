@@ -76,7 +76,6 @@ const _packJson = '''
   "entries": [
     {
       "id": "c1",
-      "type": "daily_reading",
       "title": "Текст пака из пресета",
       "body": "Синтетический текст фикстуры.",
       "source": "синтетическая фикстура теста"
@@ -95,7 +94,6 @@ const _tibetanPackJson = '''
   "entries": [
     {
       "id": "c1",
-      "type": "daily_reading",
       "title": "Текст на тибетский день",
       "body": "Синтетический текст фикстуры.",
       "source": "синтетическая фикстура теста",

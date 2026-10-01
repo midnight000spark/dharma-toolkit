@@ -28,7 +28,6 @@ Map<String, dynamic> validPackJson() => jsonDecode('''
   "entries": [
     {
       "id": "c1",
-      "type": "daily_reading",
       "title": "Синтетическое чтение",
       "body": "Синтетический текст фикстуры.",
       "source": "синтетическая фикстура теста",
@@ -63,7 +62,6 @@ void main() {
       final json = validPackJson();
       (json['entries'] as List).add({
         'id': 'c2',
-        'type': 'quote',
         'title': 'Синтетическая цитата',
         'body': 'Синтетический текст.',
         'source': 'синтетическая фикстура теста',
@@ -198,12 +196,6 @@ void main() {
       expect(expectRejected(json, 'entries[0].id'), contains('отсутствует'));
     });
 
-    test('type отсутствует', () {
-      final json = packWithEntry((entry) => entry.remove('type'));
-
-      expect(expectRejected(json, 'entries[0].type'), contains('отсутствует'));
-    });
-
     test('title отсутствует', () {
       final json = packWithEntry((entry) => entry.remove('title'));
 
@@ -332,14 +324,12 @@ void main() {
       (json['entries'] as List).addAll([
         {
           'id': 'c2',
-          'type': 'quote',
           'title': 'Живая цитата',
           'body': 'Синтетический текст.',
           'source': 'синтетическая фикстура теста',
         },
         {
           'id': 'c3',
-          'type': 'daily_reading',
           'body': 'Синтетический текст.',
           'source': 'синтетическая фикстура теста',
           // title отсутствует — запись битая
@@ -378,7 +368,6 @@ void main() {
     /// Запись с уникальным id — генератор границ.
     Map<String, dynamic> entryJson(int i) => {
           'id': 'e$i',
-          'type': 'daily_reading',
           'title': 'Заголовок $i',
           'body': 'Синтетический текст $i.',
           'source': 'синтетическая фикстура теста',

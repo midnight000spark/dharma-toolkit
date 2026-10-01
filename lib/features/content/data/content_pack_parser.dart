@@ -201,7 +201,6 @@ abstract final class ContentPackParser {
       {required String path}) {
     return ContentEntry(
       id: _requiredNonEmptyString(json, 'id', path: path),
-      type: _requiredNonEmptyString(json, 'type', path: path),
       title: _requiredNonEmptyString(json, 'title', path: path),
       body: _requiredNonEmptyString(json, 'body', path: path),
       source: _requiredNonEmptyString(json, 'source', path: path),

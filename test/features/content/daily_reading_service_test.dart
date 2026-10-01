@@ -49,7 +49,6 @@ class _StubSource implements SpecialDaysSource {
 
 ContentEntry entryOf({
   String id = 'c1',
-  String type = 'daily_reading',
   String title = 'Синтетическое чтение',
   String body = 'Синтетический текст фикстуры.',
   String source = 'синтетическая фикстура теста',
@@ -57,7 +56,6 @@ ContentEntry entryOf({
 }) =>
     ContentEntry(
       id: id,
-      type: type,
       title: title,
       body: body,
       source: source,
