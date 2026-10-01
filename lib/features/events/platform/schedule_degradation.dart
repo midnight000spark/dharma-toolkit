@@ -40,9 +40,12 @@ class LogOnlyScheduleDegradation implements ScheduleDegradation {
   @override
   Future<void> onScheduleUnsupported(
       NotificationPlanItem item, UnimplementedError error) async {
+    // S8/PLAT-12: заголовок (пользовательский контент) в лог не печатается —
+    // release-логи не должны нести содержимое напоминаний; пункт опознаётся
+    // по id и моменту.
     warn?.call(
       'Планирование уведомлений не поддержано платформой (F-57): '
-      '${item.id} «${item.title}» на ${item.scheduledAt.toIso8601String()} '
+      'пункт #${item.id} на ${item.scheduledAt.toIso8601String()} '
       'не поставлено. Причина: $error',
     );
   }

@@ -305,10 +305,19 @@ class NotificationService {
 
   void _onNotificationResponse(NotificationResponse response) {
     // Навигация по нажатию — Этап 8 (SCR-12/14): пока честная запись в лог,
-    // без молчаливой «обработки», которой нет.
+    // без молчаливой «обработки», которой нет. Payload не печатается: в
+    // release-логи пользовательский контент не попадает (S8/PLAT-12) —
+    // значимы факт нажатия, id и размер.
     warn?.call(
       'Нажатие на уведомление: id=${response.id}, '
-      'payload="${response.payload ?? ''}"',
+      'payload=${_redactedPayload(response.payload)}',
     );
   }
+
+  /// Безопасное представление payload для лога (S8, PLAT-12): содержимое не
+  /// раскрывается, значимо только наличие и длина.
+  static String _redactedPayload(String? payload) =>
+      payload == null || payload.isEmpty
+          ? 'нет'
+          : 'скрыт (${payload.length} симв.)';
 }

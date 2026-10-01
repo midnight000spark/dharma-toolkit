@@ -53,6 +53,10 @@ class FakeNotificationGateway implements NotificationGateway {
   bool initializeCalled = false;
   InitializationSettings? settings;
 
+  /// Колбэк нажатия на уведомление, переданный при инициализации: тест может
+  /// вызвать его, как это сделала бы платформа (S8 — редакция лога).
+  DidReceiveNotificationResponseCallback? responseCallback;
+
   /// Показанные немедленно уведомления.
   final List<ShownCall> shown = [];
 
@@ -93,6 +97,7 @@ class FakeNotificationGateway implements NotificationGateway {
   }) async {
     initializeCalled = true;
     this.settings = settings;
+    responseCallback = onDidReceiveNotificationResponse;
   }
 
   @override

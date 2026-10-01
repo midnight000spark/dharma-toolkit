@@ -81,10 +81,20 @@ class NotificationSettingsStore {
   }
 
   /// Вернуть настройки традиции к дефолту (удаление строки).
+  ///
+  /// S8: тег проверяется так же, как в [write] — пустой тег не должен молча
+  /// «сбрасывать ничего». Событие публикуется только при реально удалённой
+  /// строке: публикация при нуле удалённых строк — событие-фантом, гоняющее
+  /// перепланирование без изменения состояния (и ретраи с ним).
   Future<void> reset(String traditionTag) async {
-    await (_db.delete(_db.notificationSettingsRows)
+    if (traditionTag.trim().isEmpty) {
+      throw ArgumentError.value(
+          traditionTag, 'traditionTag', 'тег традиции не может быть пустым');
+    }
+    final deleted = await (_db.delete(_db.notificationSettingsRows)
           ..where((t) => t.traditionTag.equals(traditionTag)))
         .go();
+    if (deleted == 0) return;
     eventBus?.publish(
         NotificationSettingsChanged(traditionTag: traditionTag));
   }

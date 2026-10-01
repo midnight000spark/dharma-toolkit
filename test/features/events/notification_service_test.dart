@@ -234,6 +234,42 @@ void main() {
     });
   });
 
+  group('S8 — редакция логов (PLAT-12)', () {
+    test('нажатие: payload не печатается — только id и размер', () async {
+      final service = serviceWith();
+      await service.initialize();
+
+      gateway.responseCallback!(const NotificationResponse(
+        notificationResponseType:
+            NotificationResponseType.selectedNotification,
+        id: 100000,
+        payload: '{"source":"debugDemo","note":"личное"}',
+      ));
+
+      expect(warnings.single, contains('id=100000'));
+      expect(warnings.single, isNot(contains('личное')),
+          reason: 'release-логи не несут пользовательский контент (S8)');
+      expect(warnings.single, contains('скрыт'));
+    });
+
+    test('деградация планирования: заголовок уведомления не печатается',
+        () async {
+      gateway.zonedScheduleError = UnimplementedError('планирования нет');
+      // Дефолтная деградация сервиса — та же, что в приложении.
+      final service = NotificationService(
+        gateway: gateway,
+        timeZoneSource: timeZone,
+        warn: warnings.add,
+      );
+      await service.initialize();
+
+      await service.schedule(item(id: 100042, title: 'Личный заголовок'));
+
+      expect(warnings.single, contains('#100042'));
+      expect(warnings.single, isNot(contains('Личный заголовок')));
+    });
+  });
+
   group('разрешение на показ (W1)', () {
     test('запрос делегируется платформе; согласие — granted', () async {
       final granted = await serviceWith().requestNotificationsPermission();

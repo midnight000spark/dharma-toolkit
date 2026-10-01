@@ -7,6 +7,8 @@
 library;
 
 import 'package:dharma_toolkit/core/db/app_database.dart';
+import 'package:dharma_toolkit/core/events/event_bus.dart';
+import 'package:dharma_toolkit/core/events/notification_events.dart';
 import 'package:dharma_toolkit/features/events/data/notification_settings_store.dart';
 import 'package:dharma_toolkit/features/events/domain/notification_settings.dart';
 import 'package:drift/native.dart';
@@ -105,6 +107,41 @@ void main() {
           NotificationSettings(enabled: false, hour: 5, minute: 5));
       await store.reset('nyingma');
       expect(await store.read('nyingma'), NotificationSettings.defaults);
+    });
+
+    test('S8: reset с пустым тегом — ошибка, а не «сброс ничего»', () async {
+      // Явный catch, а не `expect(..., throws...)`: ошибка может быть и
+      // синхронной, и асинхронной — тест обязан красить любую форму.
+      Object? caught;
+      try {
+        await store.reset('  ');
+      } catch (error) {
+        caught = error;
+      }
+      expect(caught, isA<ArgumentError>());
+    });
+
+    test('S8: reset без строки не публикует событие-фантом', () async {
+      final bus = EventBus();
+      addTearDown(bus.dispose);
+      final events = <NotificationSettingsChanged>[];
+      final sub = bus.on<NotificationSettingsChanged>().listen(events.add);
+      addTearDown(sub.cancel);
+      final storeWithBus = NotificationSettingsStore(db, eventBus: bus);
+
+      await storeWithBus.reset('nyingma'); // строки нет — менять нечего
+      await pumpEventQueue();
+      expect(events, isEmpty,
+          reason: 'публикация при нуле удалённых строк — событие-фантом');
+
+      await storeWithBus.write('nyingma', NotificationSettings.defaults);
+      await pumpEventQueue();
+      expect(events, hasLength(1));
+
+      await storeWithBus.reset('nyingma');
+      await pumpEventQueue();
+      expect(events, hasLength(2),
+          reason: 'реальное удаление обязано сообщить о смене');
     });
 
     test('испорченное значение в БД всплывает ошибкой, не клампингом '
