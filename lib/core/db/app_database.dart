@@ -78,7 +78,7 @@ class AppDatabase extends _$AppDatabase {
   /// Шаг 3 нельзя пропустить молча: без своей ветки миграция бросает
   /// [StateError] при первом же открытии базы (R-8).
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration {
@@ -176,6 +176,20 @@ class AppDatabase extends _$AppDatabase {
         // Строк может не быть вовсе: отсутствие строки читается как дефолт
         // D-36 (включено, 08:00), поэтому бэкфилл не нужен.
         await m.createTable(notificationSettingsRows);
+        break;
+      case 5:
+        // W8 (пакет 3c): порядок практик — явная колонка `sort_order` вместо
+        // смещения `createdAt` на i секунд при материализации пресета.
+        // Колонка nullable: кастомные и legacy-строки остаются без индекса
+        // (порядок для них — по createdAt, после упорядоченных пресетных),
+        // данные и счёт не трогаются вовсе.
+        //
+        // На цепочках 1→…→5 createTable в ветке 2 создаёт таблицы уже текущим
+        // DDL, поэтому ALTER защищён проверкой существования (как в ветке 3):
+        // без неё «duplicate column» на первом же открытии старой базы.
+        if (!await _hasColumn('practices', 'sort_order')) {
+          await m.addColumn(practices, practices.sortOrder);
+        }
         break;
       default:
         throw StateError(

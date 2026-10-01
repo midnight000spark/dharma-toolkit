@@ -22,6 +22,20 @@ class Practices extends Table {
   TextColumn get unit => text().nullable()();    // "повторений", "минут"
   TextColumn get traditionTag => text()();       // тег традиции для изоляции
   IntColumn get currentCount => integer().withDefault(const Constant(0))();
+
+  /// Порядок практики внутри пресета (0-based) — явный индекс (W8).
+  ///
+  /// Раньше позиция кодировалась смещением `createdAt` на i секунд: порядок
+  /// оказывался подделкой даты создания в будущее, а перестановка практик в
+  /// JSON не доходила до списка (при повторном применении `createdAt` не
+  /// перезаписывается — D-26). Теперь порядок хранится отдельно, а `createdAt`
+  /// остаётся честным моментом материализации.
+  ///
+  /// `NULL` — кастомные практики (создаются пользователем, порядка пресета у
+  /// них нет) и строки, пережившие апгрейд без повторного применения пресета.
+  /// Для них боевой порядок — после упорядоченных пресетных, по `createdAt`.
+  IntColumn get sortOrder => integer().nullable()();
+
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }

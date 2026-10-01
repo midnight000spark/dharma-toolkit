@@ -30,21 +30,21 @@ class _AppDatabaseV1 extends AppDatabase {
       );
 }
 
-/// База, объявляющая версию схемы 5, для которой миграции не написано.
+/// База, объявляющая версию схемы 6, для которой миграции не написано.
 ///
 /// Регрессия на R-8: прежняя реализация в такой ситуации молча ничего
 /// не делала, и ошибка всплывала у пользователя как «no such table».
 /// Теперь она обязана упасть на первом же открытии базы.
 ///
-/// Версия держится ровно на одну выше текущей: когда у схемы появится ветка 5,
-/// этот класс обязан переехать на 6 (иначе тест начнёт проверять существующую
+/// Версия держится ровно на одну выше текущей: когда у схемы появится ветка 6,
+/// этот класс обязан переехать на 7 (иначе тест начнёт проверять существующую
 /// миграцию и «покраснеет» по неверной причине).
-class _AppDatabaseV5 extends AppDatabase {
+class _AppDatabaseV6 extends AppDatabase {
   // ignore: use_super_parameters — см. комментарий у _AppDatabaseV1
-  _AppDatabaseV5(QueryExecutor executor) : super.forTesting(executor);
+  _AppDatabaseV6(QueryExecutor executor) : super.forTesting(executor);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 }
 
 /// База «старого приложения» — версия схемы на 1 ниже текущей.
@@ -52,8 +52,8 @@ class _AppDatabaseV5 extends AppDatabase {
 /// Миграционную стратегию **наследует** от [AppDatabase] (в отличие от
 /// `_AppDatabaseV1`/`_AppDatabaseV2`, которые переопределяют её целиком):
 /// нужен именно downgrade-проверочный путь `onUpgrade` актуального кода —
-/// переход 3 → 2 обязан упасть на ветке `from > to` (B-12, хвост R-8).
-/// Значение 3 согласовано с тестом ниже: тест проверяет, что это ровно
+/// переход 5 → 4 обязан упасть на ветке `from > to` (B-12, хвост R-8).
+/// Значение 4 согласовано с тестом ниже: тест проверяет, что это ровно
 /// `schemaVersion - 1`, и краснеет, если версия схемы уедет без обновления
 /// препосылки.
 class _AppDatabaseDowngrade extends AppDatabase {
@@ -61,7 +61,7 @@ class _AppDatabaseDowngrade extends AppDatabase {
   _AppDatabaseDowngrade(QueryExecutor executor) : super.forTesting(executor);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 }
 
 /// DDL версии 2 из снимка генератора (`test/fixtures/schema_v2_drift.sql`).
@@ -114,9 +114,22 @@ class _AppDatabaseV3Step extends AppDatabase {
   int get schemaVersion => 3;
 }
 
+/// База, зафиксированная ровно на версии 4 (последняя до W8).
+///
+/// Нужна, чтобы получить файл в состоянии «до колонки `sort_order`»
+/// **настоящей** цепочкой 2 → 3 → 4 (стратегия наследуется от [AppDatabase]),
+/// а не сырым DDL: так проверяется реальный переход 4 → 5, а не имитация.
+class _AppDatabaseV4Step extends AppDatabase {
+  // ignore: use_super_parameters — см. комментарий у _AppDatabaseV1
+  _AppDatabaseV4Step(QueryExecutor executor) : super.forTesting(executor);
+
+  @override
+  int get schemaVersion => 4;
+}
+
 /// Текущая версия схемы, но **без** миграционной стратегии.
 ///
-/// Нужен, чтобы откатить `user_version` мигрированного файла назад (2 → 4 уже
+/// Нужен, чтобы откатить `user_version` мигрированного файла назад (2 → 5 уже
 /// отработало) и не дать drift сразу прогнеть цепочку заново: только так
 /// получается честный второй прогон веток поверх уже мигрированной базы.
 class _AppDatabaseNoMigration extends AppDatabase {
@@ -290,6 +303,7 @@ void main() {
           'unit',
           'tradition_tag',
           'current_count',
+          'sort_order',
           'created_at',
           'updated_at',
         ]),
@@ -420,6 +434,56 @@ void main() {
       }
     });
 
+    test('апгрейд 4 → 5: колонка sort_order добавлена, счёт цел (W8)',
+        () async {
+      // Сессия 1: старая база версии 2 с пользовательскими данными.
+      {
+        final v2 = _AppDatabaseV2(NativeDatabase(dbFile()));
+        await v2.customStatement(
+          "INSERT INTO presets VALUES "
+          "('nyingma', 'Ньингма', '1.0.0', 'vajrayana', '{}')",
+        );
+        await v2.customStatement(
+          "INSERT INTO practices (id, name, type, tradition_tag, current_count) "
+          "VALUES (1, 'Простирания', 'counter', 'nyingma', 108)",
+        );
+        await v2.customStatement(
+          'INSERT INTO count_history (practice_id, count) VALUES (1, 108)',
+        );
+        await v2.close();
+      }
+
+      // Сессия 2: доводим файл до версии 4 настоящей цепочкой 2 → 3 → 4.
+      {
+        final v4 = _AppDatabaseV4Step(NativeDatabase(dbFile()));
+        expect(await _userVersion(v4), 4);
+        expect(await _columnNames(v4, 'practices'),
+            isNot(contains('sort_order')));
+        await v4.close();
+      }
+
+      // Сессия 3: актуальная версия выполняет ветку 5.
+      {
+        final db = AppDatabase.forTesting(
+          NativeDatabase(dbFile(), setup: enableForeignKeys),
+        );
+        expect(await _userVersion(db), db.schemaVersion);
+
+        expect(await _columnNames(db, 'practices'), contains('sort_order'));
+
+        // Данные пользователя целы: переход добавил только колонку.
+        final practice = (await db.select(db.practices).get()).single;
+        expect(practice.currentCount, 108);
+        expect(practice.sortOrder, isNull,
+            reason: 'legacy-строка не получает индекс: порядок для неё — '
+                'по createdAt, после упорядоченных пресетных (W8)');
+        expect(await _columnCount(db, 'count_history'), 1);
+        expect(await _columnCount(db, 'presets'), 1);
+
+        await db.close();
+      }
+    });
+
     test('уникальный индекс не даёт дублей пресетных практик, но волен '
         'для кастомных и других традиций (B-3)', () async {
       final db = AppDatabase.forTesting(
@@ -461,28 +525,28 @@ void main() {
 
     test('объявленная, но нереализованная версия падает громко (R-8)',
         () async {
-      // Готовим базу актуальной версии 3.
+      // Готовим базу актуальной версии.
       {
         final db = AppDatabase.forTesting(NativeDatabase(dbFile()));
         await _tableNames(db);
         await db.close();
       }
 
-      // Открываем базой, которая объявляет версию 5 без миграции на неё.
+      // Открываем базой, которая объявляет версию 6 без миграции на неё.
       // Раньше это тихо не делало ничего — теперь обязано упасть.
-      final v5 = _AppDatabaseV5(NativeDatabase(dbFile()));
+      final v6 = _AppDatabaseV6(NativeDatabase(dbFile()));
 
       await expectLater(
-        _tableNames(v5),
+        _tableNames(v6),
         throwsA(
           predicate<Object>(
-            (error) => error.toString().contains('Нет миграции на версию 5'),
+            (error) => error.toString().contains('Нет миграции на версию 6'),
             'ошибка называет отсутствующую версию миграции',
           ),
         ),
       );
 
-      // v5 намеренно не закрываем: соединение не открылось.
+      // v6 намеренно не закрываем: соединение не открылось.
     });
 
     test('препосылка downgrade-теста: старая версия ровно на 1 ниже текущей',
@@ -570,7 +634,7 @@ void main() {
 
     test('цепочка миграций атомарна: сбой посередине откатывает схему (W6)',
         () async {
-      const lastBranch = 4; // совпадает с assert-ниже: последняя ветка цепочки
+      const lastBranch = 5; // совпадает с assert-ниже: последняя ветка цепочки
 
       // Сессия 1: пользовательская база версии 2 со счётом.
       {
@@ -596,7 +660,7 @@ void main() {
       {
         final db = AppDatabase.forTesting(NativeDatabase(dbFile()));
         expect(db.schemaVersion, lastBranch,
-            reason: 'тест написан под цепочку, где 4 — последняя ветка; '
+            reason: 'тест написан под цепочку, где 5 — последняя ветка; '
                 'при добавлении версии обновить и это ожидаемое, и сценарий');
         db.debugFailBeforeVersion = (target) async {
           if (target == lastBranch) {
@@ -624,6 +688,8 @@ void main() {
         expect(await _userVersion(after), 2);
         expect(await _columnNames(after, 'practices'),
             isNot(contains('preset_practice_id')));
+        expect(await _columnNames(after, 'practices'),
+            isNot(contains('sort_order')));
         expect(await _tableNames(after), isNot(contains('notification_settings')));
         expect(await _columnCount(after, 'practices'), 1);
         expect(await _columnCount(after, 'count_history'), 1);
@@ -636,6 +702,7 @@ void main() {
         final db = AppDatabase.forTesting(NativeDatabase(dbFile()));
         expect(await _userVersion(db), db.schemaVersion);
         expect(await _columnNames(db, 'practices'), contains('preset_practice_id'));
+        expect(await _columnNames(db, 'practices'), contains('sort_order'));
         expect(await _columnCount(db, 'practices'), 1);
         final history = await db.select(db.countHistory).get();
         expect(history.single.count, 21000);

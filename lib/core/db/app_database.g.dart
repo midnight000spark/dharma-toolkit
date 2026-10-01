@@ -347,6 +347,17 @@ class $PracticesTable extends Practices
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -382,6 +393,7 @@ class $PracticesTable extends Practices
     unit,
     traditionTag,
     currentCount,
+    sortOrder,
     createdAt,
     updatedAt,
   ];
@@ -463,6 +475,12 @@ class $PracticesTable extends Practices
         ),
       );
     }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -520,6 +538,10 @@ class $PracticesTable extends Practices
         DriftSqlType.int,
         data['${effectivePrefix}current_count'],
       )!,
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -547,6 +569,19 @@ class Practice extends DataClass implements Insertable<Practice> {
   final String? unit;
   final String traditionTag;
   final int currentCount;
+
+  /// Порядок практики внутри пресета (0-based) — явный индекс (W8).
+  ///
+  /// Раньше позиция кодировалась смещением `createdAt` на i секунд: порядок
+  /// оказывался подделкой даты создания в будущее, а перестановка практик в
+  /// JSON не доходила до списка (при повторном применении `createdAt` не
+  /// перезаписывается — D-26). Теперь порядок хранится отдельно, а `createdAt`
+  /// остаётся честным моментом материализации.
+  ///
+  /// `NULL` — кастомные практики (создаются пользователем, порядка пресета у
+  /// них нет) и строки, пережившие апгрейд без повторного применения пресета.
+  /// Для них боевой порядок — после упорядоченных пресетных, по `createdAt`.
+  final int? sortOrder;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Practice({
@@ -559,6 +594,7 @@ class Practice extends DataClass implements Insertable<Practice> {
     this.unit,
     required this.traditionTag,
     required this.currentCount,
+    this.sortOrder,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -582,6 +618,9 @@ class Practice extends DataClass implements Insertable<Practice> {
     }
     map['tradition_tag'] = Variable<String>(traditionTag);
     map['current_count'] = Variable<int>(currentCount);
+    if (!nullToAbsent || sortOrder != null) {
+      map['sort_order'] = Variable<int>(sortOrder);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -604,6 +643,9 @@ class Practice extends DataClass implements Insertable<Practice> {
       unit: unit == null && nullToAbsent ? const Value.absent() : Value(unit),
       traditionTag: Value(traditionTag),
       currentCount: Value(currentCount),
+      sortOrder: sortOrder == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sortOrder),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -624,6 +666,7 @@ class Practice extends DataClass implements Insertable<Practice> {
       unit: serializer.fromJson<String?>(json['unit']),
       traditionTag: serializer.fromJson<String>(json['traditionTag']),
       currentCount: serializer.fromJson<int>(json['currentCount']),
+      sortOrder: serializer.fromJson<int?>(json['sortOrder']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -641,6 +684,7 @@ class Practice extends DataClass implements Insertable<Practice> {
       'unit': serializer.toJson<String?>(unit),
       'traditionTag': serializer.toJson<String>(traditionTag),
       'currentCount': serializer.toJson<int>(currentCount),
+      'sortOrder': serializer.toJson<int?>(sortOrder),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -656,6 +700,7 @@ class Practice extends DataClass implements Insertable<Practice> {
     Value<String?> unit = const Value.absent(),
     String? traditionTag,
     int? currentCount,
+    Value<int?> sortOrder = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => Practice(
@@ -670,6 +715,7 @@ class Practice extends DataClass implements Insertable<Practice> {
     unit: unit.present ? unit.value : this.unit,
     traditionTag: traditionTag ?? this.traditionTag,
     currentCount: currentCount ?? this.currentCount,
+    sortOrder: sortOrder.present ? sortOrder.value : this.sortOrder,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -690,6 +736,7 @@ class Practice extends DataClass implements Insertable<Practice> {
       currentCount: data.currentCount.present
           ? data.currentCount.value
           : this.currentCount,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -707,6 +754,7 @@ class Practice extends DataClass implements Insertable<Practice> {
           ..write('unit: $unit, ')
           ..write('traditionTag: $traditionTag, ')
           ..write('currentCount: $currentCount, ')
+          ..write('sortOrder: $sortOrder, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -724,6 +772,7 @@ class Practice extends DataClass implements Insertable<Practice> {
     unit,
     traditionTag,
     currentCount,
+    sortOrder,
     createdAt,
     updatedAt,
   );
@@ -740,6 +789,7 @@ class Practice extends DataClass implements Insertable<Practice> {
           other.unit == this.unit &&
           other.traditionTag == this.traditionTag &&
           other.currentCount == this.currentCount &&
+          other.sortOrder == this.sortOrder &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -754,6 +804,7 @@ class PracticesCompanion extends UpdateCompanion<Practice> {
   final Value<String?> unit;
   final Value<String> traditionTag;
   final Value<int> currentCount;
+  final Value<int?> sortOrder;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const PracticesCompanion({
@@ -766,6 +817,7 @@ class PracticesCompanion extends UpdateCompanion<Practice> {
     this.unit = const Value.absent(),
     this.traditionTag = const Value.absent(),
     this.currentCount = const Value.absent(),
+    this.sortOrder = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -779,6 +831,7 @@ class PracticesCompanion extends UpdateCompanion<Practice> {
     this.unit = const Value.absent(),
     required String traditionTag,
     this.currentCount = const Value.absent(),
+    this.sortOrder = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   }) : name = Value(name),
@@ -794,6 +847,7 @@ class PracticesCompanion extends UpdateCompanion<Practice> {
     Expression<String>? unit,
     Expression<String>? traditionTag,
     Expression<int>? currentCount,
+    Expression<int>? sortOrder,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -807,6 +861,7 @@ class PracticesCompanion extends UpdateCompanion<Practice> {
       if (unit != null) 'unit': unit,
       if (traditionTag != null) 'tradition_tag': traditionTag,
       if (currentCount != null) 'current_count': currentCount,
+      if (sortOrder != null) 'sort_order': sortOrder,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -822,6 +877,7 @@ class PracticesCompanion extends UpdateCompanion<Practice> {
     Value<String?>? unit,
     Value<String>? traditionTag,
     Value<int>? currentCount,
+    Value<int?>? sortOrder,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
   }) {
@@ -835,6 +891,7 @@ class PracticesCompanion extends UpdateCompanion<Practice> {
       unit: unit ?? this.unit,
       traditionTag: traditionTag ?? this.traditionTag,
       currentCount: currentCount ?? this.currentCount,
+      sortOrder: sortOrder ?? this.sortOrder,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -870,6 +927,9 @@ class PracticesCompanion extends UpdateCompanion<Practice> {
     if (currentCount.present) {
       map['current_count'] = Variable<int>(currentCount.value);
     }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -891,6 +951,7 @@ class PracticesCompanion extends UpdateCompanion<Practice> {
           ..write('unit: $unit, ')
           ..write('traditionTag: $traditionTag, ')
           ..write('currentCount: $currentCount, ')
+          ..write('sortOrder: $sortOrder, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1871,6 +1932,7 @@ typedef $$PracticesTableCreateCompanionBuilder = PracticesCompanion Function({
   Value<String?> unit,
   required String traditionTag,
   Value<int> currentCount,
+  Value<int?> sortOrder,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
 });
@@ -1884,6 +1946,7 @@ typedef $$PracticesTableUpdateCompanionBuilder = PracticesCompanion Function({
   Value<String?> unit,
   Value<String> traditionTag,
   Value<int> currentCount,
+  Value<int?> sortOrder,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
 });
@@ -1962,6 +2025,11 @@ class $$PracticesTableFilterComposer
 
   ColumnFilters<int> get currentCount => $composableBuilder(
     column: $table.currentCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2055,6 +2123,11 @@ class $$PracticesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -2107,6 +2180,9 @@ class $$PracticesTableAnnotationComposer
     column: $table.currentCount,
     builder: (column) => column,
   );
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -2177,6 +2253,7 @@ class $$PracticesTableTableManager
                 Value<String?> unit = const Value.absent(),
                 Value<String> traditionTag = const Value.absent(),
                 Value<int> currentCount = const Value.absent(),
+                Value<int?> sortOrder = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => PracticesCompanion(
@@ -2189,6 +2266,7 @@ class $$PracticesTableTableManager
                 unit: unit,
                 traditionTag: traditionTag,
                 currentCount: currentCount,
+                sortOrder: sortOrder,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -2203,6 +2281,7 @@ class $$PracticesTableTableManager
                 Value<String?> unit = const Value.absent(),
                 required String traditionTag,
                 Value<int> currentCount = const Value.absent(),
+                Value<int?> sortOrder = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => PracticesCompanion.insert(
@@ -2215,6 +2294,7 @@ class $$PracticesTableTableManager
                 unit: unit,
                 traditionTag: traditionTag,
                 currentCount: currentCount,
+                sortOrder: sortOrder,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),

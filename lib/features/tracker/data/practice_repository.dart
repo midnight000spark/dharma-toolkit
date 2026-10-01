@@ -9,11 +9,28 @@ class PracticeRepository {
 
   PracticeRepository(this._database);
 
+  /// Боевой порядок списка практик (W8, B-10, D-26):
+  /// 1. практики из пресета — в порядке пресета (`sort_order`, 0-based);
+  /// 2. кастомные и legacy-строки без индекса (`NULL`) — после пресетных,
+  ///    по `createdAt`;
+  /// 3. `id` добивает ничьи, чтобы порядок был тотальным и детерминированным
+  ///    (Drift хранит DateTime с точностью до секунды — F-33/F-68).
+  ///
+  /// `NULLS LAST` осознан: цельный список практик традиции идёт первым,
+  /// личные практики пользователя — следом. До W8 порядок задавался подделкой
+  /// `createdAt` (смещение на i секунд) и перестановка практик в JSON пресета
+  /// до списка не доходила.
+  static List<OrderingTerm Function($PracticesTable)> _practiceOrder() => [
+        (t) => OrderingTerm(expression: t.sortOrder, nulls: NullsOrder.last),
+        (t) => OrderingTerm.asc(t.createdAt),
+        (t) => OrderingTerm.asc(t.id),
+      ];
+
   /// Получить все практики для конкретной традиции
   Future<List<PracticeEntity>> getByTradition(String traditionTag) async {
     final query = _database.select(_database.practices)
       ..where((t) => t.traditionTag.equals(traditionTag))
-      ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]);
+      ..orderBy(_practiceOrder());
 
     final rows = await query.get();
     return rows.map((row) => PracticeEntity.fromRow(row)).toList();
@@ -27,7 +44,7 @@ class PracticeRepository {
   Stream<List<PracticeEntity>> watchByTradition(String traditionTag) {
     final query = _database.select(_database.practices)
       ..where((t) => t.traditionTag.equals(traditionTag))
-      ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]);
+      ..orderBy(_practiceOrder());
 
     return query.watch().map(
           (rows) => rows.map((row) => PracticeEntity.fromRow(row)).toList(),
@@ -49,10 +66,11 @@ class PracticeRepository {
 
   /// Создать новую практику.
   ///
-  /// `createdAt`/`updatedAt` из entity передаются явно (B-10): при массовой
-  /// вставке из пресета порядок строк определяется именно ими (список
-  /// отсортирован по createdAt), а будущий импорт бэкапа обязан сохранять
-  /// чужие даты. Drift хранит DateTime с точностью до секунды (F-33).
+  /// `createdAt`/`updatedAt` из entity передаются явно (B-10): будущий импорт
+  /// бэкапа обязан сохранять чужие даты, а Drift хранит DateTime с точностью
+  /// до секунды (F-33/F-68). Порядок в списке этот путь не задаёт: кастомные
+  /// практики идут по `createdAt` после пресетных (см. [_practiceOrder]),
+  /// порядок пресетных несёт `sort_order` (W8).
   ///
   /// Пресетные строки здесь не создаются: [PracticeEntity.presetId] обязан
   /// быть `null` (см. ниже). Причина — инвариант C4/D-45.
