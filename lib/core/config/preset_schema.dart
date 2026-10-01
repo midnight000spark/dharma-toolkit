@@ -119,18 +119,28 @@ class PresetSchema {
           'practices', 'ожидался список практик');
     }
     final practices = <PresetPractice>[];
+    final seenPracticeIds = <String>{};
     for (var i = 0; i < practicesRaw.length; i++) {
       final entry = practicesRaw[i];
       if (entry is! Map) {
         throw PresetValidationException(
             'practices[$i]', 'ожидался объект практики');
       }
+      final PresetPractice practice;
       try {
-        practices.add(
-            PresetPractice.fromJson(Map<String, dynamic>.from(entry)));
+        practice =
+            PresetPractice.fromJson(Map<String, dynamic>.from(entry));
       } on PresetValidationException catch (e) {
         throw PresetValidationException('practices[$i].${e.field}', e.reason);
       }
+      // W9: дубль id — не «две одинаковые практики», а неоднозначный
+      // пресет: материализация одного и того же presetPracticeId вела бы
+      // к молчаливой перезаписи. Отказ с путём поля, а не дедуп.
+      if (!seenPracticeIds.add(practice.id)) {
+        throw PresetValidationException(
+            'practices[$i].id', 'идентификатор "${practice.id}" повторяется');
+      }
+      practices.add(practice);
     }
 
     final description = json['description'];
@@ -178,6 +188,16 @@ class PresetSchema {
 
 /// Preset practice from a tradition preset.
 class PresetPractice {
+  /// Типы практик, допустимые в схемах пресетов (W9).
+  ///
+  /// `counter` — единственный работающий тип MVP; `timer` задокументирован
+  /// схемой как будущий (FR-TRK-7, бэклог v1.1) и не должен краснеть в
+  /// заранее написанных пресетах. Набор — надмножество доменного
+  /// `PracticeTypes.available` (форма создания предлагает только работающие
+  /// типы); ядро не импортирует features (принцип №1), поэтому перечень
+  /// живёт здесь — при расширении домена синхронизировать.
+  static const List<String> supportedTypes = <String>['counter', 'timer'];
+
   /// Unique identifier (e.g. 'prostrations', 'vajrasattva')
   final String id;
 
@@ -233,10 +253,21 @@ class PresetPractice {
           'unit', 'ожидалась строка или null');
     }
 
+    // W9: чужой тип материализовал бы практику без обработчика; отказ по
+    // пути поля на слое разбора, а не молчаливое принятие.
+    final type = reqString('type');
+    if (!supportedTypes.contains(type)) {
+      throw PresetValidationException(
+        'type',
+        'тип "$type" не поддерживается '
+        '(поддерживаются: ${supportedTypes.join(', ')})',
+      );
+    }
+
     return PresetPractice(
       id: reqString('id'),
       name: reqString('name'),
-      type: reqString('type'),
+      type: type,
       target: target as int?,
       unit: unit as String?,
     );

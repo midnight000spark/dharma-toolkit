@@ -198,6 +198,25 @@ void main() {
         );
       });
 
+      test('дублирующийся id практики → practices[1].id (W9)', () {
+        expectField(
+          () => PresetSchema.fromJson(broken((j) => j['practices'] = [
+                {'id': 'p', 'name': 'П', 'type': 'counter'},
+                {'id': 'p', 'name': 'П-двойник', 'type': 'counter'},
+              ])),
+          'practices[1].id',
+        );
+      });
+
+      test('неизвестный тип практики → practices[0].type (W9)', () {
+        expectField(
+          () => PresetSchema.fromJson(broken((j) => j['practices'] = [
+                {'id': 'p', 'name': 'П', 'type': 'свисток'},
+              ])),
+          'practices[0].type',
+        );
+      });
+
       test('валидный сериализованный пресет проходит валидацию', () {
         final restored = PresetSchema.fromJson(valid().toJson());
         expect(restored.id, 'x');
@@ -224,6 +243,23 @@ void main() {
       final restored = PresetPractice.fromJson(practice.toJson());
       expect(restored.id, practice.id);
       expect(restored.target, practice.target);
+    });
+
+    test('PresetPractice.fromJson: неизвестный тип → поле type (W9)', () {
+      Map<String, dynamic> json(String type) => {
+            'id': 'p',
+            'name': 'Практика',
+            'type': type,
+          };
+
+      expect(
+        () => PresetPractice.fromJson(json('кривой')),
+        throwsA(isA<PresetValidationException>()
+            .having((e) => e.field, 'поле', 'type')),
+      );
+      // Документированные схемой типы остаются допустимыми.
+      expect(PresetPractice.fromJson(json('counter')).type, 'counter');
+      expect(PresetPractice.fromJson(json('timer')).type, 'timer');
     });
   });
 
