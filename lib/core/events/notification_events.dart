@@ -9,12 +9,13 @@ import 'app_event.dart';
 
 /// Настройки уведомлений традиции записаны или сброшены.
 class NotificationSettingsChanged extends AppEvent {
-  /// [traditionTag] — чья традиция затронута (ключ изоляции данных,
-  /// принцип №3).
+  /// [traditionTag] — чей пресет затронут (ключ изоляции данных,
+  /// принцип №3; значение — тег пресета `preset.id`, W4/S6).
   NotificationSettingsChanged({required this.traditionTag, DateTime? timestamp})
       : timestamp = timestamp ?? DateTime.now();
 
-  /// Тег традиции, к настройкам которой обратились.
+  /// Тег пресета, к настройкам которого обратились (имя поля историческое;
+  /// значение — `preset.id`, W4/S6).
   final String traditionTag;
 
   @override

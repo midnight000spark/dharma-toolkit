@@ -52,8 +52,10 @@ final activePresetStreamProvider = StreamProvider<PresetSchema?>(
   (ref) => ref.watch(presetManagerProvider).activePresetStream,
 );
 
-/// Тег традиции активного пресета — единственный источник для фильтрации
-/// списков (I-4/B-4: захардкоженных тегов традиций в lib/ быть не должно).
+/// Тег активного пресета (`preset.id`) — единственный источник для фильтрации
+/// списков (I-4/B-4: захардкоженных тегов в lib/ быть не должно). Имя
+/// провайдера/полей `traditionTag` историческое — значение всегда тег пресета
+/// (W4/S6, п. 11.3), а поле схемы `tradition` — таксономия.
 ///
 /// **Реактивен (R-21, 5b.4):** StreamProvider поверх потока пресетов;
 /// `applyPreset`/`switchPreset`/`resetPreset` меняют тег без перезапуска.

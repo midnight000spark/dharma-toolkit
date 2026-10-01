@@ -20,12 +20,14 @@ class PresetValidationException implements Exception {
 /// **moduleConfigs исключён из схемы (R-20, пакет 5b.4, решение D-32).**
 /// Поля `calendar.type/school/highlightDays/uposatha` и `tracker.isolationTag`
 /// не читались нигде в `lib/` — мёртвая конфигурация, второй источник истины
-/// (сродни B-4 и R-14). Выбор календаря идёт по `tradition` активного пресета
-/// (реестр в `features/calendar/presentation/providers/calendar_providers.dart`),
-/// изоляция данных — по `id` (принцип №3). Параметры модулей вернутся вместе
-/// с первыми живыми потребителями (бэклог v1.1). Неизвестные поля в JSON
-/// (легаси-строки `moduleConfigs`, сохранённые в таблице presets до 5b.4)
-/// молча игнорируются при разборе — обратной совместимости это не ломает.
+/// (сродни B-4 и R-14). Выбор календаря идёт по **тегу пресета** (`id`; реестр
+/// в `features/calendar/presentation/providers/calendar_providers.dart`), а не
+/// по `tradition`: внутри одного направления школы могут иметь разные движки
+/// (W4/S6, п. 11.3). Изоляция данных — по тегу пресета (`id`, принцип №3).
+/// Параметры модулей вернутся вместе с первыми живыми потребителями
+/// (бэклог v1.1). Неизвестные поля в JSON (легаси-строки `moduleConfigs`,
+/// сохранённые в таблице presets до 5b.4) молча игнорируются при разборе —
+/// обратной совместимости это не ломает.
 class PresetSchema {
   /// Unique identifier (snake_case, e.g. 'nyingma', 'theravada')
   final String id;
@@ -39,18 +41,21 @@ class PresetSchema {
   /// Which modules to activate
   final List<String> modules;
 
-  /// Parent tradition family (see tree.json): stable machine key from preset
-  /// data. Drives calendar-implementation selection (D-32); never hardcoded
-  /// in code.
+  /// Parent tradition family (see tree.json): stable machine key for the
+  /// **taxonomy** — grouping and filters of the school tree. Does **not**
+  /// drive calendar-engine selection (D-32, W4/S6): the selection/matching
+  /// key is the preset tag (`id`). Never hardcoded in code.
   final String tradition;
 
   /// Preset practices from this tradition
   final List<PresetPractice> practices;
 
-  /// Event packs (references to JSON packs)
+  /// Event packs (asset keys). Convention (W4/S6): the pack's own
+  /// `traditionTag` is marked with the **preset tag** — `id`, not `tradition`.
   final List<String> eventPacks;
 
-  /// Content packs (references to JSON packs)
+  /// Content packs (asset keys). Same marking convention as event packs:
+  /// `traditionTag` inside the pack = preset tag (`id`), not `tradition`.
   final List<String> contentPacks;
 
   /// Optional description

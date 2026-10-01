@@ -26,42 +26,45 @@ import '../../data/uposatha/uposatha_calendar_provider.dart';
 import '../../../../core/calendar/calendar_provider.dart';
 import '../../../../core/calendar/special_days_source.dart';
 
-/// Тибетский календарь (Пхугпа) для тега традиции [String].
+/// Тибетский календарь (Пхугпа) для тега пресета [String].
 ///
-/// Ключ — `preset.id` активного пресета (принцип №3/B-4); сам провайдер
-/// тег не выбирает и ни о каких школах не знает — только конструирует
-/// реализацию. Значения стабильны по ключу (не autoDispose): порт
-/// без состояния на инстанс, перевычисление дешёвое; кэш месяцев
-/// по инстансу реализации (B-16, перенесён из статики в 5b.4).
+/// Ключ — тег пресета (`preset.id`; принцип №3/B-4); сам провайдер тег не
+/// выбирает и ни о каких школах не знает — только конструирует реализацию
+/// (имя параметра `traditionTag` у класса-реализации историческое: значение —
+/// тег пресета). Значения стабильны по ключу (не autoDispose): порт без
+/// состояния на инстанс, перевычисление дешёвое; кэш месяцев по инстансу
+/// реализации (B-16, перенесён из статики в 5b.4).
 final tibetanCalendarProviderProvider =
     Provider.family<CalendarProvider, String>(
-  (ref, traditionTag) => TibetanCalendarProvider(traditionTag: traditionTag),
+  (ref, presetTag) => TibetanCalendarProvider(traditionTag: presetTag),
 );
 
-/// Календарь упосатх (лунные фазы) для тега традиции [String].
+/// Календарь упосатх (лунные фазы) для тега пресета [String].
 ///
-/// DI-регистрация по тому же контракту, что и тибетский: ключ — `preset.id`,
-/// реализация о школах не знает (I-6: сам `UposathaCalendarProvider` не
-/// тронут — только подключение).
+/// DI-регистрация по тому же контракту, что и тибетский: ключ — тег пресета
+/// (`preset.id`), реализация о школах не знает (I-6: сам
+/// `UposathaCalendarProvider` не тронут — только подключение).
 final uposathaCalendarProviderProvider =
     Provider.family<CalendarProvider, String>(
-  (ref, traditionTag) => UposathaCalendarProvider(traditionTag: traditionTag),
+  (ref, presetTag) => UposathaCalendarProvider(traditionTag: presetTag),
 );
 
-/// Реестр «тег активного пресета → реализация календаря» (5b.4, D-32) —
+/// Реестр «тег пресета → реализация календаря» (5b.4, D-32) —
 /// в [calendarProviderForTagProvider], единственном месте, где связь
-/// традиции и календаря выражена явно. Ключи — `preset.id` из манифеста
-/// `presets/index.json`; ключи традиций живут только здесь (фича календаря
-/// знает свои реализации — ядро и навигация по-прежнему нет, guard-тесты
-/// импортов это берегут).
+/// пресета и календаря выражена явно. Ключи — теги пресетов (`preset.id`)
+/// из манифеста `presets/index.json`; ключи школ живут только здесь (фича
+/// календаря знает свои реализации — ядро и навигация по-прежнему нет,
+/// guard-тесты импортов это берегут). Инвариант «ключи реестра = теги
+/// пресетов манифеста (с модулем `calendar`)» держит архитектурный сторож
+/// `test/architecture/calendar_registry_manifest_guard_test.dart` (W4/S6).
 final calendarProviderForTagProvider =
     Provider.family<CalendarProvider?, String>(
-  (ref, traditionTag) => switch (traditionTag) {
-    'nyingma' => ref.watch(tibetanCalendarProviderProvider(traditionTag)),
+  (ref, presetTag) => switch (presetTag) {
+    'nyingma' => ref.watch(tibetanCalendarProviderProvider(presetTag)),
     'theravada_default' =>
-      ref.watch(uposathaCalendarProviderProvider(traditionTag)),
-    // Неизвестный тег — честная деградация: календарного модуля для такой
-    // традиции в сборке нет; UI обязан показать «нет календаря для традиции»
+      ref.watch(uposathaCalendarProviderProvider(presetTag)),
+    // Неизвестный тег — честная деградация: календарного модуля для такого
+    // пресета в сборке нет; UI обязан показать «нет календаря для традиции»
     // (SCR-11), а не пустой список «всё тихо».
     _ => null,
   },
@@ -87,15 +90,15 @@ final activeCalendarProviderProvider = Provider<CalendarProvider?>((ref) {
   return ref.watch(calendarProviderForTagProvider(tag));
 });
 
-/// Источник особых дней для тега [traditionTag] (D-37, пакет 6.2).
+/// Источник особых дней для тега пресета (D-37, пакет 6.2).
 ///
 /// Реализация порта ядра `specialDaysSourceForTagProvider`: фича календаря —
-/// единственное место, где известно соответствие «традиция → движок», поэтому
+/// единственное место, где известно соответствие «пресет → движок», поэтому
 /// адаптер [CalendarSpecialDaysSource] поднимается здесь, а ядро и события
 /// видят только контракт. `null` — календаря для такого тега в сборке нет.
 final calendarSpecialDaysSourceForTagProvider =
-    Provider.family<SpecialDaysSource?, String>((ref, traditionTag) {
-  final calendar = ref.watch(calendarProviderForTagProvider(traditionTag));
+    Provider.family<SpecialDaysSource?, String>((ref, presetTag) {
+  final calendar = ref.watch(calendarProviderForTagProvider(presetTag));
   return calendar == null ? null : CalendarSpecialDaysSource(calendar);
 });
 
