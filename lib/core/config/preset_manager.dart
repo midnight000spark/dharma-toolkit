@@ -113,30 +113,47 @@ class PresetManager implements AppModule, ReportsOwnFailures {
   /// не трогает счётчики (upsert по (traditionTag, presetPracticeId)).
   /// Кастомные практики (presetPracticeId == null) не затрагиваются вовсе.
   ///
-  /// Безопасна при конкурентных вызовах (R-22): материализация выполняется
-  /// одной транзакцией, поэтому второй параллельный вызов видит строки
-  /// первого, а не падает `ConstraintException` по уникальному индексу.
+  /// W14: три записи — строка пресета (таблица `presets`), материализация
+  /// практик и указатель `active_preset_id` — выполняются в ОДНОЙ транзакции
+  /// БД. До этого отказ на записи указателя оставлял пресет и практики
+  /// закоммиченными: следующий старт видел материализацию пресета, который так
+  /// и не стал активным. Теперь отказ любого шага откатывает всё; указатель
+  /// (SharedPreferences) не участник SQL-транзакции, но пишется внутри её
+  /// границ до COMMIT, поэтому при отказе ключ не остаётся. Единственная
+  /// теоретическая точка рассогласования — сбой самого COMMIT: ключ указывает
+  /// на отсутствующий пресет, а init деградирует безопасно («активной традиции
+  /// нет», данные не теряются).
+  ///
+  /// Безопасна при конкурентных вызовах (R-22): Drift сериализует транзакции,
+  /// поэтому второй параллельный вызов видит строки первого, а не падает
+  /// `ConstraintException` по уникальному индексу.
   Future<void> applyPreset(PresetSchema preset) async {
-    // Save preset to DB (presets table)
-    await _database.into(_database.presets).insertOnConflictUpdate(
-          PresetsCompanion.insert(
-            id: preset.id,
-            name: preset.name,
-            version: preset.version,
-            tradition: preset.tradition,
-            data: jsonEncode(preset.toJson()),
-          ),
-        );
+    final db = _database;
+    await db.transaction(() async {
+      // 1) Строка пресета в таблице presets.
+      await db.into(db.presets).insertOnConflictUpdate(
+            PresetsCompanion.insert(
+              id: preset.id,
+              name: preset.name,
+              version: preset.version,
+              tradition: preset.tradition,
+              data: jsonEncode(preset.toJson()),
+            ),
+          );
 
-    await _materializePractices(preset);
+      // 2) Материализация практик — вложенной транзакцией (savepoint).
+      await _materializePractices(preset);
 
-    // Set as active
-    await _storage.setString('active_preset_id', preset.id);
+      // 3) Указатель активного пресета — до COMMIT, чтобы отказ откатил его.
+      await _storage.setString('active_preset_id', preset.id);
+    });
+
     _activePreset = preset;
     _activePresetController.add(preset);
-    // Событие публикуется ПОСЛЕ присвоения активного пресета: подписчик
-    // (перепланировщик, D-36) обязан увидеть уже переключённую традицию, иначе
-    // план напоминаний построится по покинутой (см. NotificationReplanner).
+    // Событие публикуется ПОСЛЕ commit и ПОСЛЕ присвоения активного пресета:
+    // подписчик (перепланировщик, D-36) обязан увидеть уже переключённую
+    // традицию, а не «переключение в процессе»; при откате транзакции шина
+    // молчит — события нет.
     eventBus?.publish(PresetChanged(traditionTag: preset.id));
   }
 
@@ -167,6 +184,10 @@ class PresetManager implements AppModule, ReportsOwnFailures {
   }
 
   /// Материализовать практики пресета идемпотентным upsert'ом.
+  ///
+  /// Вызывается из [applyPreset] внутри его транзакции; drift 2.x
+  /// поддерживает вложенные транзакции (savepoint), поэтому и отдельный
+  /// вызов остаётся атомарным.
   ///
   /// R-22: вся последовательность select → insert/update выполняется в одной
   /// транзакции. Без неё два конкурентных [applyPreset] (двойной тап по

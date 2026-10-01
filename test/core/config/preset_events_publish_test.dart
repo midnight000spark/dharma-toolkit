@@ -90,4 +90,30 @@ void main() {
     expect(manager.activePreset?.id, 'nyingma');
     expect(events, isEmpty);
   });
+
+  test('при отказе применения событие не публикуется (W14)', () async {
+    final failing = _FailingStorage();
+    await failing.init();
+    addTearDown(failing.dispose);
+    final manager = PresetManager(() => db, failing, eventBus: bus);
+
+    await expectLater(
+      manager.applyPreset(preset('nyingma')),
+      throwsA(isA<StateError>()),
+    );
+    await pumpEventQueue();
+
+    expect(events, isEmpty,
+        reason: 'событие описывает закоммиченный переход (W14): при откате '
+            'транзакции шина молчит');
+  });
+}
+
+/// Хранилище с инжектированным отказом записи указателя (W14): проверяем,
+/// что публикация события происходит только после успешного commit'а.
+class _FailingStorage extends StorageModule {
+  @override
+  Future<void> setString(String key, String value) async {
+    throw StateError('инжектированный отказ записи указателя');
+  }
 }

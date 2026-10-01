@@ -242,4 +242,67 @@ void main() {
       await manager.dispose();
     });
   });
+
+  // W14: applyPreset писал в три хранилища (строка presets, материализация
+  // практик, ключ active_preset_id) без общей атомарности. Отказ на записи
+  // указателя оставлял пресет и практики закоммиченными — частичное состояние:
+  // следующий старт видел материализацию пресета, который так и не стал
+  // активным. Все три записи обязаны жить в одной транзакции БД (указатель —
+  // внутри её границ, до COMMIT), а событие шины — публиковаться после commit.
+  group('W14: атомарность applyPreset', () {
+    test('отказ записи указателя откатывает пресет и практики', () async {
+      final failingStorage = _FailingStorageModule();
+      await failingStorage.init();
+      addTearDown(failingStorage.dispose);
+      final manager = PresetManager(() => database, failingStorage);
+
+      final preset = PresetSchema(
+        id: 'atomic_preset',
+        name: 'Атомарный',
+        version: '1.0.0',
+        tradition: 'sample',
+        modules: ['tracker'],
+        practices: [
+          PresetPractice(
+            id: 'p1',
+            name: 'Практика',
+            type: 'counter',
+            target: 10,
+          ),
+        ],
+        eventPacks: [],
+        contentPacks: [],
+      );
+
+      await expectLater(
+        manager.applyPreset(preset),
+        throwsA(isA<StateError>()),
+        reason: 'инжектированный отказ обязан долететь до вызывающего: '
+            'его нельзя проглотить, оставив пользователя без сигнала',
+      );
+
+      expect(await database.select(database.presets).get(), isEmpty,
+          reason: 'строка пресета не остаётся при отказе (W14)');
+      expect(await database.select(database.practices).get(), isEmpty,
+          reason: 'материализованные практики не остаются при отказе (W14)');
+      expect(failingStorage.getString('active_preset_id'), isNull,
+          reason: 'указатель не записан');
+      expect(manager.activePreset, isNull,
+          reason: 'менеджер не переключился на несостоявшийся пресет');
+
+      await manager.dispose();
+    });
+  });
+}
+
+/// Хранилище с инжектированным отказом записи указателя (W14).
+///
+/// Наследует боевой [StorageModule] и переопределяет только [setString]:
+/// отказ приходит в момент, когда пресет и практики уже записаны в рамках
+/// транзакции, и тест видит, откатились ли они вместе с указателем.
+class _FailingStorageModule extends StorageModule {
+  @override
+  Future<void> setString(String key, String value) async {
+    throw StateError('инжектированный отказ записи указателя');
+  }
 }
