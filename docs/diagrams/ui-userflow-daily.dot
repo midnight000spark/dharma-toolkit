@@ -1,0 +1,47 @@
+// Схема 2. Ежедневные экраны: дашборд, практики, счёт, чтение дня.
+// Источник: docs/UI-USERFLOW.md, раздел 3.
+digraph daily_flow {
+  rankdir=TB;
+  graph [fontname="DejaVu Sans", bgcolor="white", pad="0.4", nodesep="0.5", ranksep="0.75",
+         label="Схема 2. Ежедневные экраны", labelloc="t", fontsize="22", fontcolor="#0f172a"];
+  node [fontname="DejaVu Sans", fontsize="13", shape=box, style="rounded,filled",
+        fillcolor="#dbeafe", color="#2563eb"];
+  edge [fontname="DejaVu Sans", fontsize="10", color="#64748b"];
+
+  s7 [label="SCR-7 · Дашборд «Практика»", penwidth=2.4];
+  s8 [label="SCR-8 · Список практик"];
+  s9 [label="SCR-9 · Экран счёта"];
+  s13 [label="SCR-13 · Чтение дня"];
+
+  n1 [label="N-1 · Форма создания практики", fillcolor="#f1f3f5", color="#6b7280", style="rounded,filled,dashed"];
+  n2 [label="N-2 · Форма редактирования практики", fillcolor="#f1f3f5", color="#6b7280", style="rounded,filled,dashed"];
+  n3 [label="N-3 · История счёта", fillcolor="#f1f3f5", color="#6b7280", style="rounded,filled,dashed"];
+  n4 [label="N-4 · Окно удаления практики", fillcolor="#f1f3f5", color="#6b7280", style="rounded,filled,dashed"];
+
+  s7 -> s8 [label="блок практик"];
+  s7 -> s9 [label="нажатие на практику", style=dashed];
+  s7 -> n1 [label="«Создать практику», если пусто"];
+  s7 -> s13 [label="блок чтения дня"];
+  s13 -> s13 [label="«Другое чтение»"];
+
+  s8 -> s9 [label="карточка практики", color="#2563eb", penwidth=1.4];
+  s8 -> n1 [label="«Создать»"];
+  s8 -> n4 [label="долгое нажатие"];
+  s8 -> s7 [label="назад"];
+
+  s9 -> n3 [label="«История»"];
+  s9 -> n4 [label="удалить"];
+  s9 -> n2 [label="правка", style=dashed];
+  s9 -> s8 [label="назад"];
+  n3 -> s9 [label="назад"];
+  n1 -> s8 [label="сохранить или назад"];
+  n2 -> s9 [label="назад"];
+  n4 -> s8 [label="подтвердить или отменить"];
+
+  legend [shape=plaintext, fontsize="11", fontcolor="#334155", label=<<table border="0" cellborder="0" cellspacing="3">
+    <tr><td align="left"><font color="#2563eb">▢</font> экран из требований</td></tr>
+    <tr><td align="left"><font color="#6b7280">▢</font> служебное окно (пунктир)</td></tr>
+    <tr><td align="left">жирная рамка — главный экран</td></tr>
+    <tr><td align="left">пунктирная стрелка — путь под вопросом</td></tr>
+  </table>>];
+}

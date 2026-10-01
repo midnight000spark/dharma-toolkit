@@ -1,0 +1,42 @@
+// Схема 1. Запуск, восстановление данных, знакомство и выбор традиции.
+// Источник: docs/UI-USERFLOW.md, разделы 2 и 7.
+digraph start_flow {
+  rankdir=TB;
+  graph [fontname="DejaVu Sans", bgcolor="white", pad="0.4", nodesep="0.5", ranksep="0.75",
+         label="Схема 1. Запуск и знакомство", labelloc="t", fontsize="22", fontcolor="#0f172a"];
+  node [fontname="DejaVu Sans", fontsize="13", shape=box, style="rounded,filled",
+        fillcolor="#dbeafe", color="#2563eb"];
+  edge [fontname="DejaVu Sans", fontsize="10", color="#64748b"];
+
+  launch [label="Запуск приложения", shape=oval, style=filled, fillcolor="#dcfce7", color="#16a34a"];
+  n8 [label="N-8 · Загрузка при старте", fillcolor="#f1f3f5", color="#6b7280", style="rounded,filled,dashed"];
+  n9 [label="N-9 · Восстановление данных", fillcolor="#f1f3f5", color="#6b7280", style="rounded,filled,dashed"];
+  s1 [label="SCR-1 · Знакомство"];
+  s3 [label="SCR-3 · Выбор традиции"];
+  s4 [label="SCR-4 · Описание традиции"];
+  s5 [label="SCR-5 · О приложении"];
+  n11 [label="N-11 · Сборка своего набора", fillcolor="#fff4e6", color="#d97706", style="rounded,filled,dashed"];
+  s7 [label="SCR-7 · Дашборд", penwidth=2.4];
+
+  launch -> n8;
+  n8 -> s3 [label="традиция не выбрана"];
+  n8 -> s7 [label="традиция выбрана", color="#2563eb", penwidth=1.4];
+  n8 -> n9 [label="данные повреждены", style=dashed];
+  n9 -> n8 [label="«Попробовать снова»"];
+  n9 -> s1 [label="«стереть и начать заново»"];
+
+  s1 -> s3 [label="Далее", color="#2563eb", penwidth=1.4];
+  s1 -> s5 [label="о приложении", style=dashed];
+  s3 -> s4 [label="подробнее"];
+  s4 -> s3 [label="назад"];
+  s3 -> s1 [label="назад"];
+  s3 -> n11 [label="«Собрать свой набор»", style=dashed];
+  s3 -> s7 [label="выбор сделан", color="#2563eb", penwidth=1.4];
+
+  legend [shape=plaintext, fontsize="11", fontcolor="#334155", label=<<table border="0" cellborder="0" cellspacing="3">
+    <tr><td align="left"><font color="#2563eb">▢</font> экран · <font color="#16a34a">◯</font> запуск</td></tr>
+    <tr><td align="left"><font color="#6b7280">▢</font> служебный экран (пунктир)</td></tr>
+    <tr><td align="left"><font color="#d97706">▢</font> под вопросом (пунктир)</td></tr>
+    <tr><td align="left">жирная рамка — главный экран</td></tr>
+  </table>>];
+}

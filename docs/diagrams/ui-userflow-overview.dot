@@ -1,0 +1,77 @@
+// Общая карта экранов и переходов (Этап 8).
+// Источник: docs/UI-USERFLOW.md. Рендер: dot -Tsvg/-Tpng.
+digraph overview {
+  rankdir=TB;
+  graph [fontname="DejaVu Sans", bgcolor="white", pad="0.4", nodesep="0.55", ranksep="0.9",
+         label="Общая карта экранов и переходов", labelloc="t", fontsize="24", fontcolor="#0f172a"];
+  node [fontname="DejaVu Sans", fontsize="13", shape=box, style="rounded,filled",
+        fillcolor="#dbeafe", color="#2563eb"];
+  edge [fontname="DejaVu Sans", fontsize="10", color="#64748b"];
+
+  start [label="Запуск приложения", shape=oval, style=filled, fillcolor="#dcfce7", color="#16a34a"];
+
+  subgraph cluster_onb {
+    label="Знакомство и выбор традиции";
+    style="rounded,filled"; fillcolor="#f8fafc"; color="#94a3b8"; fontcolor="#334155"; fontsize="13";
+    s1  [label="SCR-1\nЗнакомство"];
+    s3  [label="SCR-3\nВыбор традиции"];
+    s4  [label="SCR-4\nОписание традиции"];
+    s5  [label="SCR-5\nО приложении"];
+  }
+
+  subgraph cluster_daily {
+    label="Практики и чтение";
+    style="rounded,filled"; fillcolor="#f8fafc"; color="#94a3b8"; fontcolor="#334155"; fontsize="13";
+    s7  [label="SCR-7\nДашборд «Практика»", penwidth=2.4];
+    s8  [label="SCR-8\nСписок практик"];
+    s9  [label="SCR-9\nЭкран счёта"];
+    s13 [label="SCR-13\nЧтение дня"];
+  }
+
+  subgraph cluster_mod {
+    label="Модули";
+    style="rounded,filled"; fillcolor="#f8fafc"; color="#94a3b8"; fontcolor="#334155"; fontsize="13";
+    s11 [label="SCR-11\nКалендарь"];
+    s12 [label="SCR-12\nСобытия"];
+  }
+
+  subgraph cluster_set {
+    label="Настройки";
+    style="rounded,filled"; fillcolor="#f8fafc"; color="#94a3b8"; fontcolor="#334155"; fontsize="13";
+    s14 [label="SCR-14\nНастройки и\nсмена традиции"];
+  }
+
+  subgraph cluster_q {
+    label="Под вопросом — требует решения";
+    style="rounded,dashed"; color="#d97706"; fontcolor="#b45309"; fontsize="13";
+    s2  [label="SCR-2\nГлавная", fillcolor="#fff4e6", color="#d97706", style="rounded,filled,dashed"];
+    s6  [label="SCR-6\nНастройки", fillcolor="#fff4e6", color="#d97706", style="rounded,filled,dashed"];
+    s10 [label="SCR-10\nСписок календарей", fillcolor="#fff4e6", color="#d97706", style="rounded,filled,dashed"];
+  }
+
+  start -> s1 [label="традиция не выбрана"];
+  start -> s7 [label="традиция выбрана", color="#2563eb"];
+  s1 -> s3 [label="Далее"];
+  s3 -> s4 [label="подробнее"];
+  s3 -> s7 [label="выбор сделан", color="#2563eb", penwidth=1.4];
+  s7 -> s8;
+  s7 -> s9;
+  s7 -> s13;
+  s7 -> s11;
+  s7 -> s12;
+  s7 -> s14;
+  s8 -> s9 [label="карточка"];
+  s14 -> s5 [label="О приложении"];
+  s2 -> s3 [style=dashed];
+  s2 -> s5 [style=dashed];
+  s6 -> s14 [style=dashed, label="дубль?"];
+  s10 -> s11 [style=dashed];
+
+  legend [shape=plaintext, fontsize="11", fontcolor="#334155", label=<<table border="0" cellborder="0" cellspacing="3">
+    <tr><td align="left"><font color="#2563eb">▢</font> экран из требований</td></tr>
+    <tr><td align="left"><font color="#16a34a">◯</font> запуск приложения</td></tr>
+    <tr><td align="left"><font color="#d97706">▢</font> под вопросом (пунктир)</td></tr>
+    <tr><td align="left">жирная рамка — главный экран</td></tr>
+    <tr><td align="left">стрелка — переход; пунктир — под вопросом</td></tr>
+  </table>>];
+}

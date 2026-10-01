@@ -1,0 +1,33 @@
+// Схема 3. Модули: календарь, события, карточка дня, нажатие на уведомление.
+// Источник: docs/UI-USERFLOW.md, раздел 4.
+digraph modules_flow {
+  rankdir=TB;
+  graph [fontname="DejaVu Sans", bgcolor="white", pad="0.4", nodesep="0.5", ranksep="0.75",
+         label="Схема 3. Модули: календарь и события", labelloc="t", fontsize="22", fontcolor="#0f172a"];
+  node [fontname="DejaVu Sans", fontsize="13", shape=box, style="rounded,filled",
+        fillcolor="#dbeafe", color="#2563eb"];
+  edge [fontname="DejaVu Sans", fontsize="10", color="#64748b"];
+
+  s7 [label="SCR-7 · Дашборд", penwidth=2.4];
+  s11 [label="SCR-11 · Календарь"];
+  s12 [label="SCR-12 · События"];
+  s14 [label="SCR-14 · Настройки"];
+  n12 [label="N-12 · Карточка дня", fillcolor="#f1f3f5", color="#6b7280", style="rounded,filled,dashed"];
+  n10 [label="Нажатие на уведомление", shape=oval, style=filled, fillcolor="#dcfce7", color="#16a34a"];
+
+  s7 -> s11 [label="блок особых дней"];
+  s7 -> s12 [label="меню: события"];
+  s11 -> n12 [label="тап по дню"];
+  n12 -> s11 [label="закрыть", style=dashed];
+  s12 -> s11 [label="тап по событию → день"];
+  s12 -> s14 [label="настройка уведомлений", style=dashed];
+  n10 -> s11 [label="открыть день"];
+  n10 -> s12 [style=dashed];
+
+  legend [shape=plaintext, fontsize="11", fontcolor="#334155", label=<<table border="0" cellborder="0" cellspacing="3">
+    <tr><td align="left"><font color="#2563eb">▢</font> экран из требований</td></tr>
+    <tr><td align="left"><font color="#16a34a">◯</font> событие системы</td></tr>
+    <tr><td align="left"><font color="#6b7280">▢</font> панель/окно (пунктир)</td></tr>
+    <tr><td align="left">пунктирная стрелка — путь под вопросом</td></tr>
+  </table>>];
+}

@@ -1,0 +1,91 @@
+// Схема 5. Служебные экраны и окна (в требованиях их нет).
+// Источник: docs/UI-USERFLOW.md, раздел 7.
+digraph service_flow {
+  rankdir=LR;
+  graph [fontname="DejaVu Sans", bgcolor="white", pad="0.4", nodesep="0.4", ranksep="0.6",
+         label="Схема 5. Служебные экраны и окна", labelloc="t", fontsize="22", fontcolor="#0f172a"];
+  node [fontname="DejaVu Sans", fontsize="12", shape=box, style="rounded,filled",
+        fillcolor="#f1f3f5", color="#6b7280"];
+  edge [fontname="DejaVu Sans", fontsize="10", color="#64748b"];
+
+  subgraph cluster_sys {
+    label="Запуск и восстановление";
+    style="rounded,filled"; fillcolor="#f8fafc"; color="#94a3b8"; fontcolor="#334155"; fontsize="12";
+    launch [label="Запуск приложения", shape=oval, style=filled, fillcolor="#dcfce7", color="#16a34a"];
+    n8 [label="N-8 · Загрузка при старте"];
+    n9 [label="N-9 · Восстановление данных"];
+    n7 [label="N-7 · Страница не найдена"];
+    s1 [label="SCR-1\nЗнакомство", fillcolor="#dbeafe", color="#2563eb"];
+    s7 [label="SCR-7\nДашборд", fillcolor="#dbeafe", color="#2563eb", penwidth=2.4];
+  }
+
+  subgraph cluster_practice {
+    label="Окна практик";
+    style="rounded,filled"; fillcolor="#f8fafc"; color="#94a3b8"; fontcolor="#334155"; fontsize="12";
+    s8 [label="SCR-8\nСписок практик", fillcolor="#dbeafe", color="#2563eb"];
+    s9 [label="SCR-9\nЭкран счёта", fillcolor="#dbeafe", color="#2563eb"];
+    n1 [label="N-1 · Форма создания\nпрактики"];
+    n2 [label="N-2 · Форма\nредактирования практики"];
+    n3 [label="N-3 · История счёта"];
+    n4 [label="N-4 · Окно удаления\nпрактики"];
+  }
+
+  subgraph cluster_choice {
+    label="Выбор традиции и настройки";
+    style="rounded,filled"; fillcolor="#f8fafc"; color="#94a3b8"; fontcolor="#334155"; fontsize="12";
+    s3 [label="SCR-3\nВыбор традиции", fillcolor="#dbeafe", color="#2563eb"];
+    s14 [label="SCR-14\nНастройки", fillcolor="#dbeafe", color="#2563eb"];
+    n5 [label="N-5 · Окно\n«данные не потеряются»"];
+    n6 [label="N-6 · Запрос разрешения\nна уведомления"];
+    n11 [label="N-11 · Сборка своего\nнабора", fillcolor="#fff4e6", color="#d97706", style="rounded,filled,dashed"];
+  }
+
+  subgraph cluster_cal {
+    label="Календарь и события";
+    style="rounded,filled"; fillcolor="#f8fafc"; color="#94a3b8"; fontcolor="#334155"; fontsize="12";
+    s11 [label="SCR-11\nКалендарь", fillcolor="#dbeafe", color="#2563eb"];
+    s12 [label="SCR-12\nСобытия", fillcolor="#dbeafe", color="#2563eb"];
+    n12 [label="N-12 · Карточка дня"];
+    n10 [label="Нажатие\nна уведомление", shape=oval, style=filled, fillcolor="#dcfce7", color="#16a34a"];
+  }
+
+  // запуск
+  launch -> n8;
+  n8 -> n9 [label="данные повреждены", style=dashed];
+  n9 -> n8 [label="«Попробовать снова»"];
+  n9 -> s1 [label="«стереть заново»"];
+  n7 -> s7 [label="назад"];
+
+  // окна практик
+  s8 -> n1 [label="«Создать»"];
+  n1 -> s8 [label="сохранить / назад"];
+  s8 -> n4 [label="долгое нажатие"];
+  s9 -> n4 [style=dashed];
+  n4 -> s8 [label="подтвердить / отменить"];
+  s9 -> n3 [label="«История»"];
+  n3 -> s9 [label="назад"];
+  s9 -> n2 [style=dashed];
+  n2 -> s9 [label="назад"];
+
+  // выбор и настройки
+  s3 -> n11 [style=dashed];
+  n11 -> s7 [style=dashed, label="после сборки"];
+  s14 -> n5 [label="«Применить»"];
+  n5 -> s14 [label="подтвердить / отменить"];
+  s14 -> n6 [label="включить"];
+  n6 -> s14 [style=dashed];
+
+  // календарь и события
+  s11 -> n12 [label="тап по дню"];
+  n12 -> s11 [label="закрыть"];
+  n10 -> s11 [label="открыть день"];
+  n10 -> s12 [style=dashed];
+
+  {rank=max; legend;}
+  legend [shape=plaintext, fontsize="11", fontcolor="#334155", label=<<table border="0" cellborder="0" cellspacing="3">
+    <tr><td align="left"><font color="#2563eb">▢</font> экран из требований</td></tr>
+    <tr><td align="left"><font color="#16a34a">◯</font> запуск / событие системы</td></tr>
+    <tr><td align="left"><font color="#6b7280">▢</font> служебное окно (пунктир)</td></tr>
+    <tr><td align="left"><font color="#d97706">▢</font> под вопросом (пунктир)</td></tr>
+  </table>>];
+}

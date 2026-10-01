@@ -1,0 +1,41 @@
+// Схема 4. Настройки, смена традиции, «О приложении» и спорные экраны SCR-6/SCR-2.
+// Источник: docs/UI-USERFLOW.md, разделы 5 и 6.
+digraph settings_flow {
+  rankdir=LR;
+  graph [fontname="DejaVu Sans", bgcolor="white", pad="0.4", nodesep="0.5", ranksep="0.75",
+         label="Схема 4. Настройки и смена традиции", labelloc="t", fontsize="22", fontcolor="#0f172a"];
+  node [fontname="DejaVu Sans", fontsize="13", shape=box, style="rounded,filled",
+        fillcolor="#dbeafe", color="#2563eb"];
+  edge [fontname="DejaVu Sans", fontsize="10", color="#64748b"];
+
+  s7 [label="SCR-7 · Дашборд", penwidth=2.4];
+  s14 [label="SCR-14 · Настройки и смена традиции"];
+  s5 [label="SCR-5 · О приложении"];
+  n5 [label="N-5 · Окно «данные не потеряются»", fillcolor="#f1f3f5", color="#6b7280", style="rounded,filled,dashed"];
+  n6 [label="N-6 · Запрос разрешения на уведомления", fillcolor="#f1f3f5", color="#6b7280", style="rounded,filled,dashed"];
+
+  subgraph cluster_q {
+    label="Под вопросом — требует решения";
+    style="rounded,dashed"; color="#d97706"; fontcolor="#b45309"; fontsize="12";
+    s2 [label="SCR-2 · Главная", fillcolor="#fff4e6", color="#d97706", style="rounded,filled,dashed"];
+    s6 [label="SCR-6 · Настройки", fillcolor="#fff4e6", color="#d97706", style="rounded,filled,dashed"];
+  }
+
+  s7 -> s14 [label="меню: настройки"];
+  s14 -> n5 [label="«Применить»"];
+  n5 -> s14 [label="подтвердить или отменить"];
+  s14 -> n6 [label="включить уведомления"];
+  n6 -> s14 [label="разрешить или запретить", style=dashed];
+  s14 -> s5 [label="«О приложении»"];
+  s5 -> s14 [label="назад"];
+  s6 -> s14 [style=dashed];
+  s2 -> s14 [style=dashed];
+
+  {rank=max; legend;}
+  legend [shape=plaintext, fontsize="11", fontcolor="#334155", label=<<table border="0" cellborder="0" cellspacing="3">
+    <tr><td align="left"><font color="#2563eb">▢</font> экран из требований</td></tr>
+    <tr><td align="left"><font color="#6b7280">▢</font> окно (пунктир)</td></tr>
+    <tr><td align="left"><font color="#d97706">▢</font> под вопросом (пунктир)</td></tr>
+    <tr><td align="left">жирная рамка — главный экран</td></tr>
+  </table>>];
+}
