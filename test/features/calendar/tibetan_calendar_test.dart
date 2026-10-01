@@ -58,7 +58,7 @@ void main() {
   // это не вносит.
   final sharedCache = TibetanMonthCache(limit: 400);
   group('gregorianToTibetan: полный поток против tibcal', () {
-    test('все g2t-векторы совпадают (731 день 2024 и 2026)', () {
+    test('все g2t-векторы совпадают (1457 дней: 2024–2026 + особые окна)', () {
       final list = vectors['g2t'] as List<dynamic>;
       expect(list, isNotEmpty);
       final mismatches = <String>[];
@@ -181,6 +181,70 @@ void main() {
         expect(isoOf(regular), m['regularDate'], reason: 'обычный день');
         expect(leap.isBefore(regular), isTrue,
             reason: 'вставной день идёт первым');
+      }
+    });
+  });
+
+  group('§4.1(iii): покрытие векторов (2025, удвоенный месяц/день)', () {
+    final g2t = vectors['g2t'] as List<dynamic>;
+
+    test('2025 присутствует целиком (365 дней)', () {
+      final days2025 = g2t
+          .map((e) => (e as Map<String, dynamic>)['gregorian'] as String)
+          .where((s) => s.startsWith('2025-'))
+          .length;
+      expect(days2025, 365,
+          reason: '2025 выпадал из набора целиком (находка §4.1(iii))');
+    });
+
+    test('удвоенный 1-й месяц: инстанс 1/1 с leapMonth=true в потоке', () {
+      final doubledMonth = g2t.where((e) {
+        final t = (e as Map<String, dynamic>)['tibetan'] as Map<String, dynamic>;
+        return t['month'] == 1 && t['day'] == 1 && t['leapMonth'] == true;
+      }).toList();
+      expect(doubledMonth, isNotEmpty,
+          reason: 'ветка «вставной 1/1» обязана опираться на фикстуру, '
+              'а не на рукописный комментарий');
+      expect(
+          doubledMonth
+              .map((e) => (e as Map<String, dynamic>)['gregorian'] as String),
+          contains('2019-02-05'));
+    });
+
+    test('удвоенный день 1/1 (C6): 2036 и 2037 в doubled_days', () {
+      final doubled = (vectors['doubled_days'] as List)
+          .cast<Map<String, dynamic>>()
+          .where((e) => e['month'] == 1 && e['day'] == 1)
+          .map((e) => e['year'] as int)
+          .toSet();
+      expect(doubled, containsAll({2036, 2037}),
+          reason: 'конвенция C6 обязана опираться на векторы, а не на '
+              'комментарий: обе половины удвоенного 1/1');
+    });
+
+    test('losar_instances: все существующие инстансы 1/1 особых лет', () {
+      final instances =
+          (vectors['losar_instances'] as List).cast<Map<String, dynamic>>();
+      expect(
+          instances.any((e) =>
+              e['tibetanYear'] == 1935 &&
+              e['isLeapMonth'] == true &&
+              e['gregorian'] == '1935-02-04'),
+          isTrue,
+          reason: '1935: обычный 1/1 пропущен — существует только вставной');
+      expect(
+          instances.any((e) =>
+              e['tibetanYear'] == 2019 &&
+              e['isLeapMonth'] == false &&
+              e['gregorian'] == '2019-03-07'),
+          isTrue,
+          reason: '2019: удвоенный месяц — оба инстанса в фикстуре');
+      for (final y in [2036, 2037]) {
+        final halves = instances
+            .where((e) => e['tibetanYear'] == y)
+            .map((e) => e['isLeapDay'])
+            .toSet();
+        expect(halves, {true, false}, reason: 'обе половины дня $y');
       }
     });
   });

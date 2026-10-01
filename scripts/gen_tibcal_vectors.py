@@ -13,6 +13,8 @@ E806) — см. F-18/F-43. Скрипт остаётся в репозитори
   - g2t: григорианская -> тибетская для каждого дня 2024 и 2026 годов;
   - t2g: обратный ход каждой полученной тибетской даты (round-trip);
   - losar: Лосары (месяц 1, день 1) тибетских годов 2023..2027 + обратный g2t;
+  - losar_instances: все существующие инстансы 1/1 особых годов
+    (1935/2019/2036/2037/2084) — ветки удвоенного месяца и удвоенного дня;
   - skipped_days: пропущенные дни (разрыв нумерации внутри месяца в потоке
     g2t) с григорианскими якорями;
   - doubled_days: двойные дни (повтор номера, первый — с leapDay=true).
@@ -42,12 +44,27 @@ tc._month_instances = functools.lru_cache(maxsize=None)(tc._month_instances)
 
 TRADITION = TibetanTradition.PHUGPA
 
-# Диапазоны полного потока g2t (2024 — высокосный, 2026 — текущий).
+# Диапазоны полного потока g2t:
+#  2024 — высокосный, 2026 — текущий (пакет 5a);
+#  2025 — закрыт пропуск целиком (§4.1(iii): год выпадал из векторов);
+#  2019Q1/1935Q1 — удвоенный 1-й месяц (ветка losarDate без фикстуры);
+#  2036Q1/2037Q1 — удвоенный день 1/1 (конвенция C6, решение владельца 30.09).
 RANGES = [
     (date(2024, 1, 1), date(2024, 12, 31)),
+    (date(2025, 1, 1), date(2025, 12, 31)),
     (date(2026, 1, 1), date(2026, 12, 31)),
+    (date(2019, 1, 1), date(2019, 3, 31)),
+    (date(1935, 1, 1), date(1935, 3, 31)),
+    (date(2036, 1, 1), date(2036, 3, 31)),
+    (date(2037, 1, 1), date(2037, 3, 31)),
 ]
 LOSAR_YEARS = range(2023, 2028)
+
+# Особые годы Лосара: в каждом перечисляются ВСЕ существующие инстансы 1/1
+# (tibcal — даты; порядок — конвенция поиска порта C6: вставной месяц первым,
+# поздняя половина дня раньше вставной). 1935/2084 — обычный 1/1 пропущен,
+# 2019 — удвоен месяц, 2036/2037 — удвоен день 1/1.
+SPECIAL_LOSAR_YEARS = [1935, 2019, 2036, 2037, 2084]
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_PATH = os.path.join(REPO_ROOT, "test", "fixtures", "tibcal_vectors.json")
@@ -118,6 +135,24 @@ def main() -> None:
             "g2tBack": tib_payload(back),
         })
 
+    # --- особые инстансы Лосара (§4.1(iii), конвенция C6) -----------------
+    losar_instances = []
+    for y in SPECIAL_LOSAR_YEARS:
+        for leap_month in (True, False):
+            for leap_day in (False, True):
+                try:
+                    g = tc.tibetan_to_gregorian(
+                        TibetanDate(y, 1, leap_month, 1, leap_day, False, None, 0),
+                        TRADITION)
+                except ValueError:
+                    continue
+                losar_instances.append({
+                    "tibetanYear": y,
+                    "isLeapMonth": leap_month,
+                    "isLeapDay": leap_day,
+                    "gregorian": g.isoformat(),
+                })
+
     # --- аномалии из потока g2t -------------------------------------------
     skipped = []
     doubled = []
@@ -181,6 +216,7 @@ def main() -> None:
                 "losar": len(losar),
                 "skipped": len(skipped),
                 "doubled": len(doubled),
+                "losar_instances": len(losar_instances),
             },
             "skipped_t2g_raises": skip_check,
         },
@@ -189,6 +225,7 @@ def main() -> None:
         "losar": losar,
         "skipped_days": skipped,
         "doubled_days": doubled,
+        "losar_instances": losar_instances,
     }
 
     os.makedirs(os.path.dirname(OUT_PATH), exist_ok=True)
@@ -196,7 +233,8 @@ def main() -> None:
         json.dump(vectors, fh, ensure_ascii=False, indent=1, sort_keys=False)
         fh.write("\n")
     print(f"written {OUT_PATH}: g2t={len(g2t)} t2g={len(t2g)} "
-          f"losar={len(losar)} skipped={len(skipped)} doubled={len(doubled)}")
+          f"losar={len(losar)} skipped={len(skipped)} doubled={len(doubled)} "
+          f"losar_instances={len(losar_instances)}")
 
 
 if __name__ == "__main__":
