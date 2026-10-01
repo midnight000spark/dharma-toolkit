@@ -51,11 +51,26 @@ abstract class NotificationGateway {
   });
 
   /// Снять уведомление по id (и запланированное, и уже показанное).
+  ///
+  /// Правда шва: `cancel` снимает и pending, и доставленное (проверено по
+  /// Android-транспорту плагина 22.3.0: `AlarmManager.cancel` + `cancel(id)`),
+  /// поэтому W2 чинится не заменой `cancel`, а тем, что доставленные id
+  /// попадают в перечень отменяемого (см. [activeIds] и журнал C7).
   Future<void> cancel(int id);
 
-  /// Идентификаторы ожидающих уведомлений; платформа без перечисления бросает
-  /// [UnimplementedError] (F-57).
+  /// Идентификаторы ожидающих (ещё не доставленных) уведомлений; платформа без
+  /// перечисления бросает [UnimplementedError] (F-57).
   Future<List<int>> pendingIds();
+
+  /// Идентификаторы уже показанных (доставленных) уведомлений приложения;
+  /// платформа без перечисления бросает [UnimplementedError] (F-57; Linux),
+  /// Android до 6.0 — тоже (minSdk приложения 24, случай недостижим).
+  ///
+  /// Отдельный перечень нужен W2: доставленное уведомление больше не числится
+  /// ожидающим, и отмена по диапазону, идущая только по [pendingIds], оставляла
+  /// бы его в шторке. `id == null` (чужое уведомление вне контроля плагина,
+  /// iOS) пропускается: это не наша полоса.
+  Future<List<int>> activeIds();
 
   /// Доступно ли *точное* планирование (Android 14+, F-57). Платформа без
   /// такого понятия отвечает `false` — «точность не обещана».
@@ -131,6 +146,15 @@ class FlutterLocalNotificationsGateway implements NotificationGateway {
   Future<List<int>> pendingIds() async {
     final pending = await _plugin.pendingNotificationRequests();
     return [for (final request in pending) request.id];
+  }
+
+  @override
+  Future<List<int>> activeIds() async {
+    final active = await _plugin.getActiveNotifications();
+    return [
+      for (final notification in active)
+        if (notification.id != null) notification.id!,
+    ];
   }
 
   @override

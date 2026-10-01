@@ -174,6 +174,34 @@ void main() {
     expect(scheduler.scheduled.keys, [100000]);
   });
 
+  group('W2 — показанное снимается при переплане (журнал C7)', () {
+    test('доставленный id прошлого журнала снимается при следующем переплане',
+        () async {
+      final replanner = replannerWith(
+        buildPlan: () async => NotificationPlan(
+          items: [item(100000, 'A')],
+          notes: const [],
+        ),
+      );
+      replanner.start();
+      await replanner.settled;
+      expect(scheduler.scheduled.keys, [100000]);
+
+      // Уведомление сработало и осталось в шторке: в pending его уже нет, и
+      // платформа (listsActive = false) его не перечисляет.
+      scheduler.deliver(100000);
+      expect(scheduler.delivered.keys, [100000]);
+
+      bus.publish(PresetChanged(traditionTag: 'theravada'));
+      await settle(replanner);
+
+      expect(scheduler.delivered, isEmpty,
+          reason: 'переплан обязан снять показанное прошлого плана (журнал C7)');
+      expect(scheduler.scheduled.keys, [100000],
+          reason: 'новый план поставлен заново');
+    });
+  });
+
   group('C7 — применение плана по пунктам (журнал, applied/degraded)', () {
     test('отказ на пункте k не срывает остальные; отказ виден в журнале',
         () async {

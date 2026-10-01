@@ -116,9 +116,19 @@ class NotificationReplanner {
   Future<void> _replan() async {
     try {
       final plan = await buildPlan();
+      // W2: id прошлого плана снимаются отдельно — показанное уведомление не
+      // числится ожидающим, и платформа может его не перечислить (журнал C7
+      // помнит, что ставило приложение). Журнал берётся до применения: новый
+      // снимок заменит его только после успешной постановки.
+      final previousPlanIds =
+          _lastJournal?.plan.items.map((i) => i.id) ?? const [];
       // Применение по пунктам (C7): одно упавшее уведомление не срывает
       // остальные; исход каждого пункта — в журнале.
-      final journal = await applyNotificationPlan(scheduler, plan);
+      final journal = await applyNotificationPlan(
+        scheduler,
+        plan,
+        previousPlanIds: previousPlanIds,
+      );
       _lastJournal = journal;
       if (journal.isDegraded) {
         // Частичный отказ: деградация видима в логе и метрике, поставленное

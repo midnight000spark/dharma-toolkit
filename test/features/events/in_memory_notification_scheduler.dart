@@ -27,8 +27,27 @@ class InMemoryNotificationScheduler implements NotificationScheduler {
 
   final Map<int, NotificationPlanItem> scheduled = {};
 
+  /// Доставленные (показанные) уведомления: id → пункт (W2). Доставка — явное
+  /// действие теста [deliver], как в жизни — исход таймера; доставленное больше
+  /// не числится ожидающим.
+  final Map<int, NotificationPlanItem> delivered = {};
+
+  /// Умеет ли «платформа» перечислять показанные (W2)? Дефолт `false` —
+  /// минимальный контракт порта: полоса снимает ожидающие, а доставленные
+  /// домен обязан снять по журналу (`previousPlanIds`). `true` — платформа,
+  /// которая перечисляет показанные сама.
+  bool listsActive = false;
+
   /// Сколько раз вызывали `cancelRange` (видно идемпотентность переплана).
   int cancelRangeCalls = 0;
+
+  /// «Сработало»: пункт покидает ожидающие и появляется в показанных.
+  /// Возвращает снятый пункт (null — такого ожидающего не было).
+  NotificationPlanItem? deliver(int id) {
+    final item = scheduled.remove(id);
+    if (item != null) delivered[id] = item;
+    return item;
+  }
 
   @override
   Future<void> schedule(NotificationPlanItem item) async {
@@ -48,12 +67,16 @@ class InMemoryNotificationScheduler implements NotificationScheduler {
   @override
   Future<void> cancel(int id) async {
     scheduled.remove(id);
+    delivered.remove(id);
   }
 
   @override
   Future<void> cancelRange({required int fromId, required int toId}) async {
     cancelRangeCalls++;
     scheduled.removeWhere((id, _) => id >= fromId && id <= toId);
+    if (listsActive) {
+      delivered.removeWhere((id, _) => id >= fromId && id <= toId);
+    }
   }
 
   @override

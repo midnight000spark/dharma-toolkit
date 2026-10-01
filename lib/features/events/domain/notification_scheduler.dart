@@ -21,7 +21,13 @@ abstract class NotificationScheduler {
   /// Снять одно уведомление по id.
   Future<void> cancel(int id);
 
-  /// Снять все уведомления полосы приложения `fromId..toId` включительно.
+  /// Снять уведомления полосы приложения `fromId..toId` включительно:
+  /// ожидающие, а также показанные, если платформа умеет их перечислять.
+  ///
+  /// W2: «полоса» не может оставлять показанное в шторке — но контракт порта
+  /// не требует от платформы уметь перечислять доставленные. Доставленные,
+  /// которых платформа не видит, домен снимает по журналу последнего плана
+  /// (`previousPlanIds` в [applyNotificationPlan]).
   Future<void> cancelRange({required int fromId, required int toId});
 
   /// Идентификаторы ожидающих уведомлений (для проверки идемпотентности).
@@ -131,14 +137,24 @@ class NotificationApplicationJournal {
 /// срывал все оставшиеся уведомления). Отказ снятия полосы остаётся
 /// исключением: ставить план поверх неочищенной полосы — это дубли
 /// уведомлений, а не деградация.
+///
+/// [previousPlanIds] — id пунктов **предыдущего** применённого плана (журнал
+/// C7). Они снимаются отдельно, до постановки нового плана: доставленное
+/// уведомление не числится ожидающим, и платформа может его не перечислить
+/// (W2) — а журнал помнит, что приложение ставило. Отмена идемпотентна:
+/// id, которых уже нет, снимаются вхолостую.
 Future<NotificationApplicationJournal> applyNotificationPlan(
   NotificationScheduler scheduler,
-  NotificationPlan plan,
-) async {
+  NotificationPlan plan, {
+  Iterable<int> previousPlanIds = const [],
+}) async {
   await scheduler.cancelRange(
     fromId: NotificationPlan.idRangeStart,
     toId: NotificationPlan.idRangeEnd,
   );
+  for (final id in previousPlanIds.toSet()) {
+    await scheduler.cancel(id);
+  }
   final applications = <PlanItemApplication>[];
   for (final item in plan.items) {
     try {

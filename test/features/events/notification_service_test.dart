@@ -177,6 +177,38 @@ void main() {
       expect(gateway.cancelled, [100000, 100001, 199999]);
     });
 
+    test('W2: cancelRange снимает и показанное, а не только ожидающие',
+        () async {
+      // Показанное уведомление уже сработало: в pending его нет, но в шторке
+      // оно остаётся — отмена обязана его снять (подтверждено на устройстве
+      // 30.09). Чужой id вне полосы не трогается.
+      gateway.pending.add(100001);
+      gateway.active.addAll([100000, 500000]);
+
+      await serviceWith().cancelRange(
+        fromId: NotificationPlan.idRangeStart,
+        toId: NotificationPlan.idRangeEnd,
+      );
+
+      expect(gateway.cancelled, [100000, 100001]);
+      expect(gateway.active, [500000], reason: 'чужое показанное не снимается');
+    });
+
+    test('W2: платформа без перечисления показанных — полоса снимается по '
+        'pending, отказ виден в логе', () async {
+      gateway.pending.add(100000);
+      gateway.activeIdsError =
+          UnimplementedError('getActiveNotifications not implemented');
+
+      await serviceWith().cancelRange(
+        fromId: NotificationPlan.idRangeStart,
+        toId: NotificationPlan.idRangeEnd,
+      );
+
+      expect(gateway.cancelled, [100000]);
+      expect(warnings.single, contains('показанные'));
+    });
+
     test('cancelRange с перевёрнутым диапазоном — ошибка аргумента', () async {
       expect(
         () => serviceWith().cancelRange(fromId: 200000, toId: 100000),

@@ -75,6 +75,52 @@ void main() {
     });
   });
 
+  group('W2 — показанное не остаётся в шторке при переплане', () {
+    test('доставленное прошлого плана снимается по журналу (previousPlanIds)',
+        () async {
+      // План поставлен, одно уведомление сработало: оно вне pending и
+      // «платформа» его не перечисляет (listsActive = false) — та самая
+      // ситуация, из-за которой показанное оставалось в шторке.
+      await applyNotificationPlan(
+          scheduler, planOf([itemOf(100000), itemOf(100001)]));
+      scheduler.deliver(100000);
+      expect(scheduler.delivered.keys, [100000]);
+
+      await applyNotificationPlan(
+        scheduler,
+        planOf([itemOf(100002)]),
+        previousPlanIds: const [100000, 100001],
+      );
+
+      expect(scheduler.delivered, isEmpty,
+          reason: 'журнал C7 обязан снять доставленное прошлого плана');
+      expect(await scheduler.pendingIds(), [100002]);
+    });
+
+    test('без журнала (previousPlanIds пуст) поведение прежнее — доставленное '
+        'снимает только платформа, умеющая перечислять', () async {
+      await applyNotificationPlan(scheduler, planOf([itemOf(100000)]));
+      scheduler.deliver(100000);
+
+      await applyNotificationPlan(scheduler, planOf([itemOf(100001)]));
+
+      expect(scheduler.delivered.keys, [100000],
+          reason: 'порт не обещает перечисление показанных — это честная '
+              'граница контракта, а не тихая потеря');
+    });
+
+    test('платформа с перечислением показанных снимает их сама (listsActive)',
+        () async {
+      scheduler.listsActive = true;
+      await applyNotificationPlan(scheduler, planOf([itemOf(100000)]));
+      scheduler.deliver(100000);
+
+      await applyNotificationPlan(scheduler, planOf([itemOf(100001)]));
+
+      expect(scheduler.delivered, isEmpty);
+    });
+  });
+
   group('полоса id приложения (D-36)', () {
     test('границы полосы: 100000..199999', () {
       expect(NotificationPlan.idRangeStart, 100000);

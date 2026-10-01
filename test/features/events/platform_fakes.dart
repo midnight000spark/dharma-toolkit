@@ -65,6 +65,10 @@ class FakeNotificationGateway implements NotificationGateway {
   /// Ожидающие уведомления: сюда же можно предзаполнить «чужие» id.
   final List<int> pending = [];
 
+  /// Показанные (доставленные) уведомления (W2): сюда попадает то, что уже
+  /// сработало и осталось в шторке; сюда же можно предзаполнить «чужие» id.
+  final List<int> active = [];
+
   /// Отвечает ли платформа, что точное планирование разрешено (Android 14+).
   bool exactAllowed = false;
 
@@ -79,6 +83,7 @@ class FakeNotificationGateway implements NotificationGateway {
   /// (Linux, F-57).
   Object? zonedScheduleError;
   Object? pendingIdsError;
+  Object? activeIdsError;
   Object? permissionError;
 
   @override
@@ -128,6 +133,8 @@ class FakeNotificationGateway implements NotificationGateway {
   Future<void> cancel(int id) async {
     cancelled.add(id);
     pending.remove(id);
+    // Правда плагина: cancel снимает и доставленное (W2).
+    active.remove(id);
   }
 
   @override
@@ -135,6 +142,13 @@ class FakeNotificationGateway implements NotificationGateway {
     final error = pendingIdsError;
     if (error != null) throw error;
     return List.of(pending);
+  }
+
+  @override
+  Future<List<int>> activeIds() async {
+    final error = activeIdsError;
+    if (error != null) throw error;
+    return List.of(active);
   }
 
   @override
