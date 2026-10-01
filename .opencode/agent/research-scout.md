@@ -1,8 +1,8 @@
 ---
 description: Исследователь внешних данных для проекта «Дхарма-тулкит» — ищет факты в вебе (календарные системы, даты, термины), верифицирует по нескольким независимым источникам и пишет структурированный отчёт в .tmp/research/. Вызывай через @research-scout, когда нужна внешняя проверка даты или факта.
 mode: subagent
-model: opencode-go/deepseek-v4-flash
-variant: low
+model: opencode-go/deepseek-v4.1-flash
+variant: high
 temperature: 0.1
 steps: 50
 color: secondary

@@ -1,7 +1,8 @@
 ---
 description: Лёгкий агент для рутинной кодогенерации по готовому паттерну — виджеты, тесты по образцу, шаблонный код. Делегируй через @dharma-routine чтобы экономить лимит основной модели.
 mode: subagent
-model: opencode/deepseek-v4-flash
+model: opencode-go/deepseek-v4.1-flash
+variant: high
 color: secondary
 ---
 
