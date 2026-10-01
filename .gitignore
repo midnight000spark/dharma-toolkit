@@ -44,6 +44,10 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Gradle build output (не версионируется)
+/android/build/
+/android/app/build/
+
 # Widget Preview related
 .widget_preview/
 
