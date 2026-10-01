@@ -17,6 +17,7 @@ import 'core/recovery/recovery_screen.dart';
 import 'core/recovery/startup.dart';
 import 'core/storage/storage_module.dart';
 import 'features/calendar/presentation/providers/calendar_providers.dart';
+import 'features/events/application/notification_replanner.dart';
 import 'features/events/domain/notification_scheduler.dart';
 import 'features/events/platform/degraded_notification_scheduler.dart';
 import 'features/events/platform/notification_gateway.dart';
@@ -263,18 +264,38 @@ class DharmaToolkitApp extends ConsumerStatefulWidget {
 }
 
 class _DharmaToolkitAppState extends ConsumerState<DharmaToolkitApp> {
+  /// Ошибка проводки порта планировщика (DI-гард `notificationSchedulerProvider`
+  /// сработал): напоминания не работают — состояние обязано быть видимым (W20).
+  /// Прежний `try/catch` вокруг `ref.read` глушил ошибку проводки в лог, и
+  /// корень без оверрайда портов «молчал».
+  bool _notificationWiringFailed = false;
+
+  ProviderSubscription<NotificationReplanner>? _replannerSubscription;
+
   @override
   void initState() {
     super.initState();
     // Первый потребитель шины (D-21): перепланирование напоминаний на старте
-    // и на смену пресета/настроек (D-36). Отказ проводки не валит UI —
-    // напоминания не то, ради чего стоит показывать пользователю ошибку, — но
-    // и не молчит: причина уходит в лог.
-    try {
-      ref.read(notificationReplannerProvider).start();
-    } catch (error) {
-      debugPrint('Перепланирование уведомлений не запущено: $error');
-    }
+    // и на смену пресета/настроек (D-36). W20: `ref.listen` (в initState —
+    // `listenManual`) + видимый флаг вместо catch: отказ приходит в `onError`
+    // и поднимает баннер, а не растворяется в логе.
+    _replannerSubscription = ref.listenManual<NotificationReplanner>(
+      notificationReplannerProvider,
+      (_, replanner) => replanner.start(),
+      fireImmediately: true,
+      onError: (error, stack) {
+        debugPrint('Перепланирование уведомлений не запущено: $error\n$stack');
+        if (mounted) {
+          setState(() => _notificationWiringFailed = true);
+        }
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _replannerSubscription?.close();
+    super.dispose();
   }
 
   @override
@@ -307,7 +328,43 @@ class _DharmaToolkitAppState extends ConsumerState<DharmaToolkitApp> {
             right: 0,
             child: NotificationPermissionBanner(),
           ),
+          // W20: ошибка проводки порта планировщика видна, а не проглочена.
+          if (_notificationWiringFailed)
+            const Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: _NotificationWiringBanner(),
+            ),
         ],
+      ),
+    );
+  }
+}
+
+/// Видимый флаг отказа проводки уведомлений (W20).
+///
+/// Показывается, когда DI-гард планировщика сработал: напоминаний не будет, и
+/// пользователь (а в разработке — и автор проводки) видит причину на экране,
+/// а не пустоту. В штатной сборке недостижим: composition root всегда даёт
+/// оверрайд порта.
+class _NotificationWiringBanner extends StatelessWidget {
+  const _NotificationWiringBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SafeArea(
+      child: Material(
+        color: scheme.errorContainer,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Text(
+            'Напоминания не подключены: планировщик уведомлений не '
+            'сконфигурирован (ошибка проводки).',
+            style: TextStyle(color: scheme.onErrorContainer),
+          ),
+        ),
       ),
     );
   }

@@ -2,6 +2,7 @@ import 'package:dharma_toolkit/core/config/config_module.dart';
 import 'package:dharma_toolkit/core/config/preset_manager.dart';
 import 'package:dharma_toolkit/core/db/app_database.dart';
 import 'package:dharma_toolkit/core/storage/storage_module.dart';
+import 'package:dharma_toolkit/features/events/presentation/providers/event_providers.dart';
 import 'package:dharma_toolkit/features/tracker/data/practice_repository.dart';
 import 'package:dharma_toolkit/features/tracker/presentation/providers/practice_provider.dart';
 import 'package:dharma_toolkit/main.dart';
@@ -11,6 +12,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../features/events/in_memory_notification_scheduler.dart';
 
 /// R-15/D-28: русская локаль приложения.
 ///
@@ -56,6 +59,11 @@ void main() {
           practiceRepositoryProvider.overrideWithValue(
             PracticeRepository(db),
           ),
+          // W20: порт планировщика привязан тем же паттерном, что и в
+          // composition root (D-22); корень БЕЗ оверрайда обязан не молчать —
+          // отдельный тест ниже.
+          notificationSchedulerProvider
+              .overrideWithValue(InMemoryNotificationScheduler()),
         ],
         child: const DharmaToolkitApp(),
       ),
@@ -84,5 +92,38 @@ void main() {
     expect(material.cancelButtonLabel, 'Отмена');
     expect(material.copyButtonLabel, 'Копировать');
     expect(material.pasteButtonLabel, 'Вставить');
+  });
+
+  testWidgets('W20: с оверрайдом портов корень поднимает перепланировщик',
+      (tester) async {
+    await pumpRealApp(tester);
+    final container = ProviderScope.containerOf(
+        tester.element(find.byType(DharmaToolkitApp)));
+
+    expect(container.read(notificationReplannerProvider).isListening, isTrue,
+        reason: 'проводка корня обязана реально стартовать перепланировщик');
+  });
+
+  testWidgets('W20: корень без оверрайда планировщика не молчит',
+      (tester) async {
+    // Тот же реальный корень, но DI-гард срабатывает: прежний try/catch
+    // глушил ошибку, и это состояние было невидимым.
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appDatabaseProvider.overrideWithValue(db),
+          configModuleProvider.overrideWithValue(config),
+          presetManagerProvider.overrideWithValue(presetManager),
+          practiceRepositoryProvider.overrideWithValue(
+            PracticeRepository(db),
+          ),
+        ],
+        child: const DharmaToolkitApp(),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.textContaining('Напоминания не подключены'), findsOneWidget,
+        reason: 'ошибка проводки обязана быть видимой (W20)');
   });
 }
