@@ -46,10 +46,14 @@ class ContentPackParseResult {
   /// Пак из записей, прошедших схему.
   final ContentPack pack;
 
-  /// Отвергнутые записи — по одной на запись, порядок исходный.
+  /// Отвергнутые записи — по одной на запись, порядок исходный. Неизменяемый
+  /// список (S3): результат разбора — значение, буфер наружу не отдаётся.
   final List<ContentPackEntryFailure> failures;
 
-  const ContentPackParseResult({required this.pack, required this.failures});
+  ContentPackParseResult({
+    required this.pack,
+    required List<ContentPackEntryFailure> failures,
+  }) : failures = List.unmodifiable(failures);
 
   /// Есть ли хоть одна отвергнутая запись.
   bool get hasFailures => failures.isNotEmpty;
@@ -79,13 +83,32 @@ abstract final class ContentPackParser {
   /// осознанная правка в одном месте, а не догадка на проде.
   static const String supportedVersion = '1';
 
+  /// Потолок числа записей в одном паке (S3).
+  ///
+  /// Без потолка цикл разбора — открытая дверь для пака-бомбы: ассет на
+  /// сотни тысяч записей превратил бы запуск в минуты работы и сотни мегабайт
+  /// памяти. Отказ честнее усечения: пак, потерявший часть пула ротации,
+  /// молча исказил бы порядок чтений и атрибуцию (класс B-4/R-14), поэтому
+  /// пак сверх потолка отвергается целиком с названным полем.
+  static const int maxEntriesPerPack = 500;
+
+  /// Потолок длины строкового поля пака (S3).
+  ///
+  /// Поля ограничены только непустотой, а `body` — текст, который попадает в
+  /// UI: без потолка одна случайная вставка тома в поле раздувает и ассет, и
+  /// кэш, и вёрстку. Предел щедрый (несколько страниц текста), но конечный;
+  /// превышение — отказ записи с путём поля, а не тихая обрезка текста
+  /// (обрезанный текст практики — тот же класс вранья, что выдуманный).
+  static const int maxFieldChars = 10000;
+
   /// Разобрать декодированный JSON пака.
   ///
   /// Бросает [ContentPackFormatException] с путём поля при нарушении схемы
   /// **пака** (отсутствующее/нестроковое/пустое обязательное поле, `entries`
-  /// не список) и когда **ни одна** запись не разобрана. Испорченные записи,
-  /// которые не роняют пак, приходят в [ContentPackParseResult.failures]
-  /// (путь вида `entries[2].title`), остальные записи остаются живыми.
+  /// не список или длиннее [maxEntriesPerPack]) и когда **ни одна** запись не
+  /// разобрана. Испорченные записи, которые не роняют пак, приходят в
+  /// [ContentPackParseResult.failures] (путь вида `entries[2].title`),
+  /// остальные записи остаются живыми.
   static ContentPackParseResult parse(Map<String, dynamic> json) {
     final packId = _requiredNonEmptyString(json, 'packId');
     final traditionTag = _requiredNonEmptyString(json, 'traditionTag');
@@ -121,6 +144,14 @@ abstract final class ContentPackParser {
     final entries = <ContentEntry>[];
     final failures = <ContentPackEntryFailure>[];
     final seenIds = <String>{};
+    if (entriesRaw.length > maxEntriesPerPack) {
+      throw ContentPackFormatException(
+        'entries',
+        'в паке ${entriesRaw.length} записей — больше предела '
+            '$maxEntriesPerPack: разбор пака-бомбы не должен превращать '
+            'запуск в минуты работы',
+      );
+    }
     for (var i = 0; i < entriesRaw.length; i++) {
       final path = 'entries[$i]';
       final raw = entriesRaw[i];
@@ -245,6 +276,13 @@ abstract final class ContentPackParser {
     }
     if (value.trim().isEmpty) {
       throw ContentPackFormatException(name, 'пустая строка недопустима');
+    }
+    if (value.length > maxFieldChars) {
+      throw ContentPackFormatException(
+        name,
+        'строка длиной ${value.length} — больше предела $maxFieldChars: '
+            'поле контента не должно нести том целиком',
+      );
     }
     return value;
   }

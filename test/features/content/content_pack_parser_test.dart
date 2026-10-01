@@ -373,4 +373,76 @@ void main() {
           contains('отсутствует'));
     });
   });
+
+  group('S3: потолки пула/полей и неизменяемость модели', () {
+    /// Запись с уникальным id — генератор границ.
+    Map<String, dynamic> entryJson(int i) => {
+          'id': 'e$i',
+          'type': 'daily_reading',
+          'title': 'Заголовок $i',
+          'body': 'Синтетический текст $i.',
+          'source': 'синтетическая фикстура теста',
+        };
+
+    test('entries на пределе принимаются', () {
+      final json = validPackJson()
+        ..['entries'] = List<Map<String, dynamic>>.generate(
+            ContentPackParser.maxEntriesPerPack, entryJson);
+
+      final pack = ContentPackParser.parse(json).pack;
+
+      expect(pack.entries, hasLength(ContentPackParser.maxEntriesPerPack));
+    });
+
+    test('entries сверх предела отвергаются по полю entries (пак-бомба)', () {
+      final json = validPackJson()
+        ..['entries'] = List<Map<String, dynamic>>.generate(
+            ContentPackParser.maxEntriesPerPack + 1, entryJson);
+
+      final reason = expectRejected(json, 'entries');
+
+      expect(reason, contains('предел'));
+    });
+
+    test('строка на пределе принимается', () {
+      final json = packWithEntry(
+          (entry) => entry['title'] = 'т' * ContentPackParser.maxFieldChars);
+
+      final pack = ContentPackParser.parse(json).pack;
+
+      expect(pack.entries.single.title, hasLength(ContentPackParser.maxFieldChars));
+    });
+
+    test('строка сверх предела отвергает запись с путём поля', () {
+      final json = validPackJson();
+      (json['entries'] as List).add({
+        ...(json['entries'] as List).first as Map<String, dynamic>,
+        'id': 'c2',
+        'body': 'б' * (ContentPackParser.maxFieldChars + 1),
+      });
+
+      final result = ContentPackParser.parse(json);
+
+      expect(result.pack.entries.single.id, 'c1');
+      expect(result.failures.single.field, 'entries[1].body');
+      expect(result.failures.single.reason, contains('предел'));
+    });
+
+    test('entries пака неизменяемы (List.unmodifiable)', () {
+      final pack = ContentPackParser.parse(validPackJson()).pack;
+
+      expect(() => pack.entries.add(pack.entries.first),
+          throwsUnsupportedError);
+    });
+
+    test('failures результата разбора неизменяемы', () {
+      final json = validPackJson();
+      final first = (json['entries'] as List).first as Map<String, dynamic>;
+      (json['entries'] as List).add({...first, 'title': 'Другой заголовок'});
+      final result = ContentPackParser.parse(json);
+
+      expect(() => result.failures.add(result.failures.first),
+          throwsUnsupportedError);
+    });
+  });
 }

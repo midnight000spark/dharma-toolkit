@@ -254,4 +254,18 @@ void main() {
           const GregorianYearlyContentDateRule(month: 2, day: 29));
     });
   });
+
+  group('ContentPackLoader — S3: итог загрузки неизменяем', () {
+    test('packs и failures результата защищены от мутации', () async {
+      final result = await ContentPackLoader(readAsset: readerOf({
+        'p.json': packJson(packId: 'p'),
+        'bad.json': '{ не json',
+      })).load(['p.json', 'bad.json']);
+
+      expect(result.packs, hasLength(1));
+      expect(result.failures, hasLength(1));
+      expect(() => result.packs.clear(), throwsUnsupportedError);
+      expect(() => result.failures.clear(), throwsUnsupportedError);
+    });
+  });
 }

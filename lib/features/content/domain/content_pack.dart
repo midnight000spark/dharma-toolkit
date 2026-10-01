@@ -187,16 +187,17 @@ class ContentPack {
   final bool verified;
 
   /// Записи пака (может быть пустым: пак-заготовка с `verified: false` легален —
-  /// он честно ничего не обещает).
+  /// он честно ничего не обещает). Список неизменяем (S3): модель — значение,
+  /// а не разделяемый буфер, который потребитель кэша мог бы мутировать.
   final List<ContentEntry> entries;
 
-  const ContentPack({
+  ContentPack({
     required this.packId,
     required this.traditionTag,
     required this.version,
     required this.verified,
-    required this.entries,
-  });
+    required List<ContentEntry> entries,
+  }) : entries = List.unmodifiable(entries);
 
   @override
   String toString() =>

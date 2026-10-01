@@ -87,21 +87,26 @@ class ContentPackFailure {
 
 /// Итог загрузки: то, что доехало, и то, что сломалось (с причинами).
 class ContentPackLoadResult {
-  /// Успешно разобранные паки в порядке объявления.
+  /// Успешно разобранные паки в порядке объявления. Неизменяемый список (S3):
+  /// результат загрузки кэшируется провайдером — потребитель не мутирует кэш.
   final List<ContentPack> packs;
 
   /// Сбои — по одной записи на сбой (пак или отвергнутая запись пака);
-  /// порядок соответствует списку ассетов.
+  /// порядок соответствует списку ассетов. Неизменяемый список (S3).
   final List<ContentPackFailure> failures;
 
-  const ContentPackLoadResult({required this.packs, required this.failures});
+  ContentPackLoadResult({
+    required List<ContentPack> packs,
+    required List<ContentPackFailure> failures,
+  })  : packs = List.unmodifiable(packs),
+        failures = List.unmodifiable(failures);
 
   /// Есть ли хоть один сбой (UI показывает честную плашку, не «всё тихо»).
   bool get hasFailures => failures.isNotEmpty;
 
   /// Пустой итог: паков нет, сбоев нет — легальное «контента пока нет».
-  static const ContentPackLoadResult empty =
-      ContentPackLoadResult(packs: [], failures: []);
+  static final ContentPackLoadResult empty =
+      ContentPackLoadResult(packs: const [], failures: const []);
 }
 
 /// Загружает паки по списку ключей ассетов; сбои не прерывают остальные.
