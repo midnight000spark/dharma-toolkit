@@ -163,4 +163,27 @@ void main() {
               '$violations');
     });
   });
+
+  group('W10: контракт UTC — локальный DateTime не принимается', () {
+    test('moonPhase отвергает локальный DateTime', () {
+      expect(
+        () => moonPhase(DateTime(2024, 1, 1, 12)),
+        throwsArgumentError,
+        reason: 'настенный локальный момент молча сдвигал фазу на смещение '
+            'зоны (W10); контракт — только DateTime.isUtc',
+      );
+    });
+
+    test('moonEclipticPosition отвергает локальный DateTime', () {
+      expect(
+        () => moonEclipticPosition(DateTime(2024, 1, 1, 12)),
+        throwsArgumentError,
+      );
+    });
+
+    test('UTC-момент принимается', () {
+      expect(moonPhase(DateTime.utc(2024, 1, 1, 12)),
+          inInclusiveRange(0.0, 1.0));
+    });
+  });
 }

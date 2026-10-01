@@ -30,8 +30,12 @@ import 'dart:math' as math;
 /// полнолуние они расходятся на широту Луны (до 5.2°, т.е. до 0.014 доли
 /// фазы) — это конвенция величины, а не ошибка ряда.
 ///
-/// Аргумент — григорианский момент (UTC-семантика: поля DateTime interpreted
-/// as-is, без пересчёта таймзоны; провайдер передаёт полдень UTC).
+/// Аргумент — григорианский момент **в UTC** (`DateTime.isUtc`): поля DateTime
+/// читаются as-is, без пересчёта таймзоны (провайдер передаёт полдень UTC).
+/// Локальный момент отклоняется `ArgumentError` — иначе фаза молча сдвинулась
+/// бы на смещение зоны (W10).
+///
+/// Throws [ArgumentError], если [g] не в UTC.
 double moonPhase(DateTime g) {
   final jd = _toJulianDay(g);
   final sunLong = _sunLongitude(jd);
@@ -70,6 +74,11 @@ double _sunLongitude(double jd) {
 /// `moon_phase_meeus_test.dart` ловит искажение любого аргумента ряда).
 ///
 /// Долгота нормализована в `[0, 360)`, широта — в `[−5.3, +5.3]`.
+///
+/// Аргумент — только UTC (`DateTime.isUtc`), как и у [moonPhase]; локальный
+/// момент отклоняется [ArgumentError] (W10).
+///
+/// Throws [ArgumentError], если [g] не в UTC.
 ({double longitude, double latitude}) moonEclipticPosition(DateTime g) {
   final jd = _toJulianDay(g);
   final t = (jd - 2451545.0) / 36525.0;
@@ -141,12 +150,24 @@ double _deg(double x) => x % 360.0;
 /// Градусы в радианы.
 double _rad(double deg) => deg * math.pi / 180.0;
 
+/// Контракт момента (W10): все расчёты читают настенные поля DateTime
+/// (год/месяц/день/час…), поэтому вход обязан быть UTC (`DateTime.isUtc`).
+/// Локальный момент отклоняем громко — молчаливый сдвиг на смещение зоны
+/// искажал фазу без единого сигнала.
+void _requireUtc(DateTime g) {
+  if (!g.isUtc) {
+    throw ArgumentError.value(
+        g, 'g', 'требуется UTC-момент (DateTime.isUtc) — см. moonPhase');
+  }
+}
+
 /// Григорианский момент (по полям DateTime, без пересчёта зоны) в юлианскую
 /// дату. Формула Meeus 7.a–7.d (для дат после 15.10.1582). Важно: D —
 /// «день + UT/24» без сдвига на полночь; переход от полночи к noon-based
 /// шкале JD уже содержит член −1524.5 (вычитание 12 часов дважды сдвигало
 /// фазу на полдня — поймано векторами F-49).
 double _toJulianDay(DateTime g) {
+  _requireUtc(g);
   var y = g.year;
   var m = g.month;
   if (m <= 2) {
