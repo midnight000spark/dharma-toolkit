@@ -64,12 +64,22 @@ class ContentPackFailure {
     return 'пак не прочитан';
   }
 
+  /// Отвергнута ли запись внутри доехавшего пака (C8а), а не пак целиком:
+  /// различие существенно — в первом случае пак в [ContentPackLoadResult.packs]
+  /// есть, и «пак не загружен» было бы ложью (находка ревью critical-1).
+  bool get isEntryRejection => reason.startsWith('запись отвергнута');
+
   /// Строка пользовательского канала (C8г/C8б): единая формулировка для ленты
-  /// и чтения дня — два пути не расходятся.
-  String get userNote => 'Контент-пак не загружен: $userReason.';
+  /// и чтения дня — два пути не расходятся. Для отвергнутой записи пак на
+  /// месте, поэтому говорится о частичной потере, а не о незагрузке.
+  String get userNote => isEntryRejection
+      ? 'Контент-пак загружен частично: $userReason.'
+      : 'Контент-пак не загружен: $userReason.';
 
   /// Строка диагностики: ключ ассета и техническая причина (C8г/C8б).
-  String get debugNote => 'Пак не загружен ($assetKey): $reason';
+  String get debugNote => isEntryRejection
+      ? 'Запись пака не разобрана ($assetKey): $reason'
+      : 'Пак не загружен ($assetKey): $reason';
 
   @override
   String toString() => '$assetKey: $reason';

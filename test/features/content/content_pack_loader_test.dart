@@ -160,6 +160,13 @@ void main() {
       expect(result.failures.single.assetKey, 'p.json');
       expect(result.failures.single.reason, contains('entries[2].title'));
       expect(result.hasFailures, isTrue);
+      // Ревью critical-1: пак доехал — «не загружен» для него было бы ложью;
+      // частичная потеря называется частичной в обоих каналах.
+      expect(result.failures.single.isEntryRejection, isTrue);
+      expect(result.failures.single.userNote, contains('загружен частично'));
+      expect(result.failures.single.userNote, isNot(contains('не загружен')));
+      expect(result.failures.single.debugNote, contains('Запись пака'));
+      expect(result.failures.single.debugNote, contains('entries[2].title'));
     });
 
     test('C8а: все записи битые → пак отвергнут целиком, не пустой «успех»',

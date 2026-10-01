@@ -62,8 +62,8 @@ class DailyReadingService {
     final debugNotes = <String>[];
     final readings = <ContentReading>[];
 
-    final active = _activePacks(notes);
-    _addDateBound(date, active, readings, notes);
+    final active = _activePacks(notes, debugNotes);
+    _addDateBound(date, active, readings, notes, debugNotes);
     _addRotated(date, active, readings);
 
     // C8б: сбой пака объясняется, а не глушится: тип отказа — пользователю,
@@ -87,17 +87,23 @@ class DailyReadingService {
   }
 
   /// Паки активной традиции; чужой тег — пропуск с причиной (изоляция, №3).
-  List<ContentPack> _activePacks(List<String> notes) {
+  ///
+  /// Пользовательский канал [notes] — без `packId`/тега (C8г): внутренние id
+  /// не уходят в UI; конкретика (какой пак, чей тег) — в [debugNotes].
+  List<ContentPack> _activePacks(List<String> notes, List<String> debugNotes) {
     final active = <ContentPack>[];
     for (final pack in packs) {
       if (pack.traditionTag != traditionTag) {
-        notes.add('Контент-пак «${pack.packId}» относится к традиции '
+        notes.add('Контент-пак другой традиции пропущен (изоляция данных).');
+        debugNotes.add('Контент-пак «${pack.packId}» относится к традиции '
             '«${pack.traditionTag}» — пропущен (изоляция данных).');
         continue;
       }
       if (!pack.verified) {
-        notes.add('Контент-пак «${pack.packId}» не подтверждён: его тексты '
+        notes.add('Контент-пак не подтверждён: его тексты '
             'помечены как непроверенные.');
+        debugNotes.add('Контент-пак «${pack.packId}» не подтверждён '
+            '(тексты помечены как непроверенные).');
       }
       active.add(pack);
     }
@@ -105,12 +111,13 @@ class DailyReadingService {
   }
 
   void _addDateBound(DateTime date, List<ContentPack> active,
-      List<ContentReading> readings, List<String> notes) {
+      List<ContentReading> readings, List<String> notes,
+      List<String> debugNotes) {
     for (final pack in active) {
       for (final entry in pack.entries) {
         final rule = entry.dateRule;
         if (rule == null) continue;
-        if (_matches(rule, date, notes, pack, entry)) {
+        if (_matches(rule, date, notes, debugNotes, pack, entry)) {
           readings.add(_readingOf(pack, entry, date, isDateBound: true));
         }
       }
@@ -119,8 +126,10 @@ class DailyReadingService {
 
   /// Выпадает ли правило [rule] на день [date]; неразрешимость — в [notes],
   /// а не молчаливый пропуск (SCR-13 показывает причину, см. FR-CNT-3).
+  /// Названия чтения и пака остаются в [debugNotes]: пользовательский канал
+  /// не носит внутренних id (C8г).
   bool _matches(ContentDateRule rule, DateTime date, List<String> notes,
-      ContentPack pack, ContentEntry entry) {
+      List<String> debugNotes, ContentPack pack, ContentEntry entry) {
     switch (rule) {
       case GregorianYearlyContentDateRule(:final month, :final day):
         return date.month == month && date.day == day;
@@ -128,8 +137,10 @@ class DailyReadingService {
       case TibetanContentDateRule(:final month, :final day):
         final calendar = source;
         if (calendar == null) {
-          notes.add('Чтение «${entry.title}» пака «${pack.packId}» пропущено: '
-              'правило tibetan требует календаря традиции, а его в сборке нет.');
+          notes.add('Чтение на тибетский день пропущено: правило tibetan '
+              'требует календаря традиции, а его в сборке нет.');
+          debugNotes.add('Чтение «${entry.title}» пака «${pack.packId}» '
+              'пропущено: календаря для правила tibetan в сборке нет.');
           return false;
         }
         final resolved = calendar.resolveTibetanMonthDay(
@@ -139,7 +150,9 @@ class DailyReadingService {
           to: date,
         );
         if (resolved == null) {
-          notes.add('Чтение «${entry.title}» пака «${pack.packId}» пропущено: '
+          notes.add('Чтение на тибетский день пропущено: календарь традиции '
+              'тибетских дат не знает.');
+          debugNotes.add('Чтение «${entry.title}» пака «${pack.packId}»: '
               'календарь традиции «$traditionTag» тибетских дат не знает.');
           return false;
         }

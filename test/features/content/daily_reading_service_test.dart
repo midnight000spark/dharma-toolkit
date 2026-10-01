@@ -200,6 +200,12 @@ void main() {
 
       expect(day.notes.any((n) => n.contains('требует календаря')), isTrue,
           reason: 'пользователь обязан узнать, почему текст пропущен');
+      // C8г (ревью): user-канал без названия чтения и packId; конкретика — в
+      // диагностике.
+      expect(day.notes.any((n) => n.contains('Синтетическое чтение')), isFalse);
+      expect(day.notes.any((n) => n.contains('«p»')), isFalse);
+      expect(day.debugNotes.single, contains('Синтетическое чтение'));
+      expect(day.debugNotes.single, contains('«p»'));
     });
 
     test('календарь тибетских дат не знает — честный отказ, отличный от '
@@ -219,6 +225,11 @@ void main() {
       ).readingsFor(_today);
 
       expect(day.notes.any((n) => n.contains('тибетских дат не знает')), isTrue);
+      // C8г (ревью): тег традиции и названия не уходят в user-канал.
+      expect(day.notes.any((n) => n.contains('theravada')), isFalse);
+      expect(day.notes.any((n) => n.contains('Синтетическое чтение')), isFalse);
+      expect(day.debugNotes.single, contains('theravada'));
+      expect(day.debugNotes.single, contains('Синтетическое чтение'));
     });
 
     test('ротация: соседние дни не повторяют один и тот же текст (годовой свип)',
@@ -266,6 +277,9 @@ void main() {
 
       expect(day.readings.single.isVerified, isFalse);
       expect(day.notes.any((n) => n.contains('не подтверждён')), isTrue);
+      // C8г (ревью): id пака виден только диагностике.
+      expect(day.notes.any((n) => n.contains('«p»')), isFalse);
+      expect(day.debugNotes.single, contains('«p»'));
     });
 
     test('пак чужой традиции не берётся (изоляция данных, принцип №3)', () {
@@ -276,6 +290,11 @@ void main() {
       expect(day.isFallback, isTrue,
           reason: 'чужой пак не даёт контента — работает фолбэк');
       expect(day.notes.any((n) => n.contains('изоляция данных')), isTrue);
+      // C8г (ревью): имя и тег чужого пака — только в диагностике.
+      expect(day.notes.any((n) => n.contains('foreign')), isFalse);
+      expect(day.notes.any((n) => n.contains('theravada')), isFalse);
+      expect(day.debugNotes.single, contains('foreign'));
+      expect(day.debugNotes.single, contains('theravada'));
     });
 
     test('пул собирается только из записей без правила даты', () {

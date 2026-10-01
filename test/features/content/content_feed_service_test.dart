@@ -166,17 +166,25 @@ void main() {
 
       expect(feed.userNotes.any((n) => n.contains('entries[')), isFalse);
       expect(feed.userNotes.any((n) => n.contains('часть записей')), isTrue);
+      // Ревью critical-1: пак доехал — «не загружен» было бы ложью; в обоих
+      // каналах потеря называется частичной.
+      expect(feed.userNotes.any((n) => n.contains('не загружен')), isFalse);
+      expect(feed.userNotes.any((n) => n.contains('загружен частично')), isTrue);
       expect(feed.debugNotes.single, contains('entries[2].title'));
+      expect(feed.debugNotes.single, isNot(contains('Пак не загружен')));
     });
 
     test('повторяющаяся причина звучит один раз, а не восемь', () {
       final feed = serviceOf(packs: [
-        packOf(verified: false, entries: poolOf(2)),
+        packOf(packId: 'unverified_pack', verified: false, entries: poolOf(2)),
       ]).build(today: _today);
 
       final aboutPack =
           feed.userNotes.where((n) => n.contains('не подтверждён')).toList();
       expect(aboutPack, hasLength(1));
+      // C8г (ревью): id пака — только в диагностике.
+      expect(feed.userNotes.any((n) => n.contains('unverified_pack')), isFalse);
+      expect(feed.debugNotes.any((n) => n.contains('unverified_pack')), isTrue);
     });
 
     test('пак чужой традиции назван причиной пропуска', () {
@@ -185,6 +193,11 @@ void main() {
       ]).build(today: _today);
 
       expect(feed.userNotes.any((n) => n.contains('изоляция данных')), isTrue);
+      // C8г (ревью): имя пака и тег чужой традиции не уходят в user-канал.
+      expect(feed.userNotes.any((n) => n.contains('foreign')), isFalse);
+      expect(feed.userNotes.any((n) => n.contains('theravada')), isFalse);
+      expect(feed.debugNotes.any((n) => n.contains('foreign')), isTrue);
+      expect(feed.debugNotes.any((n) => n.contains('theravada')), isTrue);
     });
 
     test('пустой вход — честное «контента пока нет», а не ошибка', () {
