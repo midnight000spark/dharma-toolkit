@@ -127,16 +127,20 @@ final notificationSettingsProvider =
   return ref.watch(notificationSettingsStoreProvider).watch(tag);
 });
 
-/// Строитель плана уведомлений (горизонт D-36 — 60 дней).
-final notificationPlanBuilderProvider =
-    Provider<NotificationPlanBuilder>((ref) {
-  return NotificationPlanBuilder(
-      feedService: ref.watch(eventFeedServiceProvider));
-});
-
 /// План уведомлений активной традиции на текущий момент.
+///
+/// W23: потребителя в `lib` пока нет — реактивная проводка плана в UI
+/// появится на Этапе 8 (SCR-12/13), а перепланирование строит план напрямую
+/// через [buildNotificationPlan]. До появления потребителя провайдер помечен
+/// `@visibleForTesting`: сторож `plan_provider_guard_test` краснеет, если
+/// аннотацию снять (публичный провайдер без потребителя — «проводка на
+/// бумаге») или если потребитель появится, а аннотация останется.
+@visibleForTesting
 final notificationPlanProvider = Provider<NotificationPlan>((ref) {
-  final builder = ref.watch(notificationPlanBuilderProvider);
+  // Строитель — деталь этого провайдера (W23: отдельный публичный
+  // `notificationPlanBuilderProvider` был мёртвым API).
+  final builder = NotificationPlanBuilder(
+      feedService: ref.watch(eventFeedServiceProvider));
   final now = ref.watch(eventsClockProvider)();
   // C9: явные состояния вместо `.value`. Пока настройки не пришли, дефолт
   // «включено, 08:00» не обещается — возвращается пустой план («ещё ничего
