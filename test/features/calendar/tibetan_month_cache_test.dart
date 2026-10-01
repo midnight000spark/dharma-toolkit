@@ -48,6 +48,33 @@ void main() {
     });
   });
 
+  group('W12: наружу — только неизменяемые списки', () {
+    test('мутация списка из кэша невозможна', () {
+      final cache = TibetanMonthCache();
+      final days = cache.buildMonth(2026, 1, 14901, false);
+
+      expect(() => days.add(days.first), throwsUnsupportedError,
+          reason: 'наружу отдаётся живая ссылка кэша — мутация отравила бы '
+              'все последующие чтения (W12)');
+      expect(() => days.clear(), throwsUnsupportedError);
+      // Содержимое кэша не пострадало: повтор даёт тот же состав.
+      final again = cache.buildMonth(2026, 1, 14901, false);
+      expect(again, hasLength(days.length));
+      expect(identical(again, days), isTrue,
+          reason: 'повтор — тот же инстанс неизменяемого списка');
+    });
+
+    test('список, отданный без кэша, тоже неизменяем', () {
+      final days = gregorianToTibetan(DateTime(2026, 1, 15));
+      // Сингл-TibetanDate — значение; проверяем, что кэш-путь не единственный
+      // носитель контракта: buildMonth без кэша тоже обязан быть защищён
+      // (см. W12-мутант «вернуть живую ссылку»).
+      final cache = TibetanMonthCache(limit: 0);
+      final month = cache.buildMonth(2026, 1, 14901, false);
+      expect(() => month.add(days), throwsUnsupportedError);
+    });
+  });
+
   group('порт без кэша (обратная совместимость top-level API)', () {
     test('gregorianToTibetan без cache работает и совпадает с provider-путём',
         () {

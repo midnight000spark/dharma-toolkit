@@ -216,7 +216,12 @@ class TibetanMonthCache {
     final cached = _months[key];
     if (cached != null) return cached;
 
-    final days = _buildMonth(year, month, n, isLeap);
+    // W12: наружу — только неизменяемый список. Живая ссылка на внутренний
+    // список позволяла потребителю (`sort()`/`add()`) отравить кэш и все
+    // последующие чтения; тот же инстанс отдаётся и при попадании, и при
+    // no-store (`limit <= 0`) — контракт единый.
+    final days =
+        List<TibetanDate>.unmodifiable(_buildMonth(year, month, n, isLeap));
     if (limit <= 0) return days; // no-store: limit=0 — каждый раз пересчёт.
     while (_months.length >= limit) {
       _months.remove(_months.keys.first);
