@@ -73,7 +73,7 @@
 
 - **Push**: локальные коммиты (`account-1` и закрытие долгов) не запушены; пуш — только владелец (D-41).
 - **Приёмка account-1**: команды — `wc -c STATE.md`, `./scripts/check_docs.sh`, `rg -n REMEDIATION-PLAN STATE.md`, `flutter analyze --fatal-infos` / `flutter test`.
-- **Запуск `critical-1`**: свежая сессия (D-42), стартовый промт — `.tmp/tasks/critical-1/START.md`.
+- **`critical-1`**: исполнен 2026-10-01 (приёмка владельца ⏳); файлы пакета — `.tmp/tasks/critical-1/README.md`; следующий — `warning-3a` (свежая сессия, D-42).
 
 ## 7. Отложено решениями (сейчас решений не требует)
 
