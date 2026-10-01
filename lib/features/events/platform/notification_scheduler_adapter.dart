@@ -25,7 +25,7 @@ class NotificationSchedulerAdapter implements NotificationScheduler {
 
   @override
   Future<void> schedule(NotificationPlanItem item) async {
-    _ensureOwnRange(item.id);
+    _ensureOwnId(item.id);
     final accepted = await _service.schedule(item);
     if (!accepted) {
       // Платформа не умеет планировать (F-57): сервис записал деградацию, но
@@ -54,14 +54,15 @@ class NotificationSchedulerAdapter implements NotificationScheduler {
       // (W1-ревью), адаптеру нечего к ней добавлять.
       _service.requestNotificationsPermission();
 
-  static void _ensureOwnRange(int id) {
-    if (id < NotificationPlan.idRangeStart || id > NotificationPlan.idRangeEnd) {
+  static void _ensureOwnId(int id) {
+    if (!NotificationPlan.isOwnId(id)) {
       throw ArgumentError.value(
         id,
         'item.id',
-        'идентификатор вне полосы приложения '
-            '${NotificationPlan.idRangeStart}..${NotificationPlan.idRangeEnd} '
-            '(D-36): такое уведомление не снимется отменой по диапазону',
+        'идентификатор вне полос приложения '
+            '(${NotificationPlan.idRangeStart}..${NotificationPlan.idRangeEnd} '
+            'и ${NotificationPlan.devRangeStart}..${NotificationPlan.devRangeEnd}, '
+            'S9): такое уведомление не снимется отменой по диапазону',
       );
     }
   }

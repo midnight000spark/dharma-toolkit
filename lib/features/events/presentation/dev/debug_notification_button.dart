@@ -15,15 +15,24 @@
 /// подмена дефолта обязана красить тест (урок 1: непроверяемое «выключено
 /// в релизе» — не гарантия).
 ///
-/// **Полоса id.** Демо живёт на верхней границе полосы приложения
-/// ([NotificationPlan.idRangeEnd]): внутри полосы — значит перепланирование
-/// своей отменой по диапазону снимет и его (D-36), наружу выходить нельзя.
+/// **Полоса id (S9).** Демо живёт в собственной инструментальной под-полосе
+/// ([NotificationPlan.devRangeStart]..[NotificationPlan.devRangeEnd]):
+/// планировщик принимает её как «свою» (иначе демо нельзя поставить через
+/// реальный порт), а перепланирование чистит **только рабочую** полосу —
+/// демо не снимается побочным эффектом чужого события. Если демо всё же снято
+/// (явное действие), ярлык кнопки честно говорит «снят перепланом», а не
+/// продолжает обещать «запланировано».
 library;
+
+import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/events/event_bus_provider.dart';
+import '../../../../core/events/notification_events.dart';
+import '../../../../core/events/preset_events.dart';
 import '../../domain/notification_plan.dart';
 import '../../domain/notification_scheduler.dart';
 import '../providers/event_providers.dart';
@@ -35,8 +44,8 @@ import '../providers/event_providers.dart';
 /// литерал: литерал пришлось бы синхронизировать с режимом сборки вручную.
 bool debugDemoEnabled({bool? gate}) => gate ?? kDebugMode;
 
-/// Идентификатор демо-напоминания — верх полосы приложения (D-36).
-const int debugDemoNotificationId = NotificationPlan.idRangeEnd;
+/// Идентификатор демо-напоминания — инструментальная под-полоса (S9).
+const int debugDemoNotificationId = NotificationPlan.devRangeStart;
 
 /// Задержка демо-напоминания: минута — достаточно, чтобы успеть увидеть
 /// показ в `dumpsys notification`, и мало, чтобы ждать руками.
@@ -92,6 +101,34 @@ class _DebugNotificationButtonState
   String _label = 'demo +1 мин';
   bool _busy = false;
 
+  /// Демо поставлено текущим нажатием: только тогда ярлык имеет право
+  /// рассуждать о его судьбе (S9).
+  bool _demoScheduled = false;
+
+  StreamSubscription<PresetChanged>? _presetSubscription;
+  StreamSubscription<NotificationSettingsChanged>? _settingsSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    // S9: после переплана (два триггера D-36) ярлык обязан сказать правду,
+    // если демо оказалось снято. Обычно демо в под-полосе переплан не трогает
+    // — тогда ярлык честно остаётся «запланировано».
+    final bus = ref.read(eventBusProvider);
+    _presetSubscription =
+        bus.on<PresetChanged>().listen((_) => _refreshLabelAfterReplan());
+    _settingsSubscription = bus
+        .on<NotificationSettingsChanged>()
+        .listen((_) => _refreshLabelAfterReplan());
+  }
+
+  @override
+  void dispose() {
+    _presetSubscription?.cancel();
+    _settingsSubscription?.cancel();
+    super.dispose();
+  }
+
   Future<void> _fire() async {
     setState(() => _busy = true);
     try {
@@ -101,7 +138,10 @@ class _DebugNotificationButtonState
         gate: widget.gate,
       );
       if (!mounted) return;
-      setState(() => _label = scheduled ? 'запланировано' : 'гейт выключен');
+      setState(() {
+        _demoScheduled = scheduled;
+        _label = scheduled ? 'запланировано' : 'гейт выключен';
+      });
     } catch (error) {
       // Отказ планирования виден на кнопке: молчаливая кнопка неотличима от
       // «нажатие не дошло».
@@ -109,6 +149,35 @@ class _DebugNotificationButtonState
       setState(() => _label = 'отказ: $error');
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Сверка ярлыка после события-триггера: если демо снято — «снят
+  /// перепланом», а не ложное «запланировано» (S9).
+  Future<void> _refreshLabelAfterReplan() async {
+    if (!_demoScheduled) return;
+    // Ждём очередь перепланирования, а не гадаем по таймингу: в корне
+    // перепланировщик подписан на ту же шину раньше кнопки. В тесте без
+    // проводки корня перепланировщик не запущен — его очередь пуста.
+    var settled = Future<void>.value();
+    try {
+      settled = ref.read(notificationReplannerProvider).settled;
+    } catch (error) {
+      debugPrint('Ярлык демо: перепланировщик недоступен ($error)');
+    }
+    await settled;
+    if (!mounted || !_demoScheduled) return;
+    try {
+      final pending =
+          await ref.read(notificationSchedulerProvider).pendingIds();
+      if (!mounted || !_demoScheduled) return;
+      setState(() {
+        _label = pending.contains(debugDemoNotificationId)
+            ? 'запланировано'
+            : 'снят перепланом';
+      });
+    } catch (error) {
+      debugPrint('Ярлык демо: перечисление ожидающих недоступно ($error)');
     }
   }
 

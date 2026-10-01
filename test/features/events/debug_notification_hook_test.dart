@@ -7,7 +7,11 @@
 /// «дефолт гейта → константа» обязана красить тест о `kDebugMode`.
 library;
 
+import 'package:dharma_toolkit/core/events/event_bus.dart';
+import 'package:dharma_toolkit/core/events/event_bus_provider.dart';
+import 'package:dharma_toolkit/core/events/preset_events.dart';
 import 'package:dharma_toolkit/features/events/domain/notification_plan.dart';
+import 'package:dharma_toolkit/features/events/domain/notification_scheduler.dart';
 import 'package:dharma_toolkit/features/events/presentation/dev/debug_notification_button.dart';
 import 'package:dharma_toolkit/features/events/presentation/providers/event_providers.dart';
 import 'package:flutter/foundation.dart';
@@ -48,8 +52,8 @@ void main() {
       expect(scheduler.scheduled, isEmpty);
     });
 
-    test('гейт включён → ровно один пункт в полосе приложения, +1 минута',
-        () async {
+    test('гейт включён → ровно один пункт в инструментальной под-полосе, '
+        '+1 минута', () async {
       final scheduler = InMemoryNotificationScheduler();
 
       final scheduled = await scheduleDebugDemoNotification(
@@ -61,22 +65,64 @@ void main() {
       expect(scheduled, isTrue);
       expect(scheduler.scheduled.keys.toList(), [debugDemoNotificationId]);
       final item = scheduler.scheduled.values.single;
+      // S9: демо — вне рабочей полосы, чтобы переплан его не снимал.
       expect(item.id, inInclusiveRange(
-          NotificationPlan.idRangeStart, NotificationPlan.idRangeEnd));
+          NotificationPlan.devRangeStart, NotificationPlan.devRangeEnd));
+      expect(item.id,
+          isNot(inInclusiveRange(
+              NotificationPlan.idRangeStart, NotificationPlan.idRangeEnd)),
+          reason: 'демо внутри рабочей полосы — коллизия отмены (S9)');
       expect(item.scheduledAt, now.add(debugDemoDelay));
       expect(item.title, 'Демо: проверка напоминаний');
       expect(item.payload, contains('debugDemo'));
     });
+
+    test('S9: переплан не трогает демо — оно вне рабочей полосы', () async {
+      final scheduler = InMemoryNotificationScheduler();
+      await scheduleDebugDemoNotification(
+        scheduler: scheduler,
+        now: now,
+        gate: true,
+      );
+
+      // Переплан применяет рабочий план: снимает рабочую полосу и ставит
+      // пункты. Демо (инструментальная под-полоса) обязан пережить это.
+      await applyNotificationPlan(
+        scheduler,
+        NotificationPlan(
+          items: [
+            NotificationPlanItem(
+              id: NotificationPlan.idRangeStart,
+              scheduledAt: now.add(const Duration(days: 1)),
+              title: 'Рабочий пункт',
+              body: 'тело',
+              payload: '{}',
+            ),
+          ],
+          notes: const [],
+        ),
+      );
+
+      expect(scheduler.scheduled.keys, contains(debugDemoNotificationId),
+          reason: 'переплан чистит рабочую полосу, а не инструментальную (S9)');
+      expect(scheduler.scheduled.keys, contains(NotificationPlan.idRangeStart));
+    });
   });
 
   group('кнопка', () {
-    Widget host({required bool? gate, required InMemoryNotificationScheduler s}) {
+    Widget host({
+      required bool? gate,
+      required InMemoryNotificationScheduler s,
+      EventBus? bus,
+    }) {
       return ProviderScope(
         overrides: [
           notificationSchedulerProvider.overrideWithValue(s),
           eventsClockProvider.overrideWithValue(() => now),
+          if (bus != null) eventBusProvider.overrideWithValue(bus),
         ],
-        child: MaterialApp(home: Scaffold(body: DebugNotificationButton(gate: gate))),
+        child: MaterialApp(
+            home: Scaffold(body: DebugNotificationButton(gate: gate))),
       );
     }
 
@@ -99,6 +145,46 @@ void main() {
 
       expect(scheduler.scheduled.keys.toList(), [debugDemoNotificationId]);
       expect(find.text('запланировано'), findsOneWidget);
+    });
+
+    testWidgets('S9: переплан, не тронувший демо, ярлык не портит',
+        (tester) async {
+      final bus = EventBus();
+      addTearDown(bus.dispose);
+      final scheduler = InMemoryNotificationScheduler();
+      await tester.pumpWidget(host(gate: true, s: scheduler, bus: bus));
+
+      await tester.tap(find.byType(InkWell));
+      await tester.pumpAndSettle();
+      expect(find.text('запланировано'), findsOneWidget);
+
+      // Триггер переплана без снятия демо: демо в под-полосе — ярлык правдив.
+      bus.publish(PresetChanged(traditionTag: 'nyingma'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('запланировано'), findsOneWidget);
+      expect(scheduler.scheduled.keys, contains(debugDemoNotificationId));
+    });
+
+    testWidgets('S9: снятое демо — ярлык «снят перепланом», а не враньё',
+        (tester) async {
+      final bus = EventBus();
+      addTearDown(bus.dispose);
+      final scheduler = InMemoryNotificationScheduler();
+      await tester.pumpWidget(host(gate: true, s: scheduler, bus: bus));
+
+      await tester.tap(find.byType(InkWell));
+      await tester.pumpAndSettle();
+      expect(find.text('запланировано'), findsOneWidget);
+
+      // Демо снято (явное действие/будущий переплан) и пришёл триггер:
+      // прежний ярлык продолжал бы обещать «запланировано» (S9).
+      await scheduler.cancel(debugDemoNotificationId);
+      bus.publish(PresetChanged(traditionTag: 'nyingma'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('снят перепланом'), findsOneWidget);
+      expect(find.text('запланировано'), findsNothing);
     });
   });
 }

@@ -63,14 +63,14 @@ class InMemoryNotificationScheduler implements NotificationScheduler {
 
   @override
   Future<void> schedule(NotificationPlanItem item) async {
-    if (item.id < NotificationPlan.idRangeStart ||
-        item.id > NotificationPlan.idRangeEnd) {
+    if (!NotificationPlan.isOwnId(item.id)) {
       throw ArgumentError.value(
         item.id,
         'item.id',
-        'идентификатор вне полосы приложения '
+        'идентификатор вне полос приложения '
             '${NotificationPlan.idRangeStart}..${NotificationPlan.idRangeEnd} '
-            '(D-36)',
+            'и ${NotificationPlan.devRangeStart}..'
+            '${NotificationPlan.devRangeEnd} (D-36/S9)',
       );
     }
     if (!schedulingSupported) {

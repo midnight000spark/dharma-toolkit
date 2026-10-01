@@ -49,6 +49,12 @@ void main() {
     expect(gateway.scheduled.single.title, 'День');
   });
 
+  test('S9: адаптер принимает инструментальную под-полосу (демо)', () async {
+    await adapter.schedule(item(NotificationPlan.devRangeStart, 'Демо'));
+
+    expect(gateway.scheduled.single.id, NotificationPlan.devRangeStart);
+  });
+
   test('schedule вне полосы приложения — ошибка, а не планирование', () async {
     expect(
       () => adapter.schedule(item(1, 'Чужой id')),
