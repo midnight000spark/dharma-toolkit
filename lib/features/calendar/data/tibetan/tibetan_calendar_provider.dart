@@ -130,9 +130,9 @@ class TibetanCalendarProvider implements CalendarProvider {
             ),
             cache: _months,
           );
-          // Порт отдаёт DateTime.utc — время не значимо, нормализуем к
-          // локальной полночи (контракт SpecialDay.date).
-          final date = DateTime(g.year, g.month, g.day);
+          // Контракт SpecialDay.date (W13): календарный день — UTC-полночь,
+          // а не локальный инстант (зоны без полуночи дали бы 01:00).
+          final date = DateTime.utc(g.year, g.month, g.day);
           _losarDates[tibetanYear] = date;
           return date;
         } on NoSuchTibetanDayException {
@@ -160,20 +160,22 @@ class TibetanCalendarProvider implements CalendarProvider {
     for (var d = a; !d.isAfter(b);
         d = DateTime(d.year, d.month, d.day + 1)) {
       final td = gregorianToTibetan(d, cache: _months);
+      // Контракт SpecialDay.date (W13): день — UTC-полночь (см. special_day).
+      final day = DateTime.utc(d.year, d.month, d.day);
       // Дни 10/25 (FR-CAL-3): подсветка по номеру лунного дня. Двойной день
       // (isLeapDay) — обе половины несут номер, обе размечаются; пропущенный
       // лунный день не имеет григорианской даты и в цикл не попадает —
       // фантомная подсветка структурно невозможна (блок 4, F-2).
       if (td.day == 10) {
         result.add(SpecialDay(
-          date: d,
+          date: day,
           type: SpecialDayType.tibetan10,
           name: '10-й день тибетского месяца',
           description: 'Полусамоцветный день (лунный день 10), календарь Пхугпа',
         ));
       } else if (td.day == 25) {
         result.add(SpecialDay(
-          date: d,
+          date: day,
           type: SpecialDayType.tibetan25,
           name: '25-й день тибетского месяца',
           description: 'Полусамоцветный день (лунный день 25), календарь Пхугпа',
@@ -183,9 +185,9 @@ class TibetanCalendarProvider implements CalendarProvider {
       // [losarHalf] (C6; в год с удвоенным 1-м месяцем — вставной инстанс).
       // Среди инстансов 1/1 года ровно один равен losarDate, поэтому заведомо
       // один festival на тибетский год — без явного подавления второго 1/1.
-      if (td.month == 1 && td.day == 1 && d == losarDate(td.year)) {
+      if (td.month == 1 && td.day == 1 && day == losarDate(td.year)) {
         result.add(SpecialDay(
-          date: d,
+          date: day,
           type: SpecialDayType.festival,
           name: 'Лосар — тибетский Новый год',
           description:

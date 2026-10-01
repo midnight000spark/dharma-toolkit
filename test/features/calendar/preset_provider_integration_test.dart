@@ -108,7 +108,7 @@ void main() {
           .where((d) => d.type == SpecialDayType.festival)
           .map((d) => d.date)
           .toList();
-      expect(losar, contains(DateTime(2026, 2, 18)),
+      expect(losar, contains(DateTime.utc(2026, 2, 18)),
           reason: 'Лосар 2026 (вектор F-45) обязан прийти через пресет');
       // Упосатх у тибетской традиции быть не должно — не подмешивается.
       expect(types, isNot(contains(SpecialDayType.uposatha)));

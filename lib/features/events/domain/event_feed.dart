@@ -30,12 +30,18 @@ class EventFeed {
   /// Есть ли пояснения (UI показывает плашку честного состояния).
   bool get hasNotes => notes.isNotEmpty;
 
-  /// Записи конкретного календарного дня (время аргумента не значимо).
+  /// Записи конкретного календарного дня (время и зона аргумента не значимы).
+  ///
+  /// Сравнение — по полям дня, а не инстантами: даты календаря нормализованы
+  /// в UTC-полночь (W13), даты паков — локальные; `==` между ними ложно
+  /// вне UTC-зоны.
   List<FeedEntry> on(DateTime day) {
-    final normalized = DateTime(day.year, day.month, day.day);
     return [
       for (final e in entries)
-        if (e.date == normalized) e,
+        if (e.date.year == day.year &&
+            e.date.month == day.month &&
+            e.date.day == day.day)
+          e,
     ];
   }
 }

@@ -49,6 +49,6 @@ void main() {
             .where((d) => d.type == SpecialDayType.tibetan25)
             .map((d) => d.date)
             .toList(),
-        [DateTime(2026, 9, 6)]);
+        [DateTime.utc(2026, 9, 6)]);
   });
 }

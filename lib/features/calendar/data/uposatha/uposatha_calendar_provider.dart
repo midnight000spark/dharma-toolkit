@@ -79,9 +79,14 @@ class UposathaCalendarProvider implements CalendarProvider {
       // Разрыв +0.5 → −0.5 (анти-цель) даёт обратный знак и не ловится.
       if (prevDist != null && prevDist < 0 && dist >= 0) {
         final crossing = _bisectCrossing(prevNoon!, noon, target);
-        final day = DateTime(
-            crossing.year, crossing.month, crossing.day); // день (UTC) события
-        if (!day.isBefore(a) && !day.isAfter(b)) {
+        // Контракт SpecialDay.date (W13): день — UTC-полночь, а не локальный
+        // инстант (в зонах без полуночи локальная полночь не существует).
+        final day = DateTime.utc(crossing.year, crossing.month, crossing.day);
+        // Фильтр окна — по полям дня: границы [a, b] — локальные календарные
+        // дни запроса, сравнение инстантов отсекало бы последний день окна на
+        // положительных смещениях зоны (и снова ломало B-17/C5).
+        final dayKey = DateTime(day.year, day.month, day.day);
+        if (!dayKey.isBefore(a) && !dayKey.isAfter(b)) {
           days.add(SpecialDay(
             date: day,
             type: SpecialDayType.uposatha,

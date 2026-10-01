@@ -64,7 +64,7 @@ class EventFeedService {
     _addPackFailures(notes);
 
     entries.sort((a, b) {
-      final byDate = a.date.compareTo(b.date);
+      final byDate = _dayCompare(a.date, b.date);
       if (byDate != 0) return byDate;
       final bySource = a.source.index.compareTo(b.source.index);
       if (bySource != 0) return bySource;
@@ -176,6 +176,24 @@ class EventFeedService {
     }
   }
 
-  static bool _within(DateTime date, DateTime from, DateTime to) =>
-      !date.isBefore(from) && !date.isAfter(to);
+  /// Порядок дней — по полям (год, месяц, день): источники дат разной
+  /// природы (UTC-полночь календаря и локальные даты паков), сравнение
+  /// инстантов путало бы порядок внутри одного дня.
+  static int _dayCompare(DateTime a, DateTime b) {
+    final y = a.year.compareTo(b.year);
+    if (y != 0) return y;
+    final m = a.month.compareTo(b.month);
+    if (m != 0) return m;
+    return a.day.compareTo(b.day);
+  }
+
+  /// День внутри окна — сравнением **полей** дня, а не инстантов: даты
+  /// календаря приходят UTC-полночью (W13), паки — локальной; сравнение
+  /// инстантов сдвигало бы границу окна на смещение зоны.
+  static bool _within(DateTime date, DateTime from, DateTime to) {
+    final d = DateTime(date.year, date.month, date.day);
+    final f = DateTime(from.year, from.month, from.day);
+    final t = DateTime(to.year, to.month, to.day);
+    return !d.isBefore(f) && !d.isAfter(t);
+  }
 }

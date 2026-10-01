@@ -180,19 +180,19 @@ void main() {
           .map((d) => d.date)
           .toList();
 
-      expect(monthDays(2022, 3), isNot(contains(DateTime(2022, 3, 31))),
+      expect(monthDays(2022, 3), isNot(contains(DateTime.utc(2022, 3, 31))),
           reason: 'новолуние принадлежит 01.04.2022 (ближайший полдень)');
-      expect(monthDays(2022, 4), contains(DateTime(2022, 4, 1)));
-      expect(monthDays(2022, 5), isNot(contains(DateTime(2022, 5, 1))),
+      expect(monthDays(2022, 4), contains(DateTime.utc(2022, 4, 1)));
+      expect(monthDays(2022, 5), isNot(contains(DateTime.utc(2022, 5, 1))),
           reason: 'новолуние принадлежит 30.04.2022');
-      expect(monthDays(2022, 4), contains(DateTime(2022, 4, 30)));
-      expect(monthDays(2022, 10), isNot(contains(DateTime(2022, 10, 31))),
+      expect(monthDays(2022, 4), contains(DateTime.utc(2022, 4, 30)));
+      expect(monthDays(2022, 10), isNot(contains(DateTime.utc(2022, 10, 31))),
           reason: 'первая четверть принадлежит 01.11.2022');
-      expect(monthDays(2022, 11), contains(DateTime(2022, 11, 1)));
+      expect(monthDays(2022, 11), contains(DateTime.utc(2022, 11, 1)));
 
-      expect(monthDays(2026, 11), isNot(contains(DateTime(2026, 11, 30))),
+      expect(monthDays(2026, 11), isNot(contains(DateTime.utc(2026, 11, 30))),
           reason: 'последняя четверть принадлежит 01.12.2026');
-      expect(monthDays(2026, 12), contains(DateTime(2026, 12, 1)));
+      expect(monthDays(2026, 12), contains(DateTime.utc(2026, 12, 1)));
     });
   });
 }

@@ -81,7 +81,7 @@ List<MoonVector> loadMoonVectors() {
 class LosarVector {
   const LosarVector(this.tibetanYear, this.gregorian);
   final int tibetanYear;
-  final DateTime gregorian; // полночь локальная, дата из вектора
+  final DateTime gregorian; // UTC-полночь календарного дня (W13)
 }
 
 /// Лосары 2023–2027 из test/fixtures/tibcal_vectors.json (F-45; сверены с
@@ -94,7 +94,7 @@ List<LosarVector> loadLosarVectors() {
     for (final e in raw['losar'] as List)
       LosarVector(
         (e as Map<String, dynamic>)['tibetanYear'] as int,
-        DateTime.parse('${e['gregorian']}T00:00:00'),
+        DateTime.parse('${e['gregorian']}T00:00:00Z'),
       ),
   ];
 }

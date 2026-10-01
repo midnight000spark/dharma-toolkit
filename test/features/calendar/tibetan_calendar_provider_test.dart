@@ -21,9 +21,9 @@ Map<String, dynamic> _vectors() => jsonDecode(
     File('test/fixtures/tibcal_vectors.json').readAsStringSync())
     as Map<String, dynamic>;
 
-DateTime _localDate(String iso) {
+DateTime _utcDate(String iso) {
   final p = iso.split('-');
-  return DateTime(int.parse(p[0]), int.parse(p[1]), int.parse(p[2]));
+  return DateTime.utc(int.parse(p[0]), int.parse(p[1]), int.parse(p[2]));
 }
 
 List<String> _summary(List<SpecialDay> days) => days
@@ -36,7 +36,7 @@ void main() {
   group('дни 10/25 (FR-CAL-3)', () {
     test('сентябрь 2026: 25-й — 6.09, 10-й — 21.09 (окно векторов F-45)', () {
       final sep = provider.getSpecialDays(
-          DateTime(2026, 9, 1), DateTime(2026, 9, 30));
+          DateTime.utc(2026, 9, 1), DateTime.utc(2026, 9, 30));
       // Снимок результата: сентябрь 2026 входит в 731 g2t-вектор 2026 года,
       // т.е. эти два дня — ground truth tibcal (F-45), а не вывод порта.
       expect(_summary(sep), [
@@ -48,7 +48,7 @@ void main() {
     test('в месяце ровно по одному 10-му и 25-му (окно 2026)', () {
       // Для месяцев без аномалий — по одному дню каждого типа.
       final days = provider
-          .getSpecialDays(DateTime(2026, 9, 1), DateTime(2026, 12, 31));
+          .getSpecialDays(DateTime.utc(2026, 9, 1), DateTime.utc(2026, 12, 31));
       expect(
           days.where((d) => d.type == SpecialDayType.tibetan10).length, 4);
       expect(
@@ -57,7 +57,7 @@ void main() {
 
     test('имена и описания — канонические, русский язык', () {
       final sep = provider.getSpecialDays(
-          DateTime(2026, 9, 1), DateTime(2026, 9, 30));
+          DateTime.utc(2026, 9, 1), DateTime.utc(2026, 9, 30));
       final t10 = sep.firstWhere((d) => d.type == SpecialDayType.tibetan10);
       expect(t10.name, '10-й день тибетского месяца');
       expect(t10.description, contains('Пхугпа'));
@@ -77,11 +77,11 @@ void main() {
     test('losarDate(y) == григорианская дата из фикстуры tibcal', () {
       // 2.3: сверка вычисления порта с фикстурой F-45 (публичные даты).
       final expected = {
-        2023: DateTime(2023, 2, 21),
-        2024: DateTime(2024, 2, 10),
-        2025: DateTime(2025, 2, 28),
-        2026: DateTime(2026, 2, 18),
-        2027: DateTime(2027, 2, 7),
+        2023: DateTime.utc(2023, 2, 21),
+        2024: DateTime.utc(2024, 2, 10),
+        2025: DateTime.utc(2025, 2, 28),
+        2026: DateTime.utc(2026, 2, 18),
+        2027: DateTime.utc(2027, 2, 7),
       };
       for (final e in expected.entries) {
         expect(provider.losarDate(e.key), e.value,
@@ -97,18 +97,18 @@ void main() {
     test('getSpecialDays помечает Лосар festival-днём', () {
       final l2026 = losars.firstWhere((l) => l.tibetanYear == 2026);
       final days = provider.getSpecialDays(
-          DateTime(2026, 2, 15), DateTime(2026, 2, 21));
+          DateTime.utc(2026, 2, 15), DateTime.utc(2026, 2, 21));
       final losar =
           days.where((d) => d.type == SpecialDayType.festival).toList();
       expect(losar, hasLength(1));
-      expect(losar.single.date, DateTime(2026, 2, 18));
+      expect(losar.single.date, DateTime.utc(2026, 2, 18));
       expect(losar.single.date, l2026.gregorian);
       expect(losar.single.name, 'Лосар — тибетский Новый год');
     });
 
     test('в сентябре 2026 Лосара нет (не каждый месяц — праздник)', () {
       final sep = provider.getSpecialDays(
-          DateTime(2026, 9, 1), DateTime(2026, 9, 30));
+          DateTime.utc(2026, 9, 1), DateTime.utc(2026, 9, 30));
       expect(sep.where((d) => d.type == SpecialDayType.festival), isEmpty);
     });
   });
@@ -126,7 +126,7 @@ void main() {
       // любой новый festival вне Лосара красит тест до появления своего
       // пакета с источником.
       final days = provider.getSpecialDays(
-          DateTime(2024, 1, 1), DateTime(2027, 12, 31));
+          DateTime.utc(2024, 1, 1), DateTime.utc(2027, 12, 31));
       final festivals =
           days.where((d) => d.type == SpecialDayType.festival).toList();
       expect(festivals.map((d) => d.name).toSet(),
@@ -149,8 +149,8 @@ void main() {
           .where((e) => (e['missingDays'] as List).contains(25));
       expect(skipped, isNotEmpty, reason: 'фикстура обязана содержать кейс');
       for (final e in skipped) {
-        final before = _localDate(e['before']['gregorian'] as String);
-        final after = _localDate(e['after']['gregorian'] as String);
+        final before = _utcDate(e['before']['gregorian'] as String);
+        final after = _utcDate(e['after']['gregorian'] as String);
         final days = provider.getSpecialDays(before, after);
         expect(
             days.where((d) => d.type == SpecialDayType.tibetan25), isEmpty,
@@ -170,8 +170,8 @@ void main() {
           .where((e) => e['day'] == 25);
       expect(doubled, isNotEmpty, reason: 'фикстура обязана содержать кейс');
       for (final e in doubled) {
-        final leap = _localDate(e['leapDate'] as String);
-        final regular = _localDate(e['regularDate'] as String);
+        final leap = _utcDate(e['leapDate'] as String);
+        final regular = _utcDate(e['regularDate'] as String);
         final days = provider.getSpecialDays(leap, regular);
         final t25 =
             days.where((d) => d.type == SpecialDayType.tibetan25).toList();
@@ -187,10 +187,10 @@ void main() {
       // Тибетский 2027-4-10 пропущен (прогон tibcal 01591b5, MIT — тот же
       // источник, что F-45): 13.06.2027 — 9-й день, 14.06 — 11-й. Векторы
       // фикстуры 2027 не покрывают, якорь получен прямым прогоном tibcal.
-      expect(gregorianToTibetan(DateTime(2027, 6, 13)).day, 9);
-      expect(gregorianToTibetan(DateTime(2027, 6, 14)).day, 11);
+      expect(gregorianToTibetan(DateTime.utc(2027, 6, 13)).day, 9);
+      expect(gregorianToTibetan(DateTime.utc(2027, 6, 14)).day, 11);
       final days = provider.getSpecialDays(
-          DateTime(2027, 6, 10), DateTime(2027, 6, 17));
+          DateTime.utc(2027, 6, 10), DateTime.utc(2027, 6, 17));
       expect(days.where((d) => d.type == SpecialDayType.tibetan10), isEmpty,
           reason: 'фантомная подсветка пропущенного 10-го запрещена (4.1)');
     });
@@ -206,32 +206,32 @@ void main() {
     // неверный день в 2019 — эти кейсы её и ломают (мутация ниже).
     test('1935: обычный 1/1 пропущен — Лосар на вставном 04.02', () {
       // Порт обязан различать аномалию (иначе тест самообслуживается).
-      expect(gregorianToTibetan(DateTime(1935, 2, 4)).isLeapMonth, isTrue);
+      expect(gregorianToTibetan(DateTime.utc(1935, 2, 4)).isLeapMonth, isTrue);
       expect(() => tibetanToGregorian(TibetanDate(
           year: 1935, month: 1, isLeapMonth: false, day: 1, isLeapDay: false)),
           throwsA(isA<NoSuchTibetanDayException>()));
-      expect(provider.losarDate(1935), DateTime(1935, 2, 4));
+      expect(provider.losarDate(1935), DateTime.utc(1935, 2, 4));
       final days = provider.getSpecialDays(
-          DateTime(1935, 2, 1), DateTime(1935, 2, 10));
+          DateTime.utc(1935, 2, 1), DateTime.utc(1935, 2, 10));
       final losar =
           days.where((d) => d.type == SpecialDayType.festival).toList();
       expect(losar, hasLength(1), reason: 'Лосар обязан найтись: ${_summary(days)}');
-      expect(losar.single.date, DateTime(1935, 2, 4));
+      expect(losar.single.date, DateTime.utc(1935, 2, 4));
     });
 
     test('2019: Лосар — вставной 1/1 (05.02), обычный 1/1 не дублирует', () {
-      expect(gregorianToTibetan(DateTime(2019, 2, 5)).isLeapMonth, isTrue);
+      expect(gregorianToTibetan(DateTime.utc(2019, 2, 5)).isLeapMonth, isTrue);
       // Обычный 1/1 существует (07.03) и НЕ является праздником —
       // широкий окно ловит мутацию «отметить оба инстанса».
-      expect(gregorianToTibetan(DateTime(2019, 3, 7)).isLeapMonth, isFalse);
-      expect(provider.losarDate(2019), DateTime(2019, 2, 5));
+      expect(gregorianToTibetan(DateTime.utc(2019, 3, 7)).isLeapMonth, isFalse);
+      expect(provider.losarDate(2019), DateTime.utc(2019, 2, 5));
       final narrow = provider.getSpecialDays(
-          DateTime(2019, 2, 1), DateTime(2019, 2, 10));
+          DateTime.utc(2019, 2, 1), DateTime.utc(2019, 2, 10));
       expect(
           narrow.where((d) => d.type == SpecialDayType.festival).map(
-              (d) => d.date), [DateTime(2019, 2, 5)]);
+              (d) => d.date), [DateTime.utc(2019, 2, 5)]);
       final wide = provider.getSpecialDays(
-          DateTime(2019, 2, 1), DateTime(2019, 3, 10));
+          DateTime.utc(2019, 2, 1), DateTime.utc(2019, 3, 10));
       expect(wide.where((d) => d.type == SpecialDayType.festival),
           hasLength(1),
           reason: 'заведомо один festival на тибетский год, а не по инстансу');
@@ -241,13 +241,13 @@ void main() {
       expect(() => tibetanToGregorian(TibetanDate(
           year: 2084, month: 1, isLeapMonth: true, day: 1, isLeapDay: false)),
           throwsA(isA<NoSuchTibetanDayException>()));
-      expect(provider.losarDate(2084), DateTime(2084, 3, 7));
+      expect(provider.losarDate(2084), DateTime.utc(2084, 3, 7));
       final days = provider.getSpecialDays(
-          DateTime(2084, 3, 1), DateTime(2084, 3, 10));
+          DateTime.utc(2084, 3, 1), DateTime.utc(2084, 3, 10));
       final losar =
           days.where((d) => d.type == SpecialDayType.festival).toList();
       expect(losar, hasLength(1));
-      expect(losar.single.date, DateTime(2084, 3, 7));
+      expect(losar.single.date, DateTime.utc(2084, 3, 7));
     });
 
     test('1901/1977: год без 1/1 — getSpecialDays не бросает, Лосара нет', () {
@@ -346,47 +346,47 @@ void main() {
         traditionTag: 'nyingma', losarHalf: LosarHalf.early);
 
     test('2036: дефолт — поздняя 28.02; ранняя — вставной 27.02', () {
-      expect(gregorianToTibetan(DateTime(2036, 2, 27)).isLeapDay, isTrue);
-      expect(gregorianToTibetan(DateTime(2036, 2, 28)).isLeapDay, isFalse);
-      expect(late.losarDate(2036), DateTime(2036, 2, 28));
-      expect(early.losarDate(2036), DateTime(2036, 2, 27));
+      expect(gregorianToTibetan(DateTime.utc(2036, 2, 27)).isLeapDay, isTrue);
+      expect(gregorianToTibetan(DateTime.utc(2036, 2, 28)).isLeapDay, isFalse);
+      expect(late.losarDate(2036), DateTime.utc(2036, 2, 28));
+      expect(early.losarDate(2036), DateTime.utc(2036, 2, 27));
     });
 
     test('2037: дефолт — поздняя 16.02; ранняя — вставной 15.02', () {
-      expect(gregorianToTibetan(DateTime(2037, 2, 15)).isLeapDay, isTrue);
-      expect(gregorianToTibetan(DateTime(2037, 2, 16)).isLeapDay, isFalse);
-      expect(late.losarDate(2037), DateTime(2037, 2, 16));
-      expect(early.losarDate(2037), DateTime(2037, 2, 15));
+      expect(gregorianToTibetan(DateTime.utc(2037, 2, 15)).isLeapDay, isTrue);
+      expect(gregorianToTibetan(DateTime.utc(2037, 2, 16)).isLeapDay, isFalse);
+      expect(late.losarDate(2037), DateTime.utc(2037, 2, 16));
+      expect(early.losarDate(2037), DateTime.utc(2037, 2, 15));
     });
 
     test('2019: удвоенный месяц — обе стратегии 05.02 (регрессия)', () {
       // Обе половины года заданы явно: вставной месяц 05.02 и обычный
       // 07.03; конвенция C6 выбирает половину ДНЯ и изменение месяца не
       // допускает.
-      expect(gregorianToTibetan(DateTime(2019, 2, 5)).isLeapMonth, isTrue);
-      expect(gregorianToTibetan(DateTime(2019, 3, 7)).isLeapMonth, isFalse);
+      expect(gregorianToTibetan(DateTime.utc(2019, 2, 5)).isLeapMonth, isTrue);
+      expect(gregorianToTibetan(DateTime.utc(2019, 3, 7)).isLeapMonth, isFalse);
       for (final p in [late, early]) {
-        expect(p.losarDate(2019), DateTime(2019, 2, 5));
+        expect(p.losarDate(2019), DateTime.utc(2019, 2, 5));
       }
     });
 
     test('getSpecialDays уважает конвенцию: отметка на выбранной половине', () {
       // Дефолт: праздник 28.02; вставная половина 27.02 без отметки.
       final lateDays = late.getSpecialDays(
-          DateTime(2036, 2, 25), DateTime(2036, 3, 1));
+          DateTime.utc(2036, 2, 25), DateTime.utc(2036, 3, 1));
       expect(
           lateDays
               .where((d) => d.type == SpecialDayType.festival)
               .map((d) => d.date),
-          [DateTime(2036, 2, 28)]);
+          [DateTime.utc(2036, 2, 28)]);
       // Ранняя: отметка 27.02; обычная половина 28.02 без отметки.
       final earlyDays = early.getSpecialDays(
-          DateTime(2036, 2, 25), DateTime(2036, 3, 1));
+          DateTime.utc(2036, 2, 25), DateTime.utc(2036, 3, 1));
       expect(
           earlyDays
               .where((d) => d.type == SpecialDayType.festival)
               .map((d) => d.date),
-          [DateTime(2036, 2, 27)]);
+          [DateTime.utc(2036, 2, 27)]);
     });
   });
 
@@ -399,22 +399,22 @@ void main() {
     test('from > to — ArgumentError (контракт, не пустой список)', () {
       expect(
           () => provider.getSpecialDays(
-              DateTime(2026, 5, 5), DateTime(2026, 5, 4)),
+              DateTime.utc(2026, 5, 5), DateTime.utc(2026, 5, 4)),
           throwsArgumentError);
     });
 
     test('чистота: повторный вызов даёт равный результат', () {
       final a = provider.getSpecialDays(
-          DateTime(2026, 1, 1), DateTime(2026, 3, 31));
+          DateTime.utc(2026, 1, 1), DateTime.utc(2026, 3, 31));
       final b = provider.getSpecialDays(
-          DateTime(2026, 1, 1), DateTime(2026, 3, 31));
+          DateTime.utc(2026, 1, 1), DateTime.utc(2026, 3, 31));
       expect(a, b);
     });
 
     test('пустой короткий диапазон — пустой список, не null', () {
       // 2026-09-01..02: ни 10-го, ни 25-го (лунные дни 4–5).
       final empty = provider.getSpecialDays(
-          DateTime(2026, 9, 1), DateTime(2026, 9, 2));
+          DateTime.utc(2026, 9, 1), DateTime.utc(2026, 9, 2));
       expect(empty, isEmpty);
     });
   });
@@ -445,8 +445,8 @@ void main() {
 
     test('getSpecialDays не пересчитывает Лосар при повторном прогоне', () {
       final p = TibetanCalendarProvider(traditionTag: 'nyingma');
-      final from = DateTime(2026, 1, 1);
-      final to = DateTime(2026, 12, 31);
+      final from = DateTime.utc(2026, 1, 1);
+      final to = DateTime.utc(2026, 12, 31);
       p.getSpecialDays(from, to);
       final after = p.losarComputations;
       expect(after, greaterThan(0), reason: 'в 2026 Лосар обязан найтись');

@@ -98,17 +98,21 @@ void main() {
 
       // Независимая сверка: адаптер не «зовёт сам себя», а обязан совпасть с
       // уже проверенным выходом провайдера (FR-CAL-3).
+      // Дни сравниваем по полям: провайдер отдаёт UTC-полночь (W13),
+      // адаптер резолвит локальные дни диапазона — инстанты не равны.
+      DateTime dayKey(DateTime d) => DateTime(d.year, d.month, d.day);
       final byProvider = provider
           .getSpecialDays(from, to)
           .where((d) => d.type == SpecialDayType.tibetan10)
-          .map((d) => d.date)
+          .map((d) => dayKey(d.date))
           .toSet();
       final byAdapter = <DateTime>{};
       for (var month = 1; month <= 12; month++) {
         byAdapter.addAll(
-            adapter.resolveTibetanMonthDay(
-                month: month, day: 10, from: from, to: to) ??
-                const []);
+            (adapter.resolveTibetanMonthDay(
+                        month: month, day: 10, from: from, to: to) ??
+                    const <DateTime>[])
+                .map(dayKey));
       }
 
       expect(byProvider, isNotEmpty);
