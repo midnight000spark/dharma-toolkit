@@ -37,7 +37,7 @@ import 'dart:math' as math;
 ///
 /// Throws [ArgumentError], если [g] не в UTC.
 double moonPhase(DateTime g) {
-  final jd = _toJulianDay(g);
+  final jd = _julianDayTt(g);
   final sunLong = _sunLongitude(jd);
   final moon = moonEclipticPosition(g);
 
@@ -80,7 +80,7 @@ double _sunLongitude(double jd) {
 ///
 /// Throws [ArgumentError], если [g] не в UTC.
 ({double longitude, double latitude}) moonEclipticPosition(DateTime g) {
-  final jd = _toJulianDay(g);
+  final jd = _julianDayTt(g);
   final t = (jd - 2451545.0) / 36525.0;
   final t2 = t * t;
   final t3 = t2 * t;
@@ -150,23 +150,42 @@ double _deg(double x) => x % 360.0;
 /// Градусы в радианы.
 double _rad(double deg) => deg * math.pi / 180.0;
 
-/// Контракт момента (W10): все расчёты читают настенные поля DateTime
-/// (год/месяц/день/час…), поэтому вход обязан быть UTC (`DateTime.isUtc`).
+/// Контракт момента (W10) и домен дат (S14): все расчёты читают настенные поля
+/// DateTime (год/месяц/день/час…), поэтому вход обязан быть UTC
+/// (`DateTime.isUtc`), а год — лежать в пролептическом домене `[1, 9999]`.
 /// Локальный момент отклоняем громко — молчаливый сдвиг на смещение зоны
-/// искажал фазу без единого сигнала.
+/// искажал фазу без единого сигнала; домен объявлен явно, чтобы расхождение
+/// двух календарных движков приложения было заявленным, а не случайным.
 void _requireUtc(DateTime g) {
   if (!g.isUtc) {
     throw ArgumentError.value(
         g, 'g', 'требуется UTC-момент (DateTime.isUtc) — см. moonPhase');
   }
+  if (g.year < 1 || g.year > 9999) {
+    throw ArgumentError.value(g, 'g',
+        'домен дат — пролептический 0001–9999 (S14); упосатхи — с 1582');
+  }
 }
 
-/// Григорианский момент (по полям DateTime, без пересчёта зоны) в юлианскую
-/// дату. Формула Meeus 7.a–7.d (для дат после 15.10.1582). Важно: D —
-/// «день + UT/24» без сдвига на полночь; переход от полночи к noon-based
-/// шкале JD уже содержит член −1524.5 (вычитание 12 часов дважды сдвигало
-/// фазу на полдня — поймано векторами F-49).
-double _toJulianDay(DateTime g) {
+/// ΔT = TT − UT, секунды: полином Эспенака–Мееуса (год 1900–2100), тот же,
+/// что в генераторе векторов `scripts/gen_uposatha_vectors.mjs` (F-49); вне
+/// окна даёт порядок минут — для дня фазы незначимо.
+double _deltaTSeconds(int year) {
+  final t = (year - 2000).toDouble();
+  return 62.92 + 0.32217 * t + 0.005589 * t * t;
+}
+
+/// Юлианская дата (UT) по полям UTC-момента [g]: Meeus 7.a–7.d **с веткой
+/// реформы 1582-10-15**. До реформы действует юлианский календарь (b = 0),
+/// после — григорианская поправка `b = 2 − a + ⌊a/4⌋`; без ветки даты до
+/// 1582-10-15 уезжали бы на дни (находка S14). Публична как точка сверки с
+/// эталоном astronomia (`CalendarJulianToJD`/`CalendarGregorianToJD`), по
+/// образцу [moonEclipticPosition]; ΔT не включает — шкала UT.
+///
+/// Важно: D — «день + UT/24» без сдвига на полночь; переход от полночи к
+/// noon-based шкале JD уже содержит член −1524.5 (вычитание 12 часов дважды
+/// сдвигало фазу на полдня — поймано векторами F-49).
+double julianDayUtc(DateTime g) {
   _requireUtc(g);
   var y = g.year;
   var m = g.month;
@@ -174,8 +193,13 @@ double _toJulianDay(DateTime g) {
     y -= 1;
     m += 12;
   }
-  final a = (y / 100).floor();
-  final b = 2 - a + (a / 4).floor();
+  final int b;
+  if (g.year * 10000 + g.month * 100 + g.day < 15821015) {
+    b = 0; // юлианский календарь до реформы (Meeus 7.a)
+  } else {
+    final a = (y / 100).floor();
+    b = 2 - a + (a / 4).floor();
+  }
   final dayFrac = g.day +
       g.hour / 24.0 +
       g.minute / 1440.0 +
@@ -186,3 +210,9 @@ double _toJulianDay(DateTime g) {
       b -
       1524.5;
 }
+
+/// Юлианская дата в шкале TT для рядов Мееуса: JDE = JD (UT) + ΔT/86400.
+/// Ряды гл. 25/47 отдают положение на момент T в TT; без этого члена
+/// систематический сдвиг ~69 с для 2024 (S14).
+double _julianDayTt(DateTime g) =>
+    julianDayUtc(g) + _deltaTSeconds(g.year) / 86400.0;

@@ -36,6 +36,14 @@ class _Event {
   final DateTime utcMoment;
 }
 
+/// Событие эпохи S14 (1900–2100): `jde` — TT, `epoch` — год.
+class _EpochEvent {
+  const _EpochEvent(this.epoch, this.type, this.utcMoment);
+  final int epoch;
+  final String type;
+  final DateTime utcMoment;
+}
+
 /// JD (UT) → DateTime UTC (Meeus 7.a–7.g — та же формула, что в генераторе
 /// фикстуры `scripts/gen_uposatha_vectors.mjs`).
 DateTime _jdToUtc(double jd) {
@@ -79,6 +87,25 @@ List<_Event> _loadEvents() {
         // Конвенция F-49: utcDate = UTC-день момента (TT минус ΔT).
         final ttYear = _jdToUtc(jde).year;
         return _Event(
+          m['type'] as String,
+          _jdToUtc(jde - _deltaTsec(ttYear) / 86400.0),
+        );
+      }(),
+  ];
+}
+
+List<_EpochEvent> _loadEpochEvents() {
+  final raw = jsonDecode(
+          File('test/fixtures/moon_phase_epochs.json').readAsStringSync())
+      as Map<String, dynamic>;
+  return [
+    for (final e in raw['events'] as List)
+      () {
+        final m = e as Map<String, dynamic>;
+        final jde = (m['jde'] as num).toDouble();
+        final ttYear = _jdToUtc(jde).year;
+        return _EpochEvent(
+          m['epoch'] as int,
           m['type'] as String,
           _jdToUtc(jde - _deltaTsec(ttYear) / 86400.0),
         );
@@ -161,6 +188,77 @@ void main() {
           reason: 'элонгация ≠ разность долгот: сдвиг |β|/360 неизбежен по '
               'конвенции величины, но больше него расхождение быть не должно: '
               '$violations');
+    });
+  });
+
+  group('S14: календарная конверсия (реформа 1582), TT и домен', () {
+    test('юлианская ветка до 1582-10-15: значения astronomia', () {
+      // astronomia (MIT): CalendarJulianToJD(1582,10,4) = 2299159.5,
+      // CalendarGregorianToJD(1582,10,15) = 2299160.5; пример Meeus 7.a
+      // (юлианская дата 837-04-10.3) = 2026871.8.
+      expect(julianDayUtc(DateTime.utc(1582, 10, 4)), closeTo(2299159.5, 1e-9));
+      expect(
+          julianDayUtc(DateTime.utc(1582, 10, 15)), closeTo(2299160.5, 1e-9));
+      expect(julianDayUtc(DateTime.utc(837, 4, 10, 7, 12)),
+          closeTo(2026871.8, 1e-6));
+    });
+
+    test('эпохи 1900/1950/2000/2050/2100: JD совпадает с astronomia', () {
+      const refs = <int, double>{
+        1900: 2415020.5,
+        1950: 2433282.5,
+        2000: 2451544.5,
+        2050: 2469807.5,
+        2100: 2488069.5,
+      };
+      refs.forEach((year, jd) {
+        expect(julianDayUtc(DateTime.utc(year, 1, 1)), closeTo(jd, 1e-9),
+            reason: 'JD $year-01-01');
+      });
+    });
+
+    test('домен дат: год вне 0001–9999 отклоняется', () {
+      expect(() => moonPhase(DateTime.utc(0, 1, 1)), throwsArgumentError);
+    });
+  });
+
+  group('S14: фазы по эпохам 1900/1950/2000/2050/2100 (astronomia)', () {
+    final events = _loadEpochEvents();
+
+    test('фикстура: 86 событий, все пять эпох', () {
+      expect(events, hasLength(86));
+      expect(
+          events.map((e) => e.epoch).toSet(), {1900, 1950, 2000, 2050, 2100});
+    });
+
+    test('четверти: moonPhase = 0.25/0.75 в точный момент (±0.0005)', () {
+      final violations = <String>[];
+      for (final e in events) {
+        if (e.type != 'first' && e.type != 'last') continue;
+        final target = e.type == 'first' ? 0.25 : 0.75;
+        final p = moonPhase(e.utcMoment);
+        if (_phaseDistance(p, target) > 0.0005) {
+          violations.add('${e.epoch} ${e.utcMoment.toIso8601String()} '
+              '${e.type}: phase=$p');
+        }
+      }
+      expect(violations, isEmpty,
+          reason: 'расхождение с astronomia по эпохам: $violations');
+    });
+
+    test('новолуние/полнолуние: сдвиг не больше широтного (±0.016)', () {
+      final violations = <String>[];
+      for (final e in events) {
+        if (e.type != 'new' && e.type != 'full') continue;
+        final target = e.type == 'new' ? 0.0 : 0.5;
+        final p = moonPhase(e.utcMoment);
+        if (_phaseDistance(p, target) > 0.016) {
+          violations.add('${e.epoch} ${e.utcMoment.toIso8601String()} '
+              '${e.type}: phase=$p');
+        }
+      }
+      expect(violations, isEmpty,
+          reason: 'расхождение с astronomia по эпохам: $violations');
     });
   });
 
