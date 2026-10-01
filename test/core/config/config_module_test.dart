@@ -79,7 +79,8 @@ void main() {
       final original = PresetSchema(
         id: 'test',
         name: 'Тест',
-        version: '2.0.0',
+        // Версия — поддерживаемая: fromJson отвергает чужие версии (W5).
+        version: '1.0.0',
         tradition: 'theravada',
         modules: ['calendar'],
         practices: [
@@ -149,6 +150,13 @@ void main() {
         expectField(
           () => PresetSchema.fromJson(broken((j) => j.remove('name'))),
           'name',
+        );
+      });
+
+      test('version вне поддерживаемого набора → поле version', () {
+        expectField(
+          () => PresetSchema.fromJson(broken((j) => j['version'] = '2.0.0')),
+          'version',
         );
       });
 

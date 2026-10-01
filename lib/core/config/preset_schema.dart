@@ -29,6 +29,14 @@ class PresetValidationException implements Exception {
 /// сохранённые в таблице presets до 5b.4) молча игнорируются при разборе —
 /// обратной совместимости это не ломает.
 class PresetSchema {
+  /// Единственная поддерживаемая версия схемы пресета (W5).
+  ///
+  /// Версия обязательна, и поддерживаемость **проверяется**: пресет чужой
+  /// версии может нести несовместимый состав полей, а молчаливое «прочитали
+  /// часть» исказило бы материализацию практик. Расширение набора —
+  /// осознанная правка в одном месте.
+  static const String supportedVersion = '1.0.0';
+
   /// Unique identifier (snake_case, e.g. 'nyingma', 'theravada')
   final String id;
 
@@ -131,10 +139,19 @@ class PresetSchema {
           'description', 'ожидалась строка или null');
     }
 
+    final version = reqString('version');
+    if (version != supportedVersion) {
+      throw PresetValidationException(
+        'version',
+        'версия "$version" не поддерживается '
+        '(поддерживается: "$supportedVersion")',
+      );
+    }
+
     return PresetSchema(
       id: reqString('id'),
       name: reqString('name'),
-      version: reqString('version'),
+      version: version,
       modules: reqStringList('modules'),
       tradition: reqString('tradition'),
       practices: practices,
