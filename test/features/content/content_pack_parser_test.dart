@@ -154,6 +154,14 @@ void main() {
       expect(expectRejected(json, 'version'), contains('ожидалась строка'));
     });
 
+    test('version вне поддерживаемого набора — отказ по полю version', () {
+      final json = validPackJson()..['version'] = '2';
+
+      final reason = expectRejected(json, 'version');
+
+      expect(reason, contains('не поддерживается'));
+    });
+
     test('verified отсутствует', () {
       final json = validPackJson()..remove('verified');
 

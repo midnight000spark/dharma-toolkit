@@ -71,6 +71,14 @@ class ContentPackEntryFailure {
 
 /// Разборщик схемы контент-пака v1. Состояния не хранит: статические функции.
 abstract final class ContentPackParser {
+  /// Единственная поддерживаемая версия схемы контент-пака (FR-CNT-1/2/4).
+  ///
+  /// Версия обязательна, и поддерживаемость **проверяется** (W5): схема чужой
+  /// версии может нести несовместимые правила дат или атрибуции, а «прочитали
+  /// как смогли» исказило бы тексты молча. Расширение поддерживаемого набора —
+  /// осознанная правка в одном месте, а не догадка на проде.
+  static const String supportedVersion = '1';
+
   /// Разобрать декодированный JSON пака.
   ///
   /// Бросает [ContentPackFormatException] с путём поля при нарушении схемы
@@ -82,6 +90,13 @@ abstract final class ContentPackParser {
     final packId = _requiredNonEmptyString(json, 'packId');
     final traditionTag = _requiredNonEmptyString(json, 'traditionTag');
     final version = _requiredNonEmptyString(json, 'version');
+    if (version != supportedVersion) {
+      throw ContentPackFormatException(
+        'version',
+        'версия "$version" не поддерживается '
+        '(поддерживается: "$supportedVersion")',
+      );
+    }
 
     final verified = json['verified'];
     if (verified == null) {
