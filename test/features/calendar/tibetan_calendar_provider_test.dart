@@ -418,4 +418,42 @@ void main() {
       expect(empty, isEmpty);
     });
   });
+
+  group('W11: кэш losarDate — повторный вызов не пересчитывает', () {
+    test('повтор года: счётчик расчётов не растёт, дата та же', () {
+      final p = TibetanCalendarProvider(traditionTag: 'nyingma');
+      final first = p.losarDate(2026);
+      final computationsAfterFirst = p.losarComputations;
+      final second = p.losarDate(2026);
+
+      expect(second, first);
+      expect(identical(second, first), isTrue,
+          reason: 'кэш обязан отдавать тот же инстанс даты '
+              '(DateTime неизменяем)');
+      expect(p.losarComputations, computationsAfterFirst,
+          reason: 'повторный вызов — попадание в кэш без пересчёта');
+    });
+
+    test('каждый год считается ровно один раз', () {
+      final p = TibetanCalendarProvider(traditionTag: 'nyingma');
+      p.losarDate(2026);
+      p.losarDate(2027);
+      p.losarDate(2026);
+      p.losarDate(2027);
+      expect(p.losarComputations, 2);
+    });
+
+    test('getSpecialDays не пересчитывает Лосар при повторном прогоне', () {
+      final p = TibetanCalendarProvider(traditionTag: 'nyingma');
+      final from = DateTime(2026, 1, 1);
+      final to = DateTime(2026, 12, 31);
+      p.getSpecialDays(from, to);
+      final after = p.losarComputations;
+      expect(after, greaterThan(0), reason: 'в 2026 Лосар обязан найтись');
+      p.getSpecialDays(from, to);
+      expect(p.losarComputations, after,
+          reason: 'прогон по тем же дням не должен пересчитывать Лосар '
+              '(W11: вызов в цикле на каждый 1/1)');
+    });
+  });
 }

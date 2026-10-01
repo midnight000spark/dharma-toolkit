@@ -68,6 +68,19 @@ class TibetanCalendarProvider implements CalendarProvider {
 
   final TibetanMonthCache _months;
 
+  /// Кэш Лосара по тибетскому году (W11): функция чистая, конвенция
+  /// [losarHalf] фиксирована на инстансе, поэтому «год → дата» не зависит от
+  /// порядка вызовов. Без кэша `getSpecialDays` пересчитывал дату на каждый
+  /// инстанс 1/1, а аналитика окна (лента) — на каждый запрос.
+  final Map<int, DateTime> _losarDates = {};
+
+  int _losarComputations = 0;
+
+  /// Число фактических расчётов [losarDate] (промахов кэша). Открыт тестам:
+  /// «повторный вызов не пересчитывает» проверяется счётчиком, а не временем
+  /// (W11).
+  int get losarComputations => _losarComputations;
+
   /// Полнота пака праздников (опция B 5b.3): false — верифицированная
   /// фикс-таблица дючен и прочих дат добавится отдельным пакетом. UI обязан
   /// показывать «дата пока не проверена» вне вычисляемых дней (UX-A-4),
@@ -95,6 +108,9 @@ class TibetanCalendarProvider implements CalendarProvider {
   /// не находит 1/1 и не отмечает праздник. Вне проверенного окна F-45 дата —
   /// корректная математика порта, но не сверялась вручную (UX-A-4).
   DateTime losarDate(int tibetanYear) {
+    final cached = _losarDates[tibetanYear];
+    if (cached != null) return cached;
+    _losarComputations++;
     // Выбранная половина дня — первой, вторая — запасной ход: год с
     // пропущенной выбранной половиной не должен терять Лосар.
     final dayOrder = switch (losarHalf) {
@@ -104,16 +120,21 @@ class TibetanCalendarProvider implements CalendarProvider {
     for (final leapMonth in const [true, false]) {
       for (final leapDay in dayOrder) {
         try {
-          final g = tibetanToGregorian(TibetanDate(
-            year: tibetanYear,
-            month: 1,
-            isLeapMonth: leapMonth,
-            day: 1,
-            isLeapDay: leapDay,
-          ));
+          final g = tibetanToGregorian(
+            TibetanDate(
+              year: tibetanYear,
+              month: 1,
+              isLeapMonth: leapMonth,
+              day: 1,
+              isLeapDay: leapDay,
+            ),
+            cache: _months,
+          );
           // Порт отдаёт DateTime.utc — время не значимо, нормализуем к
           // локальной полночи (контракт SpecialDay.date).
-          return DateTime(g.year, g.month, g.day);
+          final date = DateTime(g.year, g.month, g.day);
+          _losarDates[tibetanYear] = date;
+          return date;
         } on NoSuchTibetanDayException {
           // Инстанса нет (месяц/день не удвоен или 1/1 пропущен) — следующий ход.
           continue;
