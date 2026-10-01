@@ -33,6 +33,7 @@ import 'package:dharma_toolkit/core/config/preset_manager.dart';
 import 'package:dharma_toolkit/core/db/app_database.dart';
 import 'package:dharma_toolkit/core/events/event_bus.dart';
 import 'package:dharma_toolkit/core/events/event_bus_provider.dart';
+import 'package:dharma_toolkit/core/events/notification_events.dart';
 import 'package:dharma_toolkit/core/storage/storage_module.dart';
 import 'package:dharma_toolkit/features/events/domain/event_feed.dart';
 import 'package:dharma_toolkit/features/events/domain/event_feed_service.dart';
@@ -431,5 +432,40 @@ void main() {
         reason: 'переплан обязан заменять полосу целиком, а не дополнять её');
     expect(scheduler.cancelRangeCalls, greaterThanOrEqualTo(6),
         reason: 'каждое применение плана сначала снимает свою полосу (D-36)');
+  });
+
+  test('W3: битая строка настроек — полоса снимается, отказ виден', () async {
+    // Живая композиция: план собирает buildNotificationPlan (реальное чтение
+    // настроек из БД), полоса поставлена.
+    final replanner = container.read(notificationReplannerProvider);
+    replanner.start();
+    await manager.applyPreset(config.getPreset('nyingma')!);
+    await pumpEventQueue();
+    await replanner.settled;
+    expect(await scheduler.pendingIds(), isNotEmpty);
+
+    // Сначала валидная строка (её запись — ещё один переплан), затем порча в
+    // обход домена: так выглядела бы строка, испорченная другой версией
+    // приложения (R-23).
+    final store = container.read(notificationSettingsStoreProvider);
+    await store.write('nyingma', NotificationSettings.defaults);
+    await pumpEventQueue();
+    await replanner.settled;
+    await database.customStatement(
+      "UPDATE notification_settings SET hour = 99 "
+      "WHERE tradition_tag = 'nyingma'",
+    );
+
+    bus.publish(NotificationSettingsChanged(traditionTag: 'nyingma'));
+    await pumpEventQueue();
+    await replanner.settled;
+
+    print('--- W3: битая строка настроек ---');
+    print('  pending после отказа: ${await scheduler.pendingIds()} '
+        '(replanFailures ${replanner.replanFailures})');
+    expect(await scheduler.pendingIds(), isEmpty,
+        reason: 'битая строка не оставляет старую полосу жить');
+    expect(replanner.replanFailures, 1,
+        reason: 'отказ сборки плана виден в метрике, а не проглочен');
   });
 }

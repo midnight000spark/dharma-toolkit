@@ -73,6 +73,18 @@ class NotificationReplanner {
   int get degradedPlans => _degradedPlans;
   int _degradedPlans = 0;
 
+  /// Сколько перепланирований не удалось **собрать** (W3): сборка плана (в том
+  /// числе чтение настроек) отказала после ограниченного повтора. Отличие от
+  /// [degradedPlans]: там план собран, но часть пунктов платформа не приняла;
+  /// здесь плана нет вовсе — полоса снимается пустым применением.
+  int get replanFailures => _replanFailures;
+  int _replanFailures = 0;
+
+  /// Сколько попыток сборки плана делается за один проход (W3): первичная плюс
+  /// один ограниченный retry. Транзиентный отказ чтения (занятая БД, гонка
+  /// смены пресета) успевает уйти, бесконечного цикла нет.
+  static const int buildAttempts = 2;
+
   /// Отработали ли все полученные события (тесты ждут это, а не таймеры).
   Future<void> get settled => _queue;
 
@@ -114,8 +126,20 @@ class NotificationReplanner {
   }
 
   Future<void> _replan() async {
+    final plan = await _buildPlanWithRetry();
+    if (plan == null) {
+      // W3: отказ сборки не оставляет прежнюю полосу жить. Пользователь мог
+      // выключить уведомления или сменить традицию, а старая полоса осталась
+      // бы звонить — поэтому пустое применение (снять полосу) обязательно, а
+      // отказ — видимый: метрика [replanFailures] + запись в лог.
+      _replanFailures++;
+      warn?.call('Перепланирование уведомлений не выполнено: сборка плана '
+          'отказала $buildAttempts раз(а); полоса снимается пустым планом. '
+          '$_lastBuildError\n$_lastBuildStack');
+      await _clearBandAfterFailure();
+      return;
+    }
     try {
-      final plan = await buildPlan();
       // W2: id прошлого плана снимаются отдельно — показанное уведомление не
       // числится ожидающим, и платформа может его не перечислить (журнал C7
       // помнит, что ставило приложение). Журнал берётся до применения: новый
@@ -142,6 +166,41 @@ class NotificationReplanner {
       }
     } catch (error, stack) {
       warn?.call('Перепланирование уведомлений не выполнено: $error\n$stack');
+    }
+  }
+
+  Object? _lastBuildError;
+  StackTrace? _lastBuildStack;
+
+  /// Сборка плана с ограниченным повтором (W3): `null` — все попытки отказали.
+  Future<NotificationPlan?> _buildPlanWithRetry() async {
+    for (var attempt = 0; attempt < buildAttempts; attempt++) {
+      try {
+        return await buildPlan();
+      } catch (error, stack) {
+        _lastBuildError = error;
+        _lastBuildStack = stack;
+      }
+    }
+    return null;
+  }
+
+  /// Снять полосу после отказа сборки (W3), не подменяя журнал последнего
+  /// **построенного** плана: журнал — фундамент W2, и неудачная пересборка не
+  /// имеет права потерять знание о поставленном (см. тест «журнал не
+  /// подменяет»). Снятие идёт с id прошлого журнала: доставленное тоже уходит.
+  Future<void> _clearBandAfterFailure() async {
+    final previousPlanIds =
+        _lastJournal?.plan.items.map((i) => i.id) ?? const [];
+    try {
+      await applyNotificationPlan(
+        scheduler,
+        NotificationPlan.empty,
+        previousPlanIds: previousPlanIds,
+      );
+    } catch (error, stack) {
+      warn?.call('Полоса напоминаний не очищена после отказа сборки плана: '
+          '$error\n$stack');
     }
   }
 }

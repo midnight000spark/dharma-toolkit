@@ -11,6 +11,7 @@ import 'package:dharma_toolkit/core/events/notification_events.dart';
 import 'package:dharma_toolkit/core/events/preset_events.dart';
 import 'package:dharma_toolkit/features/events/application/notification_replanner.dart';
 import 'package:dharma_toolkit/features/events/domain/notification_plan.dart';
+import 'package:dharma_toolkit/features/events/domain/notification_settings.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'in_memory_notification_scheduler.dart';
@@ -153,25 +154,32 @@ void main() {
     expect(replanner.appliedPlans, 2);
   });
 
-  test('сбой сборки плана не рвёт очередь и виден в логе', () async {
+  test('сбой сборки плана не рвёт очередь, повтор ограничен и виден в логе',
+      () async {
     var calls = 0;
     final replanner = replannerWith(buildPlan: () async {
       calls++;
-      if (calls == 1) throw StateError('пресет не прочитан');
+      if (calls <= NotificationReplanner.buildAttempts) {
+        throw StateError('пресет не прочитан');
+      }
       return NotificationPlan(items: [item(100000, 'Событие')], notes: const []);
     });
     replanner.listen();
 
     bus.publish(PresetChanged(traditionTag: 'nyingma'));
     await settle(replanner);
+    expect(calls, NotificationReplanner.buildAttempts,
+        reason: 'W3: сборка повторяется ограниченно, а не один раз');
     expect(scheduler.scheduled, isEmpty);
     expect(warnings.single, contains('пресет не прочитан'));
+    expect(replanner.replanFailures, 1);
 
     bus.publish(NotificationSettingsChanged(traditionTag: 'nyingma'));
     await settle(replanner);
 
-    expect(calls, 2);
+    expect(calls, NotificationReplanner.buildAttempts + 1);
     expect(scheduler.scheduled.keys, [100000]);
+    expect(replanner.appliedPlans, 1);
   });
 
   group('W2 — показанное снимается при переплане (журнал C7)', () {
@@ -199,6 +207,54 @@ void main() {
           reason: 'переплан обязан снять показанное прошлого плана (журнал C7)');
       expect(scheduler.scheduled.keys, [100000],
           reason: 'новый план поставлен заново');
+    });
+  });
+
+  group('W3 — битая строка настроек не оставляет старую полосу', () {
+    test('ошибка чтения настроек: полоса пуста, replanFailures растёт',
+        () async {
+      var broken = false;
+      final replanner = replannerWith(buildPlan: () async {
+        if (broken) {
+          throw InvalidNotificationSettingsException(
+              'hour', 'час вне диапазона (традиция «nyingma»)');
+        }
+        return NotificationPlan(items: [item(100000, 'A')], notes: const []);
+      });
+      replanner.start();
+      await replanner.settled;
+      expect(scheduler.scheduled.keys, [100000]);
+
+      // Строка настроек испорчена: чтение падает, оба ограниченных повтора
+      // тоже; старую полосу жить не оставляем.
+      broken = true;
+      bus.publish(PresetChanged(traditionTag: 'nyingma'));
+      await settle(replanner);
+
+      expect(await scheduler.pendingIds(), isEmpty,
+          reason: 'битая строка не оставляет старую полосу');
+      expect(replanner.replanFailures, 1);
+      expect(warnings.last, contains('полоса снимается'));
+      expect(replanner.appliedPlans, 1,
+          reason: 'успешный переплан остаётся единственным');
+    });
+
+    test('транзиентный отказ сборки переживается повтором', () async {
+      var calls = 0;
+      final replanner = replannerWith(buildPlan: () async {
+        calls++;
+        if (calls == 1) throw StateError('БД занята');
+        return NotificationPlan(items: [item(100000, 'A')], notes: const []);
+      });
+
+      replanner.start();
+      await replanner.settled;
+
+      expect(calls, 2, reason: 'ограниченный retry спас транзиентный отказ');
+      expect(scheduler.scheduled.keys, [100000]);
+      expect(replanner.replanFailures, 0);
+      expect(replanner.appliedPlans, 1);
+      expect(warnings, isEmpty, reason: 'успешный повтор — не деградация');
     });
   });
 
