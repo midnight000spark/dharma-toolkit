@@ -62,6 +62,10 @@ class ContentFeedService {
     final days = <DailyReadings>[];
     final userNotes = <String>[];
     final debugNotes = <String>[];
+    // W30: дедуп — через множество, а не `List.contains` (было O(n²) на
+    // каждый день окна при больших паках).
+    final userSeen = <String>{};
+    final debugSeen = <String>{};
 
     // Идём по календарю, а не по «дню + Duration(days: 1)»: при переходе на
     // летнее время сутки бывают не 24 часа, и приращение длительностью
@@ -71,8 +75,8 @@ class ContentFeedService {
         date = DateTime(date.year, date.month, date.day + 1)) {
       final day = service.readingsFor(date);
       days.add(day);
-      _mergeNotes(userNotes, day.notes);
-      _mergeNotes(debugNotes, day.debugNotes);
+      _mergeNotes(userNotes, userSeen, day.notes);
+      _mergeNotes(debugNotes, debugSeen, day.debugNotes);
     }
 
     return ContentFeed(days: days, userNotes: userNotes, debugNotes: debugNotes);
@@ -80,9 +84,12 @@ class ContentFeedService {
 
   /// Пояснения без дублей: одна и та же причина (например, «пак не подтверждён»)
   /// звучит для каждого дня окна, но пользователю нужна один раз.
-  static void _mergeNotes(List<String> target, List<String> source) {
+  /// [seen] — множество уже добавленных строк (W30: `Set.add` вместо
+  /// линейного `List.contains`); порядок первого появления сохраняется.
+  static void _mergeNotes(
+      List<String> target, Set<String> seen, List<String> source) {
     for (final note in source) {
-      if (!target.contains(note)) target.add(note);
+      if (seen.add(note)) target.add(note);
     }
   }
 }

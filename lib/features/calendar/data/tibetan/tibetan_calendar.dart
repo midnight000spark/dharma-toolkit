@@ -211,6 +211,35 @@ class TibetanMonthCache {
   /// Число закешированных месяцев (для тестов инкапсуляции).
   int get length => _months.length;
 
+  /// Кэш «день → тибетский день» (W30): лента контента резолвит один и тот же
+  /// григорианский день на каждую tibetan-запись пака
+  /// (`resolveTibetanMonthDay(from: day, to: day)`), то есть N одинаковых
+  /// обратных конверсий на день. Ключ — порядковый номер дня; вытеснение —
+  /// то же FIFO, что у месяцев, и тот же [limit].
+  final Map<int, TibetanDate> _days = {};
+
+  int _dayComputations = 0;
+
+  /// Число фактических конверсий дня (промахов дневного кэша). Открыт тестам:
+  /// «повторный резолв дня не пересчитывает» — поведение, а не секундомер.
+  int get dayComputations => _dayComputations;
+
+  /// Тибетский день для порядкового номера [ordinal]: попадание в кэш или
+  /// разовая [compute] (счётчик растёт только на промахе).
+  TibetanDate buildDay(int ordinal, TibetanDate Function() compute) {
+    final cached = _days[ordinal];
+    if (cached != null) return cached;
+
+    _dayComputations++;
+    final value = compute();
+    if (limit <= 0) return value; // no-store: limit=0 — каждый раз пересчёт.
+    while (_days.length >= limit) {
+      _days.remove(_days.keys.first);
+    }
+    _days[ordinal] = value;
+    return value;
+  }
+
   List<TibetanDate> buildMonth(int year, int month, int n, bool isLeap) {
     final key = (year, month, n, isLeap);
     final cached = _months[key];
@@ -301,6 +330,17 @@ List<TibetanDate> _monthDays(
 TibetanDate gregorianToTibetan(DateTime g, {TibetanMonthCache? cache}) {
   final target = _ordinalFromDate(g.year, g.month, g.day) +
       _jdnGregorianOffset;
+  if (cache != null) {
+    // W30: день мемоизируется — путь ленты резолвит один день на запись пака.
+    return cache.buildDay(target, () => _scanDay(g, target, cache));
+  }
+  return _scanDay(g, target, null);
+}
+
+/// Линейный поиск тибетского дня для JDN [target] (порт tibcal: трёхлетнее
+/// окно месяцев); [g] — только для сообщения об ошибке. Вынесен из
+/// [gregorianToTibetan], чтобы дневной кэш (W30) заворачивал полный скан.
+TibetanDate _scanDay(DateTime g, int target, TibetanMonthCache? cache) {
   for (final y in [g.year - 1, g.year, g.year + 1]) {
     for (var m = 1; m <= 12; m++) {
       for (final (n, isLeap) in _monthInstances(y, m)) {

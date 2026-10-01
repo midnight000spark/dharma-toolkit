@@ -210,4 +210,61 @@ void main() {
       expect(yearAttributes(2023).fullName, 'Water Female Hare');
     });
   });
+
+  group('W30: кэш дня сетки (путь ленты «день × запись пака»)', () {
+    test('повторная конверсия дня — попадание в кэш, тот же инстанс', () {
+      final cache = TibetanMonthCache();
+      final day = DateTime.utc(2026, 6, 15);
+      final first = gregorianToTibetan(day, cache: cache);
+      final afterFirst = cache.dayComputations;
+      final second = gregorianToTibetan(day, cache: cache);
+
+      expect(second, first);
+      expect(identical(second, first), isTrue,
+          reason: 'день неизменяем: кэш обязан вернуть тот же TibetanDate');
+      expect(cache.dayComputations, afterFirst,
+          reason: 'повторный резолв того же дня не пересчитывает день (W30)');
+    });
+
+    test('50 резолвов одного дня = 1 конверсия (N+1 ленты схлопнут)', () {
+      final cache = TibetanMonthCache();
+      final day = DateTime.utc(2026, 6, 15);
+      for (var i = 0; i < 50; i++) {
+        expect(gregorianToTibetan(day, cache: cache).day, greaterThan(0));
+      }
+      expect(cache.dayComputations, 1,
+          reason: 'лента резолвит день на каждую tibetan-запись пака — '
+              'день обязан считаться один раз');
+    });
+
+    test('разные дни считаются независимо', () {
+      final cache = TibetanMonthCache();
+      for (var i = 0; i < 5; i++) {
+        gregorianToTibetan(DateTime.utc(2026, 6, 1 + i), cache: cache);
+      }
+      expect(cache.dayComputations, 5);
+      expect(cache.length, greaterThan(0),
+          reason: 'месячный кэш продолжает наполняться');
+    });
+
+    test('limit=0 (no-store): день пересчитывается, кэш не держит', () {
+      final cache = TibetanMonthCache(limit: 0);
+      final day = DateTime.utc(2026, 6, 15);
+      gregorianToTibetan(day, cache: cache);
+      gregorianToTibetan(day, cache: cache);
+      expect(cache.dayComputations, 2);
+      expect(cache.length, 0);
+    });
+
+    test('день из кэша равен конверсии без кэша (чистота)', () {
+      final cache = TibetanMonthCache();
+      final day = DateTime.utc(2026, 6, 15);
+      final cached = gregorianToTibetan(day, cache: cache);
+      final direct = gregorianToTibetan(day);
+      expect(cached.year, direct.year);
+      expect(cached.month, direct.month);
+      expect(cached.day, direct.day);
+      expect(cached.isLeapDay, direct.isLeapDay);
+    });
+  });
 }
