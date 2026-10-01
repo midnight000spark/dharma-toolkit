@@ -76,3 +76,50 @@ class ContentReading {
       'ContentReading(${date.toIso8601String().substring(0, 10)} '
       '${source.name} "$title" ← $attribution)';
 }
+
+/// Чтения одного календарного дня + честные пояснения (пустота обязана
+/// объяснять себя).
+///
+/// Живёт в ядре рядом с [ContentReading], потому что является значением порта
+/// `ContentSource`: порт обязан отдавать потребителю (дашборд SCR-7, экран
+/// SCR-13) не только тексты, но и **пользовательские пояснения** ([notes],
+/// C8г) — проекция «только список чтений» молча теряла их (W22, блок
+/// warning-3c). Один тип на порт и ленту фичи — не два источника истины
+/// (класс B-4/R-20).
+class DailyReadings {
+  /// Календарный день (полночь).
+  final DateTime date;
+
+  /// Чтения дня: привязанные к дате (в порядке паков), затем выбранное
+  /// ротацией; при недоступности контента — единственный фолбэк.
+  final List<ContentReading> readings;
+
+  /// Пояснения дня («пак не подтверждён», «правило tibetan неразрешимо»,
+  /// «показана собственная формулировка», сбой пака) — пользователь видит
+  /// состояние, а не тихую пустоту. Без внутренних путей и id (C8г).
+  final List<String> notes;
+
+  /// Техническая диагностика дня: пути ассетов, пути полей, сырые причины
+  /// (C8б). В UI не показывается; пустой список — нечего диагностировать.
+  final List<String> debugNotes;
+
+  const DailyReadings({
+    required this.date,
+    required this.readings,
+    this.notes = const [],
+    this.debugNotes = const [],
+  });
+
+  /// Есть ли что показать.
+  bool get isEmpty => readings.isEmpty;
+
+  /// Все чтения дня — фолбэк приложения (контента традиции нет вовсе).
+  bool get isFallback =>
+      readings.isNotEmpty &&
+      readings.every((r) => r.source == ContentReadingSource.fallback);
+
+  @override
+  String toString() =>
+      'DailyReadings(${date.toIso8601String().substring(0, 10)}, '
+      '${readings.length} чтений, notes=${notes.length})';
+}

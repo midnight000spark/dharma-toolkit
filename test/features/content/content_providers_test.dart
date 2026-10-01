@@ -331,10 +331,44 @@ void main() {
       final port = bound.read(contentSourceProvider);
 
       expect(port.traditionTag, 'nyingma');
-      expect(port.readingsFor(_now).single.title, 'Текст пака из пресета');
+      expect(port.readingsFor(_now).readings.single.title,
+          'Текст пака из пресета');
       // Порт и лента отвечают одним и тем же доменом (не два источника истины).
-      expect(port.readingsFor(_now).single.title,
+      expect(port.readingsFor(_now).readings.single.title,
           container.read(dailyReadingProvider).readings.single.title);
+    });
+
+    test(
+        'W22: порт несёт user-safe notes дня, а не только чтения (контракт C8г)',
+        () async {
+      // Пак объявлен, но ассета нет: загрузчик отдаёт сбой, сервис — фолбэк
+      // и пояснение. Порт обязан донести пояснение до потребителя (SCR-7):
+      // проекция «только чтения» молча теряла его.
+      final bound = ProviderContainer(overrides: [
+        contentClockProvider.overrideWithValue(() => _now),
+        activeTraditionTagProvider.overrideWith((ref) => Stream.value('nyingma')),
+        activePresetStreamProvider.overrideWith((ref) => Stream.value(
+            presetWithContentPacks(
+                const ['assets/content_packs/missing.json']))),
+        contentAssetBundleProvider.overrideWithValue(_FakeBundle(const {})),
+        specialDaysSourceProvider.overrideWithValue(_StubSource('nyingma')),
+        contentSourceProvider.overrideWith(
+            (ref) => ref.watch(dailyReadingContentSourceProvider)),
+      ]);
+      addTearDown(bound.dispose);
+      bound.listen(activePresetStreamProvider, (_, _) {});
+      bound.listen(activeTraditionTagProvider, (_, _) {});
+      await bound.read(contentPacksProvider.future);
+
+      final day = bound.read(contentSourceProvider).readingsFor(_now);
+
+      expect(day.readings, isNotEmpty,
+          reason: 'контракт порта: список чтений никогда не пуст (фолбэк)');
+      expect(day.notes.join('\n'), contains('файл пака недоступен'),
+          reason: 'пользовательское пояснение сбоя доходит через порт');
+      expect(day.notes.join('\n'), isNot(contains('missing.json')),
+          reason: 'внутренний путь ассета не уходит в пользовательский канал');
+      expect(day.debugNotes.join('\n'), contains('missing.json'));
     });
 
     test('непривязанный порт падает громко (ошибка композиции, не деградация)',

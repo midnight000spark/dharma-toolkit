@@ -13,11 +13,11 @@
 library;
 
 import '../../../core/calendar/special_days_source.dart';
+import '../../../core/content/daily_reading.dart';
 import '../data/content_pack_loader.dart';
 import 'content_feed.dart';
 import 'content_pack.dart';
 import 'daily_reading_service.dart';
-import 'daily_readings.dart';
 
 /// Разворачивает чтения дня на окно «сегодня + N дней».
 class ContentFeedService {

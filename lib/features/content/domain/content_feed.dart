@@ -16,7 +16,6 @@
 library;
 
 import '../../../../core/content/daily_reading.dart';
-import 'daily_readings.dart';
 
 /// Результат сборки ленты контента.
 class ContentFeed {

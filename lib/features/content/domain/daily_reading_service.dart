@@ -27,7 +27,6 @@ import '../data/content_pack_loader.dart';
 import 'content_fallbacks.dart';
 import 'content_pack.dart';
 import 'content_rotation.dart';
-import 'daily_readings.dart';
 
 /// Собирает чтения конкретного дня из паков активной традиции.
 class DailyReadingService {

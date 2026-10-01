@@ -5,6 +5,11 @@
 /// контента (напрямую) разошлись бы — класс дефектов «два источника истины»
 /// (B-4/R-20). Гибридного состояния не бывает: оба пути идут через
 /// [DailyReadingService].
+///
+/// **W22 (warning-3c):** порт получает результат дня целиком ([DailyReadings]),
+/// а не проекцию «только список чтений»: проекция молча теряла
+/// пользовательские пояснения (`notes`, C8г), и потребитель порта (SCR-7)
+/// видел чтения без честности пустоты.
 library;
 
 import '../../../core/content/content_source.dart';
@@ -22,6 +27,5 @@ class DailyReadingContentSource implements ContentSource {
   String get traditionTag => service.traditionTag;
 
   @override
-  List<ContentReading> readingsFor(DateTime day) =>
-      service.readingsFor(day).readings;
+  DailyReadings readingsFor(DateTime day) => service.readingsFor(day);
 }

@@ -17,13 +17,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/calendar/special_days_source.dart';
 import '../../../../core/content/content_source.dart';
+import '../../../../core/content/daily_reading.dart';
 import '../../../../shared/providers/app_providers.dart';
 import '../../data/content_pack_loader.dart';
 import '../../data/daily_reading_content_source.dart';
 import '../../domain/content_feed.dart';
 import '../../domain/content_feed_service.dart';
 import '../../domain/daily_reading_service.dart';
-import '../../domain/daily_readings.dart';
 
 /// Часы фичи: домен принимает «сегодня» аргументом, поэтому единственная точка,
 /// где читается реальное время, — этот провайдер. Тесты оверрайдят его
