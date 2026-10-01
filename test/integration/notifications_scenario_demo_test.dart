@@ -340,7 +340,9 @@ void main() {
       payload: '{}',
     );
 
-    await service.schedule(item); // не должно бросить (F-57)
+    final accepted = await service.schedule(item); // не должно бросить (F-57)
+    expect(accepted, isFalse,
+        reason: 'платформа без планировщика: пункт не поставлен — не «принято»');
     print('--- Деградация Linux-стиля ---');
     print('  отказ записан: ${degradation.unsupported.length}; '
         'немедленных показов: ${gateway.shown.length}');

@@ -29,6 +29,7 @@ import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../domain/notification_plan.dart';
+import '../domain/notification_scheduler.dart';
 import 'notification_gateway.dart';
 import 'schedule_degradation.dart';
 
@@ -111,17 +112,26 @@ class NotificationService {
 
   /// Запросить разрешение на показ уведомлений (W1, Android 13+).
   ///
-  /// `true` — показывать можно (разрешение выдано или платформе оно не нужно,
-  /// например Linux); `false` — пользователь отказал либо запрос не удался:
-  /// честное «напоминания не придут», а не молчание. Диалог показывает
-  /// платформа, поэтому вызов идёт из UI-контекста первого входа; на Этапе 8
-  /// точка запроса переедет в SCR-14.
-  Future<bool> requestNotificationsPermission() async {
+  /// Исход честный и различимый: [NotificationPermission.granted] — показывать
+  /// можно (разрешение выдано или платформе оно не нужно, например Linux),
+  /// [NotificationPermission.denied] — пользователь отказал,
+  /// [NotificationPermission.unavailable] — **ошибка запроса**, а не отказ:
+  /// свести её к «пользователь не разрешил» значило бы соврать о причине
+  /// (W1-ревью). Диалог показывает платформа, поэтому вызов идёт из
+  /// UI-контекста первого входа; на Этапе 8 точка запроса переедет в SCR-14.
+  Future<NotificationPermission> requestNotificationsPermission() async {
     try {
-      return await gateway.requestNotificationsPermission() ?? true;
+      final granted = await gateway.requestNotificationsPermission();
+      // null — на платформе такого понятия нет («спрашивать нечего»), а не
+      // «отказано»: недоступность напоминаний там сигналится деградацией
+      // (F-57), а не баннером разрешения.
+      return switch (granted) {
+        true || null => NotificationPermission.granted,
+        false => NotificationPermission.denied,
+      };
     } catch (error, stack) {
       warn?.call('Запрос разрешения на уведомления не удался: $error\n$stack');
-      return false;
+      return NotificationPermission.unavailable;
     }
   }
 
@@ -157,7 +167,14 @@ class NotificationService {
   /// Отказ платформы «планирования нет вовсе» ([UnimplementedError], Linux)
   /// уходит в [ScheduleDegradation], а не наружу: это не сбой приложения,
   /// а известное ограничение (F-57, урок 3).
-  Future<void> schedule(NotificationPlanItem item) async {
+  ///
+  /// Возврат — честный исход для домена: `true` — пункт отдан платформе;
+  /// `false` — деградация записана, пункт НЕ поставлен (иначе журнал применения
+  /// C7 считал бы «ничего не поставлено» успехом, а `appliedPlans` рос бы на
+  /// пустоте). Прямые вызовы (демо/тесты) исключения не получают — контракт
+  /// 6.2 сохранён; адаптер порта превращает `false` в
+  /// [ScheduleUnsupportedException].
+  Future<bool> schedule(NotificationPlanItem item) async {
     try {
       await gateway.zonedSchedule(
         id: item.id,
@@ -168,8 +185,10 @@ class NotificationService {
         body: item.body,
         payload: item.payload,
       );
+      return true;
     } on UnimplementedError catch (error) {
       await degradation.onScheduleUnsupported(item, error);
+      return false;
     }
   }
 

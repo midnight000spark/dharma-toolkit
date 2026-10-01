@@ -27,6 +27,8 @@ import 'package:dharma_toolkit/features/calendar/presentation/providers/calendar
 import 'package:dharma_toolkit/features/events/domain/notification_scheduler.dart';
 import 'package:dharma_toolkit/features/events/domain/notification_settings.dart';
 import 'package:dharma_toolkit/features/events/platform/degraded_notification_scheduler.dart';
+import 'package:dharma_toolkit/features/events/platform/notification_scheduler_adapter.dart';
+import 'package:dharma_toolkit/features/events/platform/notification_service.dart';
 import 'package:dharma_toolkit/features/events/presentation/notification_permission_banner.dart';
 import 'package:dharma_toolkit/features/events/presentation/providers/event_providers.dart';
 import 'package:dharma_toolkit/main.dart';
@@ -38,6 +40,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'in_memory_notification_scheduler.dart';
+import 'platform_fakes.dart';
 
 /// Источник дней, отдающий заранее заданные особые дни своего тега.
 class _StubSource implements SpecialDaysSource {
@@ -202,6 +205,22 @@ void main() {
           NotificationPermission.unavailable);
     });
 
+    test('ошибка запроса права — unavailable, не «отказ пользователя» '
+        '(статусный путь через адаптер)', () async {
+      final gateway = FakeNotificationGateway()
+        ..permissionError = StateError('канал недоступен');
+      final service = NotificationService(
+        gateway: gateway,
+        timeZoneSource: FakeLocalTimeZoneSource('Europe/Moscow'),
+        warn: (_) {},
+      );
+      final container =
+          permissionContainer(NotificationSchedulerAdapter(service));
+
+      expect(await container.read(notificationPermissionProvider.future),
+          NotificationPermission.unavailable);
+    });
+
     testWidgets('баннер виден при отказе и скрыт при разрешении (UI-статус)',
         (tester) async {
       Future<void> pumpWith(NotificationPermission permission) async {
@@ -222,6 +241,9 @@ void main() {
 
       await pumpWith(NotificationPermission.denied);
       expect(find.textContaining('не придут'), findsOneWidget);
+
+      await pumpWith(NotificationPermission.unavailable);
+      expect(find.textContaining('недоступны'), findsOneWidget);
 
       await pumpWith(NotificationPermission.granted);
       expect(find.textContaining('не придут'), findsNothing);

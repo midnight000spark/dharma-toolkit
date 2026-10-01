@@ -48,6 +48,28 @@ enum NotificationPermission {
   unavailable,
 }
 
+/// Пункт плана не поставлен, потому что платформа не умеет планировать
+/// (F-57): платформенный сервис уже записал деградацию, а адаптер обязан
+/// сообщить домену, что «принято платформой» — неправда.
+///
+/// Ловится per-item обработкой [applyNotificationPlan]: отказ по пункту —
+/// деградация (журнал, метрика), а не срыв всего плана.
+class ScheduleUnsupportedException implements Exception {
+  ScheduleUnsupportedException(this.itemId, [this.cause]);
+
+  /// Id пункта, который не был поставлен.
+  final int itemId;
+
+  /// Отказ вендора, если он известен (для диагностики).
+  final Object? cause;
+
+  @override
+  String toString() =>
+      'ScheduleUnsupportedException: пункт $itemId не поставлен — '
+      'планирование не поддержано платформой (F-57)'
+      '${cause == null ? '' : ': $cause'}';
+}
+
 /// Исход применения одного пункта плана (C7).
 enum PlanItemOutcome {
   /// Пункт принят планировщиком.

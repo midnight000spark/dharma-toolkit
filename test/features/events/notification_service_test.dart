@@ -20,6 +20,7 @@
 library;
 
 import 'package:dharma_toolkit/features/events/domain/notification_plan.dart';
+import 'package:dharma_toolkit/features/events/domain/notification_scheduler.dart';
 import 'package:dharma_toolkit/features/events/platform/notification_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -111,12 +112,14 @@ void main() {
       expect(gateway.scheduled.single.mode, AndroidScheduleMode.inexact);
     });
 
-    test('точное планирование доступно → exact', () async {
+    test('точное планирование доступно → exact; исход — принято (true)',
+        () async {
       gateway.exactAllowed = true;
 
-      await (await readyService()).schedule(item());
+      final accepted = await (await readyService()).schedule(item());
 
       expect(gateway.scheduled.single.mode, AndroidScheduleMode.exact);
+      expect(accepted, isTrue, reason: 'пункт отдан платформе — исход для домена');
     });
 
     test('настенные часы устройства переносятся полями, не инстантом',
@@ -145,16 +148,18 @@ void main() {
       expect(date.minute, 30);
     });
 
-    test('платформа без планировщика (Linux) → деградация, не исключение',
-        () async {
+    test('платформа без планировщика (Linux) → деградация, не исключение; '
+        'исход — false (пункт НЕ поставлен)', () async {
       gateway.zonedScheduleError =
           UnimplementedError('zonedSchedule() has not been implemented');
 
-      await (await readyService()).schedule(item(id: 100042));
+      final accepted = await (await readyService()).schedule(item(id: 100042));
 
       expect(gateway.scheduled, isEmpty);
       expect(degradation.unsupported.single.id, 100042);
       expect(degradation.errors.single, isA<UnimplementedError>());
+      expect(accepted, isFalse,
+          reason: 'деградация не имеет права выглядеть как «принято» (C7)');
     });
   });
 
@@ -198,31 +203,35 @@ void main() {
   });
 
   group('разрешение на показ (W1)', () {
-    test('запрос делегируется платформе; согласие — true', () async {
+    test('запрос делегируется платформе; согласие — granted', () async {
       final granted = await serviceWith().requestNotificationsPermission();
 
-      expect(granted, isTrue);
+      expect(granted, NotificationPermission.granted);
       expect(gateway.permissionRequests, 1);
     });
 
-    test('отказ пользователя — false (честное состояние, не тишина)', () async {
+    test('отказ пользователя — denied (честное состояние, не тишина)',
+        () async {
       gateway.notificationsPermission = false;
 
-      expect(await serviceWith().requestNotificationsPermission(), isFalse);
+      expect(await serviceWith().requestNotificationsPermission(),
+          NotificationPermission.denied);
     });
 
-    test('платформа без понятия разрешения (не-Android) — true: спрашивать '
+    test('платформа без понятия разрешения (не-Android) — granted: спрашивать '
         'нечего', () async {
       gateway.notificationsPermission = null;
 
-      expect(await serviceWith().requestNotificationsPermission(), isTrue);
+      expect(await serviceWith().requestNotificationsPermission(),
+          NotificationPermission.granted);
     });
 
-    test('отказ платформенного запроса — false и предупреждение в лог',
-        () async {
+    test('ошибка запроса — unavailable (не «отказ пользователя») и '
+        'предупреждение в лог', () async {
       gateway.permissionError = StateError('канал недоступен');
 
-      expect(await serviceWith().requestNotificationsPermission(), isFalse);
+      expect(await serviceWith().requestNotificationsPermission(),
+          NotificationPermission.unavailable);
       expect(warnings.single, contains('разрешения'));
     });
   });

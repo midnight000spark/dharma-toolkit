@@ -26,7 +26,13 @@ class NotificationSchedulerAdapter implements NotificationScheduler {
   @override
   Future<void> schedule(NotificationPlanItem item) async {
     _ensureOwnRange(item.id);
-    await _service.schedule(item);
+    final accepted = await _service.schedule(item);
+    if (!accepted) {
+      // Платформа не умеет планировать (F-57): сервис записал деградацию, но
+      // домен обязан увидеть отказ по пункту, а не «принято» — иначе журнал
+      // C7 и метрика replanner'а соврут о поставленном.
+      throw ScheduleUnsupportedException(item.id);
+    }
   }
 
   @override
@@ -40,12 +46,10 @@ class NotificationSchedulerAdapter implements NotificationScheduler {
   Future<List<int>> pendingIds() => _service.pendingIds();
 
   @override
-  Future<NotificationPermission> requestNotificationsPermission() async {
-    final granted = await _service.requestNotificationsPermission();
-    return granted
-        ? NotificationPermission.granted
-        : NotificationPermission.denied;
-  }
+  Future<NotificationPermission> requestNotificationsPermission() =>
+      // Passthrough: различие granted/denied/unavailable — политика сервиса
+      // (W1-ревью), адаптеру нечего к ней добавлять.
+      _service.requestNotificationsPermission();
 
   static void _ensureOwnRange(int id) {
     if (id < NotificationPlan.idRangeStart || id > NotificationPlan.idRangeEnd) {

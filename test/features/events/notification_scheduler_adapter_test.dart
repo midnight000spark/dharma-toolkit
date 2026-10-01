@@ -7,6 +7,8 @@
 /// метод» (урок 4).
 library;
 
+import 'package:dharma_toolkit/core/events/event_bus.dart';
+import 'package:dharma_toolkit/features/events/application/notification_replanner.dart';
 import 'package:dharma_toolkit/features/events/domain/notification_plan.dart';
 import 'package:dharma_toolkit/features/events/domain/notification_scheduler.dart';
 import 'package:dharma_toolkit/features/events/platform/notification_scheduler_adapter.dart';
@@ -99,5 +101,34 @@ void main() {
     gateway.pending.addAll([100001, 100000]);
 
     expect(await adapter.pendingIds(), [100001, 100000]);
+  });
+
+  test('F-57: платформа без планировщика — пункт failed в журнале, applied '
+      'не растёт', () async {
+    gateway.zonedScheduleError =
+        UnimplementedError('планирование не поддержано');
+    final bus = EventBus();
+    addTearDown(bus.dispose);
+    final replanner = NotificationReplanner(
+      bus: bus,
+      scheduler: adapter,
+      buildPlan: () async => NotificationPlan(
+        items: [item(NotificationPlan.idRangeStart, 'День')],
+        notes: const [],
+      ),
+    );
+
+    replanner.start();
+    await replanner.settled;
+
+    final journal = replanner.lastJournal!;
+    expect(journal.isDegraded, isTrue,
+        reason: '«ничего не поставлено» не имеет права выглядеть как applied');
+    expect(journal.failedIds, [NotificationPlan.idRangeStart]);
+    expect(journal.items.single.error, isA<ScheduleUnsupportedException>());
+    expect(gateway.scheduled, isEmpty);
+    expect(replanner.appliedPlans, 0,
+        reason: 'деградация не увеличивает appliedPlans');
+    expect(replanner.degradedPlans, 1);
   });
 }
