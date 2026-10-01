@@ -16,22 +16,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'in_memory_notification_scheduler.dart';
 
-/// Планировщик, падающий на выбранных id (C7): проверка per-item обработки —
-/// одно упавшее уведомление не срывает остальные.
-class _FailingScheduler extends InMemoryNotificationScheduler {
-  _FailingScheduler(this.failIds);
-
-  final Set<int> failIds;
-
-  @override
-  Future<void> schedule(NotificationPlanItem item) async {
-    if (failIds.contains(item.id)) {
-      throw StateError('пункт ${item.id} не поставлен');
-    }
-    return super.schedule(item);
-  }
-}
-
 void main() {
   late EventBus bus;
   late InMemoryNotificationScheduler scheduler;
@@ -261,7 +245,9 @@ void main() {
   group('C7 — применение плана по пунктам (журнал, applied/degraded)', () {
     test('отказ на пункте k не срывает остальные; отказ виден в журнале',
         () async {
-      final failing = _FailingScheduler({100001});
+      // W29: per-item отказ — штатная возможность in-memory фейка, отдельный
+      // подкласс для этого больше не нужен.
+      final failing = InMemoryNotificationScheduler()..failIds.add(100001);
       final replanner = NotificationReplanner(
         bus: bus,
         scheduler: failing,

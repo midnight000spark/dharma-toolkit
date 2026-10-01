@@ -41,13 +41,28 @@ void main() {
     expect(events.single.traditionTag, 'nyingma');
   });
 
-  test('reset публикует событие — настройки вернулись к дефолту', () async {
+  test('reset удалённой строки публикует событие — настройки вернулись к '
+      'дефолту', () async {
     final store = NotificationSettingsStore(db, eventBus: bus);
+    await store.write('nyingma',
+        NotificationSettings(enabled: false, hour: 21, minute: 15));
+    await pumpEventQueue();
+    events.clear();
 
     await store.reset('nyingma');
     await pumpEventQueue();
 
     expect(events.single.traditionTag, 'nyingma');
+    expect(await store.read('nyingma'), NotificationSettings.defaults);
+  });
+
+  test('S8: reset без строки события не публикует — нечего менять', () async {
+    final store = NotificationSettingsStore(db, eventBus: bus);
+
+    await store.reset('nyingma');
+    await pumpEventQueue();
+
+    expect(events, isEmpty, reason: 'нулевое удаление — не событие');
   });
 
   test('без шины запись работает и ничего не публикует', () async {

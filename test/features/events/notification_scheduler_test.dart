@@ -127,6 +127,29 @@ void main() {
       expect(NotificationPlan.idRangeEnd, 199999);
     });
 
+    test('W29: per-item отказ фейка не срывает остальные пункты', () async {
+      scheduler.failIds.add(100001);
+
+      final journal = await applyNotificationPlan(
+          scheduler, planOf([itemOf(100000), itemOf(100001), itemOf(100002)]));
+
+      expect(journal.failedIds, [100001]);
+      expect(journal.isDegraded, isTrue);
+      expect(await scheduler.pendingIds(), [100000, 100002]);
+    });
+
+    test('W29: платформа без планировщика — отказ по каждому пункту честной '
+        'формы', () async {
+      scheduler.schedulingSupported = false;
+
+      final journal = await applyNotificationPlan(
+          scheduler, planOf([itemOf(100000), itemOf(100001)]));
+
+      expect(journal.items.map((i) => i.error),
+          everyElement(isA<ScheduleUnsupportedException>()));
+      expect(await scheduler.pendingIds(), isEmpty);
+    });
+
     test('планирование вне полосы — ошибка, а не «как-нибудь»', () async {
       await expectLater(
         scheduler.schedule(itemOf(99999)),

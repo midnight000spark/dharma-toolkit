@@ -47,6 +47,14 @@ class DegradedNotificationScheduler implements NotificationScheduler {
   }
 
   @override
+  Future<bool> canScheduleExact() async {
+    _notify('проверка точности планирования');
+    // Планирования нет вовсе — точности тем более; это не «ошибка», а
+    // честное «точность не обещана» (W29).
+    return false;
+  }
+
+  @override
   Future<NotificationPermission> requestNotificationsPermission() async {
     _notify('запрос разрешения на уведомления');
     // Деградация платформенного слоя: показ невозможен независимо от

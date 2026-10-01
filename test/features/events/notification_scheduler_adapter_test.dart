@@ -13,6 +13,7 @@ import 'package:dharma_toolkit/features/events/domain/notification_plan.dart';
 import 'package:dharma_toolkit/features/events/domain/notification_scheduler.dart';
 import 'package:dharma_toolkit/features/events/platform/notification_scheduler_adapter.dart';
 import 'package:dharma_toolkit/features/events/platform/notification_service.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'platform_fakes.dart';
@@ -101,6 +102,28 @@ void main() {
     gateway.pending.addAll([100001, 100000]);
 
     expect(await adapter.pendingIds(), [100001, 100000]);
+  });
+
+  test('W29: контракт порта несёт честную точность (exact/inexact)', () async {
+    gateway.exactAllowed = true;
+    await adapter.schedule(item(NotificationPlan.idRangeStart, 'Точный'));
+    expect(gateway.scheduled.last.mode, AndroidScheduleMode.exact);
+    expect(await adapter.canScheduleExact(), isTrue);
+
+    gateway.exactAllowed = false;
+    await adapter.schedule(item(NotificationPlan.idRangeStart + 1, 'Точный?'));
+    expect(gateway.scheduled.last.mode, AndroidScheduleMode.inexact,
+        reason: 'точность не выдана — обещать её нельзя (D-36)');
+    expect(await adapter.canScheduleExact(), isFalse,
+        reason: 'порт обязан отвечать честно, а не «точность разрешена»');
+  });
+
+  test('W29: контракт F-57 — платформа без понятия точности отвечает false',
+      () async {
+    gateway.exactQueryError =
+        UnimplementedError('canScheduleExactNotifications not implemented');
+
+    expect(await adapter.canScheduleExact(), isFalse);
   });
 
   test('F-57: платформа без планировщика — пункт failed в журнале, applied '

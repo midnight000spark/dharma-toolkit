@@ -88,6 +88,7 @@ class FakeNotificationGateway implements NotificationGateway {
   Object? zonedScheduleError;
   Object? pendingIdsError;
   Object? activeIdsError;
+  Object? exactQueryError;
   Object? permissionError;
 
   @override
@@ -157,7 +158,11 @@ class FakeNotificationGateway implements NotificationGateway {
   }
 
   @override
-  Future<bool> canScheduleExactNotifications() async => exactAllowed;
+  Future<bool> canScheduleExactNotifications() async {
+    final error = exactQueryError;
+    if (error != null) throw error;
+    return exactAllowed;
+  }
 
   @override
   Future<bool?> requestNotificationsPermission() async {

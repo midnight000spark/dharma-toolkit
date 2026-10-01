@@ -46,6 +46,9 @@ class NotificationSchedulerAdapter implements NotificationScheduler {
   Future<List<int>> pendingIds() => _service.pendingIds();
 
   @override
+  Future<bool> canScheduleExact() => _service.canScheduleExact();
+
+  @override
   Future<NotificationPermission> requestNotificationsPermission() =>
       // Passthrough: различие granted/denied/unavailable — политика сервиса
       // (W1-ревью), адаптеру нечего к ней добавлять.

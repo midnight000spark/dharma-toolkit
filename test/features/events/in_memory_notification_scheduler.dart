@@ -38,6 +38,18 @@ class InMemoryNotificationScheduler implements NotificationScheduler {
   /// которая перечисляет показанные сама.
   bool listsActive = false;
 
+  /// Отвечает ли «платформа» за точное планирование (W29): контракт порта —
+  /// `schedule` ставит exact только при `true`, иначе честный inexact (D-36).
+  bool exactAllowed = false;
+
+  /// Пункты, на которых фейк отказывает (W29): per-item отказ — как отказ
+  /// платформы по конкретному уведомлению (остальные не затронуты).
+  final Set<int> failIds = {};
+
+  /// Поддерживает ли «платформа» планирование вовсе (F-57): при `false`
+  /// каждый пункт отказывает [ScheduleUnsupportedException].
+  bool schedulingSupported = true;
+
   /// Сколько раз вызывали `cancelRange` (видно идемпотентность переплана).
   int cancelRangeCalls = 0;
 
@@ -61,6 +73,12 @@ class InMemoryNotificationScheduler implements NotificationScheduler {
             '(D-36)',
       );
     }
+    if (!schedulingSupported) {
+      throw ScheduleUnsupportedException(item.id);
+    }
+    if (failIds.contains(item.id)) {
+      throw StateError('пункт ${item.id} не поставлен (per-item отказ, W29)');
+    }
     scheduled[item.id] = item;
   }
 
@@ -81,6 +99,9 @@ class InMemoryNotificationScheduler implements NotificationScheduler {
 
   @override
   Future<List<int>> pendingIds() async => scheduled.keys.toList()..sort();
+
+  @override
+  Future<bool> canScheduleExact() async => exactAllowed;
 
   @override
   Future<NotificationPermission> requestNotificationsPermission() async {
