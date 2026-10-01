@@ -100,6 +100,18 @@ void main() {
       expectField(validPackJson()..remove('traditionTag'), 'traditionTag');
     });
 
+    test('version вне поддерживаемого набора — отказ по полю version', () {
+      final json = validPackJson()..['version'] = '2';
+
+      expect(
+        () => EventPackParser.parse(json),
+        throwsA(isA<EventPackFormatException>()
+            .having((e) => e.field, 'field', 'version')
+            .having((e) => e.reason, 'reason',
+                contains('не поддерживается'))),
+      );
+    });
+
     test('verified отсутствует', () {
       expectField(validPackJson()..remove('verified'), 'verified');
     });

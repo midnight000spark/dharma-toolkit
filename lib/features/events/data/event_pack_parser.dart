@@ -32,6 +32,13 @@ class EventPackFormatException implements Exception {
 
 /// Разборщик схемы пака v1. Состояния не хранит: чистые статические функции.
 abstract final class EventPackParser {
+  /// Единственная поддерживаемая версия схемы пака событий (D-35).
+  ///
+  /// Версия обязательна, и поддерживаемость **проверяется** (W5): схема чужой
+  /// версии может нести несовместимые правила дат, а «прочитали как смогли»
+  /// исказило бы праздники молча. Расширение набора — осознанная правка.
+  static const String supportedVersion = '1';
+
   /// Разобрать декодированный JSON пака.
   ///
   /// Бросает [EventPackFormatException] с путём поля при первом нарушении
@@ -41,6 +48,13 @@ abstract final class EventPackParser {
     final packId = _requiredNonEmptyString(json, 'packId');
     final traditionTag = _requiredNonEmptyString(json, 'traditionTag');
     final version = _requiredNonEmptyString(json, 'version');
+    if (version != supportedVersion) {
+      throw EventPackFormatException(
+        'version',
+        'версия "$version" не поддерживается '
+        '(поддерживается: "$supportedVersion")',
+      );
+    }
 
     final verified = json['verified'];
     if (verified == null) {
