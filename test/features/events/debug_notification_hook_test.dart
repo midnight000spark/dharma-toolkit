@@ -166,7 +166,7 @@ void main() {
       expect(scheduler.scheduled.keys, contains(debugDemoNotificationId));
     });
 
-    testWidgets('S9: снятое демо — ярлык «снят перепланом», а не враньё',
+    testWidgets('S9: демо вне ожидания — ярлык не обещает «запланировано»',
         (tester) async {
       final bus = EventBus();
       addTearDown(bus.dispose);
@@ -177,13 +177,13 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('запланировано'), findsOneWidget);
 
-      // Демо снято (явное действие/будущий переплан) и пришёл триггер:
-      // прежний ярлык продолжал бы обещать «запланировано» (S9).
+      // Демо ушло из ожидания (показано или снято; pendingIds не различает)
+      // и пришёл триггер: прежний ярлык обещал бы «запланировано» (S9).
       await scheduler.cancel(debugDemoNotificationId);
       bus.publish(PresetChanged(traditionTag: 'nyingma'));
       await tester.pumpAndSettle();
 
-      expect(find.text('снят перепланом'), findsOneWidget);
+      expect(find.text('вне плана'), findsOneWidget);
       expect(find.text('запланировано'), findsNothing);
     });
   });
