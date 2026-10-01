@@ -190,11 +190,15 @@ class PresetManager implements AppModule, ReportsOwnFailures {
               ))
             .getSingleOrNull();
 
-        // Смещение на секунду за порядок в пресете: Drift хранит DateTime с
-        // точностью до секунды, а список сортируется по createdAt — массовая
-        // вставка одним DateTime.now() дала бы недетерминированный порядок
-        // (существо B-10). Шаг в миллисекунду молча схлопнулся бы в равенство.
-        final now = DateTime.now().add(Duration(seconds: i));
+        // W8: порядок из JSON пишется явным индексом `sort_order`, а не
+        // смещением `createdAt` на i секунд. Прежняя подделка даты (i секунд
+        // «в будущее») искажала момент создания и не позволяла перестановке
+        // практик в пресете дойти до списка: при повторном применении
+        // `createdAt` не перезаписывается (D-26), поэтому позиция оставалась
+        // старой. `createdAt` теперь — честный момент материализации; точности
+        // до секунды (F-33/F-68) для этого достаточно, порядок несёт
+        // `sort_order`.
+        final now = DateTime.now();
 
         if (existing == null) {
           await db.into(db.practices).insert(
@@ -206,6 +210,7 @@ class PresetManager implements AppModule, ReportsOwnFailures {
                   target: Value(practice.target),
                   unit: Value(practice.unit),
                   traditionTag: preset.id,
+                  sortOrder: Value(i),
                   createdAt: Value(now),
                   updatedAt: Value(now),
                 ),
@@ -213,6 +218,9 @@ class PresetManager implements AppModule, ReportsOwnFailures {
         } else {
           // Обновляем только описательные поля из пресета: currentCount,
           // createdAt и id не трогаем — счёт практикующего священен (D-26).
+          // `sortOrder` — часть описания пресета (не пользовательских
+          // данных), поэтому он переназначается и при повторном применении:
+          // перестановка в JSON обязана менять порядок списка (W8).
           await (db.update(db.practices)
                 ..where((t) => t.id.equals(existing.id)))
               .write(
@@ -222,6 +230,7 @@ class PresetManager implements AppModule, ReportsOwnFailures {
               type: Value(practice.type),
               target: Value(practice.target),
               unit: Value(practice.unit),
+              sortOrder: Value(i),
               updatedAt: Value(now),
             ),
           );

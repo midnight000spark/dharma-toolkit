@@ -2,6 +2,7 @@ import 'package:dharma_toolkit/core/config/preset_manager.dart';
 import 'package:dharma_toolkit/core/config/preset_schema.dart';
 import 'package:dharma_toolkit/core/db/app_database.dart';
 import 'package:dharma_toolkit/core/storage/storage_module.dart';
+import 'package:dharma_toolkit/features/tracker/data/practice_repository.dart';
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -88,10 +89,17 @@ void main() {
     await database.close();
   });
 
+  // Сырая выборка в боевом порядке (W8): сперва пресетные по sortOrder,
+  // затем строки без индекса (кастомные) по createdAt, id добивает ничьи.
   Future<List<Practice>> nyPractices() =>
       (database.select(database.practices)
             ..where((t) => t.traditionTag.equals('nyingma'))
-            ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
+            ..orderBy([
+              (t) => OrderingTerm(
+                  expression: t.sortOrder, nulls: NullsOrder.last),
+              (t) => OrderingTerm.asc(t.createdAt),
+              (t) => OrderingTerm.asc(t.id),
+            ]))
           .get();
 
   group('applyPreset материализует практики (B-3)', () {
@@ -233,6 +241,60 @@ void main() {
       // далее — применения/сбросы.
       expect(seen, [null, 'nyingma', null]);
       await sub.cancel();
+    });
+  });
+
+  // W8: порядок списка практик обязан следовать за порядком массива в JSON.
+  // Раньше позиция кодировалась смещением `createdAt` на i секунд: при
+  // повторном применении createdAt не перезаписывается (D-26), поэтому
+  // перестановка практик в пресете до списка не доходила, а «дата создания»
+  // практики была подделкой в будущее. Явный порядковый индекс (sort_order)
+  // живёт отдельно от createdAt.
+  group('W8: порядок списка следует за порядком практик в JSON', () {
+    test('перестановка practices при повторном применении меняет порядок '
+        'списка', () async {
+      final repository = PracticeRepository(database);
+
+      await presetManager.applyPreset(ny);
+      expect(
+        (await repository.getByTradition('nyingma'))
+            .map((p) => p.name)
+            .toList(),
+        ['Простирания', 'Мантра Ваджрасаттвы', 'Подношение мандал', 'Гуру-йога'],
+        reason: 'первичный порядок — порядок практик в JSON пресета',
+      );
+
+      // Перестановка тех же практик (id/name/цели не меняются).
+      final permuted = PresetSchema(
+        id: ny.id,
+        name: ny.name,
+        version: ny.version,
+        tradition: ny.tradition,
+        modules: ny.modules,
+        practices: [
+          ny.practices[3], // Гуру-йога
+          ny.practices[0], // Простирания
+          ny.practices[2], // Подношение мандал
+          ny.practices[1], // Мантра Ваджрасаттвы
+        ],
+        eventPacks: [],
+        contentPacks: [],
+      );
+      await presetManager.applyPreset(permuted);
+
+      expect(
+        (await repository.getByTradition('nyingma'))
+            .map((p) => p.name)
+            .toList(),
+        ['Гуру-йога', 'Простирания', 'Подношение мандал', 'Мантра Ваджрасаттвы'],
+        reason: 'повторное применение переназначает порядок (W8): список '
+            'читается через боевой репозиторий, как его видит UI',
+      );
+
+      // Строк не прибавилось и счёт не тронут (D-26): меняется только порядок.
+      final rows = await nyPractices();
+      expect(rows, hasLength(4),
+          reason: 'перестановка — не создание новых практик');
     });
   });
 
