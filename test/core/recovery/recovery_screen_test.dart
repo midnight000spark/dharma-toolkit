@@ -665,6 +665,38 @@ void main() {
       expect(copies.first.sizeBytes, 30);
     });
 
+    // Низкая находка ревью: граница окна не была закреплена (сценарии брали
+    // 2 и 5 копий). Ровно 3 — излишка нет; четвёртая — излишек.
+    test('граница окна: 3 копии — излишка нет, 4 — ровно одна', () {
+      WipeReport reportWith(int count) => WipeReport(
+            prefsCleared: true,
+            corruptCopies: [
+              // Контракт поля — «новейшая первой» (как отдаёт parseCorruptCopies).
+              for (var i = count; i >= 1; i--)
+                CorruptDatabaseCopy(
+                  fileName: '$kAppDatabaseFileName.corrupt-$i',
+                  savedAt: DateTime.fromMillisecondsSinceEpoch(i),
+                  sizeBytes: i,
+                ),
+            ],
+          );
+
+      final three = reportWith(3);
+      expect(three.retainedCorruptCopies, kRetainedCorruptCopies);
+      expect(three.hasExcessCorruptCopies, isFalse);
+      expect(three.excessCorruptCopies, isEmpty,
+          reason: 'ровно 3 копии — всё в окне хранения');
+
+      final four = reportWith(4);
+      expect(four.retainedCorruptCopies, kRetainedCorruptCopies);
+      expect(four.hasExcessCorruptCopies, isTrue);
+      expect(
+        four.excessCorruptCopies.map((c) => c.fileName).toList(),
+        ['$kAppDatabaseFileName.corrupt-1'],
+        reason: 'излишек начинается с четвёртой копии',
+      );
+    });
+
     testWidgets('переполнение копий видно человеку (count, дата/размер)',
         (tester) async {
       await tester.pumpWidget(RecoveryApp(
@@ -714,6 +746,24 @@ void main() {
       );
       expect(find.textContaining('не удалялись автоматически'), findsOneWidget,
           reason: 'человеку прямо сказано: чистка не сделана, право за ним');
+
+      // Низкая находка ревью: ключ мог остаться при пустой строке — проверяем
+      // сам текст, что дата и размер до человека доезжают.
+      final thousandLine = tester.widget<Text>(
+        find.byKey(ValueKey('corrupt-copy-$kAppDatabaseFileName.corrupt-1000')),
+      );
+      expect(thousandLine.data, contains('1000 Б'),
+          reason: 'размер копии виден человеку');
+      expect(
+        thousandLine.data,
+        matches(RegExp(r'\d{2}\.\d{2}\.\d{4} \d{2}:\d{2}')),
+        reason: 'дата копии видна человеку',
+      );
+      final twoKLine = tester.widget<Text>(
+        find.byKey(ValueKey('corrupt-copy-$kAppDatabaseFileName.corrupt-2000')),
+      );
+      expect(twoKLine.data, contains('КБ'),
+          reason: 'размер крупной копии читается в КБ');
     });
 
     testWidgets('копий в пределах окна — тревоги нет', (tester) async {
