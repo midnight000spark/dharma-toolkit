@@ -1,0 +1,440 @@
+{
+  "meta": {
+    "id": "holiday-vectors-2026-2027",
+    "title": "Тест-векторы календарных праздников 2026–2027 (пакет F-81)",
+    "window": "2026–2027",
+    "source": "docs/research/holidays-2026-2027/ — holidays.mvp.json (MVP-срез списка владельца) и VERIFICATION.md (24.09.2026)",
+    "honesty": [
+      "Независимость дают слои B (первичные таблицы календаря на 2027, kalacakra.org) и C (внешние источники, ресёрч 24.09.2026). Наш порт был слоем A той же проверки и независимым источником не считается.",
+      "Это только тесты и фикстуры: пак праздников/событий не вводится, флаг полноты пака и блок 10 не затрагиваются.",
+      "Лосар 2026/2027 и сырые конверсии 2026 уже покрыты tibcal_vectors.json (F-45) — здесь не дублируются; окно 2027 в tibcal-векторах отсутствует.",
+      "Рекуррентные правила без конкретных дат (строки 15–22 mvp.json) и текстовый диапазон месяца (строка 11) не векторизуются: проверяемой даты нет. Текстовое окно молитвенного собрания (строка 9) не закрепляется: верификация признала его частичным, а определение окна расходится с фактическим событием.",
+      "Опровергнутые пункты вне MVP-скоупа (D-23) в фикстуру не включены.",
+      "Тхеравадские даты — национальный (тайский) календарь; наш модуль считает UTC-день (F-49), поэтому проверка полнолуния допускает ±1 день."
+    ],
+    "groups": {
+      "confirmed": "пункты с независимым подтверждением (слои B/C); проверяются тестом",
+      "disputed": "расхождение ±1 день или неоднозначное определение; тестом не закрепляются — только пометка и источники",
+      "refuted": "опровергнутые пункты: только контрпример с явной пометкой; тест закрепляет исправленную версию",
+      "open": "внешне не проверено в пакете 24.09.2026; тестом не закрепляется"
+    }
+  },
+  "confirmed": [
+    {
+      "id": "chotrul-duchen-2026",
+      "engine": "phugpa",
+      "presetTag": "nyingma",
+      "festival": "Чотрул Дючен",
+      "date": "2026-03-03",
+      "lunar": { "month": 1, "day": 15, "leapMonth": false },
+      "sources": [
+        "Men-Tsee-Khang — официальный список 2026",
+        "внешний ресёрч 24.09.2026: Tibet Travel, Maitripa"
+      ]
+    },
+    {
+      "id": "chotrul-duchen-2027",
+      "engine": "phugpa",
+      "presetTag": "nyingma",
+      "festival": "Чотрул Дючен",
+      "date": "2027-02-20",
+      "lunar": { "month": 1, "day": 15, "leapMonth": false },
+      "sources": [
+        "первичные таблицы календаря на 2027 (kalacakra.org)"
+      ],
+      "note": "часть внешних источников даёт 21.02 — расхождение дня"
+    },
+    {
+      "id": "saga-dawa-duchen-2026",
+      "engine": "phugpa",
+      "presetTag": "nyingma",
+      "festival": "Сага Дава Дючен",
+      "date": "2026-05-31",
+      "lunar": { "month": 4, "day": 15, "leapMonth": false },
+      "sources": [
+        "Men-Tsee-Khang — официальный список 2026",
+        "внешний ресёрч 24.09.2026: TNP, FPMT"
+      ]
+    },
+    {
+      "id": "saga-dawa-duchen-2027",
+      "engine": "phugpa",
+      "presetTag": "nyingma",
+      "festival": "Сага Дава Дючен",
+      "date": "2027-06-18",
+      "lunar": { "month": 4, "day": 15, "leapMonth": false },
+      "sources": [
+        "первичные таблицы календаря на 2027 (kalacakra.org)"
+      ]
+    },
+    {
+      "id": "chokhor-duchen-2026",
+      "engine": "phugpa",
+      "presetTag": "nyingma",
+      "festival": "Чокхор Дючен",
+      "date": "2026-07-18",
+      "lunar": { "month": 6, "day": 4, "leapMonth": false },
+      "sources": [
+        "Men-Tsee-Khang — официальный список 2026",
+        "внешний ресёрч 24.09.2026: TNP, Tibet Travel"
+      ]
+    },
+    {
+      "id": "chokhor-duchen-2027",
+      "engine": "phugpa",
+      "presetTag": "nyingma",
+      "festival": "Чокхор Дючен",
+      "date": "2027-08-06",
+      "lunar": { "month": 6, "day": 4, "leapMonth": false },
+      "sources": [
+        "первичные таблицы календаря на 2027 (kalacakra.org)"
+      ],
+      "note": "часть источников расходится по 2027 (см. VERIFICATION.md)"
+    },
+    {
+      "id": "lhabab-duchen-2026",
+      "engine": "phugpa",
+      "presetTag": "nyingma",
+      "festival": "Лхабаб Дючен",
+      "date": "2026-11-01",
+      "lunar": { "month": 9, "day": 22, "leapMonth": false },
+      "sources": [
+        "Men-Tsee-Khang — официальный список 2026",
+        "внешний ресёрч 24.09.2026: TNP, Maitripa"
+      ]
+    },
+    {
+      "id": "lhabab-duchen-2027",
+      "engine": "phugpa",
+      "presetTag": "nyingma",
+      "festival": "Лхабаб Дючен",
+      "date": "2027-11-20",
+      "lunar": { "month": 9, "day": 22, "leapMonth": false },
+      "sources": [
+        "первичные таблицы календаря на 2027 (kalacakra.org)"
+      ]
+    },
+    {
+      "id": "shoton-2026",
+      "engine": "phugpa",
+      "presetTag": "nyingma",
+      "festival": "Фестиваль Шотон",
+      "date": "2026-08-12",
+      "lunar": { "month": 6, "day": 30, "leapMonth": false },
+      "sources": [
+        "внешний ресёрч 24.09.2026: Tibet Travel (часть источников — 23.08)"
+      ]
+    },
+    {
+      "id": "shoton-2027",
+      "engine": "phugpa",
+      "presetTag": "nyingma",
+      "festival": "Фестиваль Шотон",
+      "date": "2027-08-31",
+      "lunar": { "month": 6, "day": 30, "leapMonth": false },
+      "sources": [
+        "первичные таблицы календаря на 2027 (kalacakra.org)"
+      ]
+    },
+    {
+      "id": "palden-lhamo-2026",
+      "engine": "phugpa",
+      "presetTag": "nyingma",
+      "festival": "Фестиваль Палден Ламо",
+      "date": "2026-11-24",
+      "lunar": { "month": 10, "day": 15, "leapMonth": false },
+      "sources": [
+        "внешний ресёрч 24.09.2026: Tibet Travel, tibetdiscovery"
+      ]
+    },
+    {
+      "id": "palden-lhamo-2027",
+      "engine": "phugpa",
+      "presetTag": "nyingma",
+      "festival": "Фестиваль Палден Ламо",
+      "date": "2027-12-13",
+      "lunar": { "month": 10, "day": 15, "leapMonth": false },
+      "sources": [
+        "первичные таблицы календаря на 2027 (kalacakra.org)"
+      ]
+    },
+    {
+      "id": "zamling-chisang-2026",
+      "engine": "phugpa",
+      "presetTag": "nyingma",
+      "festival": "Самье Долде (Замлинг Чисанг)",
+      "date": "2026-06-29",
+      "lunar": { "month": 5, "day": 15, "leapMonth": false },
+      "sources": [
+        "Men-Tsee-Khang — официальный список 2026",
+        "внешний ресёрч 24.09.2026: Tibet Travel (часть источников — 28.06)"
+      ]
+    },
+    {
+      "id": "guru-rinpoche-birth-2026",
+      "engine": "phugpa",
+      "presetTag": "nyingma",
+      "festival": "День рождения Гуру Ринпоче",
+      "date": "2026-06-24",
+      "lunar": { "month": 5, "day": 10, "leapMonth": false },
+      "sources": [
+        "внешний ресёрч 24.09.2026: timeanddate, officeholidays, nationaltoday"
+      ]
+    },
+    {
+      "id": "guru-rinpoche-birth-2027",
+      "engine": "phugpa",
+      "presetTag": "nyingma",
+      "festival": "День рождения Гуру Ринпоче",
+      "date": "2027-07-13",
+      "lunar": { "month": 5, "day": 10, "leapMonth": false },
+      "sources": [
+        "внешний ресёрч 24.09.2026: timeanddate, officeholidays, nationaltoday"
+      ],
+      "note": "другое прочтение системы (10/6) даёт 13.06.2027 — не календарь Пхугпа"
+    },
+    {
+      "id": "magha-puja-2026",
+      "engine": "uposatha",
+      "presetTag": "theravada_default",
+      "festival": "Магха Пуджа",
+      "date": "2026-03-03",
+      "kind": "full_moon",
+      "sources": [
+        "официальный календарь Таиланда 2026 (MFA, BCCT)",
+        "астрономическое полнолуние 03.03.2026"
+      ]
+    },
+    {
+      "id": "magha-puja-2027",
+      "engine": "uposatha",
+      "presetTag": "theravada_default",
+      "festival": "Магха Пуджа",
+      "date": "2027-02-21",
+      "kind": "full_moon",
+      "sources": [
+        "официальный календарь 2027 (timeout.com), calendarlabs"
+      ],
+      "note": "тайская зона: полнолуние в ночь на 21.02; наш UTC-день может дать 20.02 (±1)"
+    },
+    {
+      "id": "visakha-puja-2026",
+      "engine": "uposatha",
+      "presetTag": "theravada_default",
+      "festival": "Висакха Пуджа (Весак)",
+      "date": "2026-05-31",
+      "kind": "full_moon",
+      "sources": [
+        "официальный календарь Таиланда 2026 (MFA, BCCT)",
+        "астрономическое полнолуние 31.05.2026"
+      ]
+    },
+    {
+      "id": "visakha-puja-2027",
+      "engine": "uposatha",
+      "presetTag": "theravada_default",
+      "festival": "Висакха Пуджа (Весак)",
+      "date": "2027-05-20",
+      "kind": "full_moon",
+      "sources": [
+        "официальный календарь 2027 (timeout.com), officeholidays"
+      ]
+    },
+    {
+      "id": "asalha-puja-2026",
+      "engine": "uposatha",
+      "presetTag": "theravada_default",
+      "festival": "Асалха Пуджа",
+      "date": "2026-07-29",
+      "kind": "full_moon",
+      "sources": [
+        "официальный календарь Таиланда 2026 (MFA, BCCT)",
+        "астрономическое полнолуние 29.07.2026"
+      ]
+    },
+    {
+      "id": "vassa-2026",
+      "engine": "uposatha",
+      "presetTag": "theravada_default",
+      "festival": "Васса (Кхао Пханса)",
+      "date": "2026-07-30",
+      "kind": "post_full_moon",
+      "sources": [
+        "внешний ресёрч 24.09.2026: thailandnow, publicholidays.asia",
+        "день после полнолуния Асалхи"
+      ]
+    },
+    {
+      "id": "pavarana-2026",
+      "engine": "uposatha",
+      "presetTag": "theravada_default",
+      "festival": "Паварана (Ок Пханса)",
+      "date": "2026-10-26",
+      "kind": "full_moon",
+      "sources": [
+        "внешний ресёрч 24.09.2026: thailandee, Wikipedia, astronomy.com",
+        "астрономическое полнолуние 26.10.2026"
+      ]
+    },
+    {
+      "id": "pavarana-2027",
+      "engine": "uposatha",
+      "presetTag": "theravada_default",
+      "festival": "Паварана (Ок Пханса)",
+      "date": "2027-10-15",
+      "kind": "full_moon",
+      "sources": [
+        "внешний ресёрч 24.09.2026: Catalina, timeandspace, theskylive"
+      ]
+    },
+    {
+      "id": "anapanasati-2027",
+      "engine": "uposatha",
+      "presetTag": "theravada_default",
+      "festival": "День Анапанасати",
+      "date": "2027-11-14",
+      "kind": "full_moon",
+      "sources": [
+        "внешний ресёрч 24.09.2026: umetravel, mapofthailand, destinationthailand"
+      ]
+    }
+  ],
+  "disputed": [
+    {
+      "id": "asalha-puja-2027",
+      "engine": "uposatha",
+      "presetTag": "theravada_default",
+      "festival": "Асалха Пуджа (2027)",
+      "archiveDate": "2027-07-19",
+      "kind": "full_moon",
+      "note": "Не однозначно: большинство источников и официальный календарь 2027 дают 18.07; заявленная 19.07 поддержана меньшинством. Ждём финальный список Кабинета Таиланда.",
+      "sources": [
+        "внешний ресёрч 24.09.2026: timeout.com (офиц.) → 18.07; officeholidays → 19.07"
+      ]
+    },
+    {
+      "id": "vassa-2027",
+      "engine": "uposatha",
+      "presetTag": "theravada_default",
+      "festival": "Васса (Кхао Пханса, 2027)",
+      "archiveDate": "2027-07-20",
+      "kind": "post_full_moon",
+      "note": "Не однозначно, как и Асалха 2027: большинство источников дают 19.07.",
+      "sources": [
+        "внешний ресёрч 24.09.2026: timeout.com → 19.07; publicholidays.asia → 20.07"
+      ]
+    },
+    {
+      "id": "longchenpa-parinirvana-2026",
+      "engine": "phugpa",
+      "presetTag": "nyingma",
+      "festival": "Паринирвана Лонгченпы Рабджама (2026)",
+      "archiveDate": "2026-02-04",
+      "lunar": { "month": 12, "day": 18, "leapMonth": false },
+      "note": "Лунная дата 18/12 подтверждена; гражданская расходится на день: Rabten — 03.02, архив — 04.02. Закреплению не подлежит.",
+      "sources": [
+        "himalayanart.org (лунная дата)",
+        "внешний ресёрч 24.09.2026: Rabten → 03.02.2026"
+      ]
+    },
+    {
+      "id": "longchenpa-parinirvana-2027",
+      "engine": "phugpa",
+      "presetTag": "nyingma",
+      "festival": "Паринирвана Лонгченпы Рабджама (2027)",
+      "archiveDate": "2027-01-25",
+      "lunar": { "month": 12, "day": 18, "leapMonth": false },
+      "note": "Аналогично 2026: Rabten — 24.01, архив — 25.01; гражданская дата ±1 день.",
+      "sources": [
+        "внешний ресёрч 24.09.2026: Rabten → 24.01.2027"
+      ]
+    }
+  ],
+  "refuted": [
+    {
+      "id": "jigme-lingpa-parinirvana-2026",
+      "engine": "phugpa",
+      "presetTag": "nyingma",
+      "festival": "Паринирвана Джигме Лингпы (2026)",
+      "archive": { "date": "2026-11-12", "lunar": { "month": 10, "day": 3 } },
+      "corrected": { "date": "2026-10-13", "lunar": { "month": 9, "day": 3 } },
+      "reason": "Каноническая лунная дата — 3/9 (9-й месяц, 3-й день), а не 3/10 из архива; архивная дата — валидный день 10/3, но не годовщина.",
+      "sources": [
+        "himalayanart.org: 9th Month, 3rd Day",
+        "longchennyingthigvn.com: 3rd day of the 9th Tibetan month"
+      ]
+    },
+    {
+      "id": "jigme-lingpa-parinirvana-2027",
+      "engine": "phugpa",
+      "presetTag": "nyingma",
+      "festival": "Паринирвана Джигме Лингпы (2027)",
+      "archive": { "date": "2027-12-01", "lunar": { "month": 10, "day": 3 } },
+      "corrected": { "date": "2027-11-01", "lunar": { "month": 9, "day": 3 } },
+      "reason": "Та же ошибка лунной даты 3/10; канон — 3/9.",
+      "sources": [
+        "himalayanart.org",
+        "longchennyingthigvn.com"
+      ]
+    },
+    {
+      "id": "anapanasati-2026",
+      "engine": "uposatha",
+      "presetTag": "theravada_default",
+      "festival": "День Анапанасати (2026)",
+      "archive": { "date": "2026-11-05" },
+      "corrected": { "date": "2026-11-24", "kind": "full_moon" },
+      "reason": "05.11.2026 — не полнолуние (фаза 0.876); полнолуние 12-го месяца — 24.11.2026.",
+      "sources": [
+        "внешний ресёрч 24.09.2026: Catalina, astronomy.com",
+        "тайский календарь: 24–25.11.2026"
+      ]
+    },
+    {
+      "id": "model-intercalary-2027",
+      "engine": "phugpa-structure",
+      "claim": "Утверждение модели архива: «в 2027 дублируется 1-й месяц»",
+      "corrected": {
+        "intercalary": { "year": 2027, "month": 2, "firstDate": "2027-03-09" },
+        "notIntercalary": { "year": 2027, "month": 1 }
+      },
+      "reason": "Вставной — 2-й месяц, а не 1-й; вставного 1/1 не существует.",
+      "note": "Структура подтверждена внешне; конкретная дата 09.03.2027 — привязка порта.",
+      "sources": [
+        "первичная таблица календаря на 2027 (kalacakra.org): Tibetan Lunar Month 2 (Intercalary)",
+        "arXiv: реформы календаря — вставной месяц 2"
+      ]
+    }
+  ],
+  "open": [
+    {
+      "id": "zamling-chisang-2027",
+      "engine": "phugpa",
+      "presetTag": "nyingma",
+      "festival": "Самье Долде (Замлинг Чисанг, 2027)",
+      "archiveDate": "2027-07-18",
+      "note": "Дата 2027 внешне не проверена в пакете 24.09.2026 (рекомендована сверка с альманахом).",
+      "sources": []
+    },
+    {
+      "id": "longchenpa-birth-2026",
+      "engine": "phugpa",
+      "presetTag": "nyingma",
+      "festival": "День рождения Лонгченпы Рабджама (2026)",
+      "archiveDate": "2026-03-26",
+      "lunar": { "month": 2, "day": 8, "leapMonth": false },
+      "note": "Лунная дата 8/2 подтверждена; гражданская дата — портовая, внешне не подтверждена.",
+      "sources": []
+    },
+    {
+      "id": "longchenpa-birth-2027",
+      "engine": "phugpa",
+      "presetTag": "nyingma",
+      "festival": "День рождения Лонгченпы Рабджама (2027)",
+      "archiveDate": "2027-04-14",
+      "lunar": { "month": 2, "day": 8, "leapMonth": false },
+      "note": "Гражданская дата 2027 не подтверждена; ждём альманах 2027.",
+      "sources": []
+    }
+  ]
+}
