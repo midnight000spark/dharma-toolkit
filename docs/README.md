@@ -33,6 +33,7 @@
 | `archive/constitution-history.md` | история конституции AGENT v1…v2.12 | адресно | archive (read-only) |
 | `reference/decisions.md` | тела решений D- | адресно по якорю | reference (read-only) |
 | `reference/facts.md` | тела фактов F- | адресно по якорю | reference (read-only) |
+| `research/holidays-2026-2027/README.md` | владельческий список праздников 2026–2027 и его верификация (3 слоя; спорные пункты) | при работе с календарными праздниками (блок 10, Этап 8) | research (read-only) |
 | `../README.md` | внешний обзор проекта | — | hot (external) |
 | `../.opencode/agent/dharma.md` | конфиг основного агента | — | config |
 
@@ -50,7 +51,9 @@
 
 ## Research-файлы
 
-Файлы исследований (agent1/agent2/agent3, `stek.md` и др.) в репозитории
-**отсутствуют — вне репо** (пакет `docs-arch-1`, блок 5; вердикт по стеку —
-`stek.md` в `.tmp/research/`, D-47/F-72). Если появятся в репо — место
-`docs/research/` с индекс-саммари и статусом.
+Место research-материалов в репо — `docs/research/` (у каждого — индекс-саммари
+и статус). Сейчас там: `research/holidays-2026-2027/` — владельческий список
+праздников 2026–2027 и его верификация (перенесён из `.tmp` 2026-10-02).
+
+Прочие материалы исследований остаются **вне репо** (`.tmp/research/`):
+agent1/agent2/agent3, вердикт по стеку — `stek.md`, D-47/F-72.
