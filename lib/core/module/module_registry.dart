@@ -83,6 +83,12 @@ class ModuleRegistry {
   /// «allOk» за прогон, который имел фейлы (B-23).
   ModuleInitReport? _lastReport;
 
+  /// Идущий прогон [initAll] (W15). Пока он не завершён, `_initialized`
+  /// ещё `false`, и без этого поля второй конкурентный вызов прошёл бы по
+  /// модулям повторно (`initCalls=2` — зонд 30.09). Single-flight: второй
+  /// вызов обязан вернуть тот же future, а не запустить модули заново.
+  Future<ModuleInitReport>? _inFlight;
+
   /// Registers a module. Must be called before [initAll].
   ///
   /// Throws [StateError] if registry is already initialized.
@@ -109,8 +115,24 @@ class ModuleRegistry {
   /// Идемпотентно: повторный вызов не переклассифицирует модули, а возвращает
   /// **тот же** отчёт, что и первый (B-23). Отчёт — часть контракта: пустой
   /// «allOk» на втором вызове маскировал бы деградацию первого прогона.
-  Future<ModuleInitReport> initAll() async {
-    if (_initialized) return _lastReport ?? const ModuleInitReport([]);
+  ///
+  /// Single-flight (W15): конкурентный вызов, пришедший пока первый прогон
+  /// ещё идёт, получает **тот же** future и не запускает модули повторно.
+  /// Метод намеренно не `async`: присвоение [_inFlight] обязано случиться
+  /// синхронно, до первого `await`, иначе гонка остаётся.
+  Future<ModuleInitReport> initAll() {
+    if (_initialized) {
+      return Future.value(_lastReport ?? const ModuleInitReport([]));
+    }
+    final inFlight = _inFlight;
+    if (inFlight != null) return inFlight;
+    final future = _runInit();
+    _inFlight = future;
+    return future;
+  }
+
+  /// Один прогон модулей; [initAll] держит его в [_inFlight] до завершения.
+  Future<ModuleInitReport> _runInit() async {
     final failures = <ModuleInitFailure>[];
     for (final module in _modules.values) {
       try {
@@ -121,6 +143,7 @@ class ModuleRegistry {
     }
     _initialized = true;
     _lastReport = ModuleInitReport(failures);
+    _inFlight = null;
     return _lastReport!;
   }
 
@@ -145,6 +168,9 @@ class ModuleRegistry {
     } finally {
       _modules.clear();
       _initialized = false;
+      // Прогон не переживает disposeAll: следующий initAll обязан начать
+      // заново, а не вернуть future от прошлого жизненного цикла (W15).
+      _inFlight = null;
       // Defensive: после disposeAll первый initAll всё равно пересчитает
       // отчёт — строка держит инвариант «кэш = текущий жизненный цикл»,
       // наблюдаемого поведения за ней нет (guard-теста тоже нет).

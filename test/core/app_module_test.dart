@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dharma_toolkit/core/module/app_module.dart';
 import 'package:dharma_toolkit/core/module/module_registry.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -143,6 +145,33 @@ void main() {
       expect(second.failures.map((f) => f.moduleId), ['failing']);
     });
 
+    test('конкурентный initAll — single-flight: модули инициализируются '
+        'один раз (W15)', () async {
+      final registry = ModuleRegistry.instance;
+      final gate = _GateModule('gate');
+      registry.register(gate);
+
+      // Два вызова подряд, пока первый висит на gate: без single-flight
+      // второй застаёт `_initialized == false` и проходит модули повторно.
+      final first = registry.initAll();
+      final second = registry.initAll();
+
+      // К этому моменту первый прогон дошёл до gate и вызвал init один раз
+      // (второй вызов обязан вернуть in-flight future, а не звать init снова).
+      expect(gate.initCalls, 1,
+          reason: 'single-flight: конкурентный вызов не должен звать init '
+              'повторно');
+
+      gate.release();
+      final reports = await Future.wait([first, second]);
+
+      expect(gate.initCalls, 1);
+      expect(gate.completedInits, 1);
+      expect(reports[0], same(reports[1]),
+          reason: 'оба вызова получают один и тот же отчёт');
+      expect(reports[0].allOk, isTrue);
+    });
+
     test('disposeAll calls dispose in reverse registration order', () async {
       final registry = ModuleRegistry.instance;
       final disposeOrder = <String>[];
@@ -233,4 +262,37 @@ class _OrderTrackingModule implements AppModule {
   Future<void> dispose() async {
     disposeOrder.add(id);
   }
+}
+
+/// Модуль с гейтом для проверки single-flight (W15): [init] висит, пока
+/// [release] не откроет гейт, поэтому конкурентные вызовы детерминированно
+/// оказываются «в полёте» одновременно.
+class _GateModule implements AppModule {
+  _GateModule(this.id);
+
+  final Completer<void> _gate = Completer<void>();
+
+  int initCalls = 0;
+  int completedInits = 0;
+
+  @override
+  final String id;
+
+  @override
+  String get name => id;
+
+  @override
+  String get version => '1.0.0';
+
+  void release() => _gate.complete();
+
+  @override
+  Future<void> init() async {
+    initCalls++;
+    await _gate.future;
+    completedInits++;
+  }
+
+  @override
+  Future<void> dispose() async {}
 }
