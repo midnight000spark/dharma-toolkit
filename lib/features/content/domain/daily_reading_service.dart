@@ -75,6 +75,9 @@ class DailyReadingService {
     if (readings.isEmpty) {
       readings.add(_fallback(date));
       notes.add(ContentFallbacks.note);
+      // S5: id требования и пути — только в диагностике; UI-строка чистая
+      // (стабильный message-key = имя UI-константы, то же разделение, что C8г).
+      debugNotes.add(ContentFallbacks.debugNote);
     }
 
     return DailyReadings(

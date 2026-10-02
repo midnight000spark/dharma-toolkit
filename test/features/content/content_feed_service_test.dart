@@ -148,9 +148,11 @@ void main() {
         reason: 'пользователь обязан узнать, что пак не прочитан, а не видеть '
             'тихую пустоту',
       );
-      expect(feed.debugNotes.single,
-          contains('assets/content_packs/broken.json'));
-      expect(feed.debugNotes.single, contains('битый JSON'));
+      expect(
+          feed.debugNotes.any(
+              (n) => n.contains('assets/content_packs/broken.json')),
+          isTrue);
+      expect(feed.debugNotes.any((n) => n.contains('битый JSON')), isTrue);
     });
 
     test('C8г: отказ записи — без пути поля в userNotes, с путём в debugNotes',
@@ -169,8 +171,8 @@ void main() {
       // каналах потеря называется частичной.
       expect(feed.userNotes.any((n) => n.contains('не загружен')), isFalse);
       expect(feed.userNotes.any((n) => n.contains('загружен частично')), isTrue);
-      expect(feed.debugNotes.single, contains('entries[2].title'));
-      expect(feed.debugNotes.single, isNot(contains('Пак не загружен')));
+      expect(feed.debugNotes.any((n) => n.contains('entries[2].title')), isTrue);
+      expect(feed.debugNotes.any((n) => n.contains('Пак не загружен')), isFalse);
     });
 
     test('повторяющаяся причина звучит один раз, а не восемь', () {

@@ -202,8 +202,8 @@ void main() {
       // диагностике.
       expect(day.notes.any((n) => n.contains('Синтетическое чтение')), isFalse);
       expect(day.notes.any((n) => n.contains('«p»')), isFalse);
-      expect(day.debugNotes.single, contains('Синтетическое чтение'));
-      expect(day.debugNotes.single, contains('«p»'));
+      expect(day.debugNotes.any((n) => n.contains('Синтетическое чтение')), isTrue);
+      expect(day.debugNotes.any((n) => n.contains('«p»')), isTrue);
     });
 
     test('календарь тибетских дат не знает — честный отказ, отличный от '
@@ -226,8 +226,8 @@ void main() {
       // C8г (ревью): тег традиции и названия не уходят в user-канал.
       expect(day.notes.any((n) => n.contains('theravada')), isFalse);
       expect(day.notes.any((n) => n.contains('Синтетическое чтение')), isFalse);
-      expect(day.debugNotes.single, contains('theravada'));
-      expect(day.debugNotes.single, contains('Синтетическое чтение'));
+      expect(day.debugNotes.any((n) => n.contains('theravada')), isTrue);
+      expect(day.debugNotes.any((n) => n.contains('Синтетическое чтение')), isTrue);
     });
 
     test('ротация: соседние дни не повторяют один и тот же текст (годовой свип)',
@@ -291,8 +291,8 @@ void main() {
       // C8г (ревью): имя и тег чужого пака — только в диагностике.
       expect(day.notes.any((n) => n.contains('foreign')), isFalse);
       expect(day.notes.any((n) => n.contains('theravada')), isFalse);
-      expect(day.debugNotes.single, contains('foreign'));
-      expect(day.debugNotes.single, contains('theravada'));
+      expect(day.debugNotes.any((n) => n.contains('foreign')), isTrue);
+      expect(day.debugNotes.any((n) => n.contains('theravada')), isTrue);
     });
 
     test('пул собирается только из записей без правила даты', () {
@@ -337,9 +337,11 @@ void main() {
       expect(day.notes.any((n) => n.contains('entries[')), isFalse,
           reason: 'путь поля — внутренняя деталь, ему место в диагностике');
       expect(day.notes.any((n) => n.contains('assets/')), isFalse);
-      expect(day.debugNotes.single, contains('entries[2].title'));
+      expect(day.debugNotes.any((n) => n.contains('entries[2].title')), isTrue);
       expect(
-          day.debugNotes.single, contains('assets/content_packs/broken.json'));
+          day.debugNotes.any(
+              (n) => n.contains('assets/content_packs/broken.json')),
+          isTrue);
     });
 
     test('битый JSON: user-строка без сырой причины и пути', () {
@@ -350,14 +352,14 @@ void main() {
       expect(day.notes.any((n) => n.contains('пак повреждён: не читается')),
           isTrue);
       expect(day.notes.any((n) => n.contains('битый JSON')), isFalse);
-      expect(day.debugNotes.single, contains('битый JSON'));
+      expect(day.debugNotes.any((n) => n.contains('битый JSON')), isTrue);
     });
 
-    test('без сбоев диагностика пуста, фолбэк-поведение не меняется', () {
+    test('без сбоев в диагностике — только запись фолбэка', () {
       final day = serviceOf(packs: const []).readingsFor(_today);
 
       expect(day.notes, contains(ContentFallbacks.note));
-      expect(day.debugNotes, isEmpty);
+      expect(day.debugNotes, [ContentFallbacks.debugNote]);
     });
   });
 
@@ -409,6 +411,38 @@ void main() {
         expect(text.length, lessThan(160),
             reason: 'фолбэк обязан оставаться кратким (FR-CNT-3)');
       }
+    });
+
+    test('S5: в UI только локализуемый текст — id и пути уходят в диагностику',
+        () {
+      final day = serviceOf(packs: const []).readingsFor(_today);
+      final reading = day.readings.single;
+
+      // Весь текст, который видит пользователь: пояснение дня, поля чтения и
+      // UI-константы фолбэка. Внутренние id требований и пути ассетов здесь
+      // недопустимы — их место в диагностике (то же разделение, что C8г).
+      final uiTexts = <String>[
+        ...day.notes,
+        reading.title,
+        reading.body,
+        reading.attribution,
+        ContentFallbacks.title,
+        ContentFallbacks.attribution,
+        ContentFallbacks.note,
+        ...ContentFallbacks.formulations,
+      ];
+      for (final text in uiTexts) {
+        expect(RegExp(r'FR-[A-Z]+-\d').hasMatch(text), isFalse,
+            reason: 'внутренний id требования не место в UI-строке: «$text»');
+        expect(text.contains('assets/'), isFalse,
+            reason: 'путь ассета — диагностике: «$text»');
+        expect(text.contains('.json'), isFalse,
+            reason: 'ключ ассета — диагностике: «$text»');
+      }
+      expect(day.notes, contains(ContentFallbacks.note));
+      expect(day.debugNotes, contains(ContentFallbacks.debugNote));
+      expect(day.debugNotes.any((n) => n.contains('FR-CNT-3')), isTrue,
+          reason: 'id требования уходит в диагностику, а не теряется');
     });
   });
 }
