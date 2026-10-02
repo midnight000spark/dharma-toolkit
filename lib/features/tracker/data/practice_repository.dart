@@ -124,6 +124,10 @@ class PracticeRepository {
   ///
   /// Бросает [ArgumentError], если [amount] <= 0. Проверка стоит до открытия
   /// транзакции: невалидный вызов не должен оставлять следов в БД.
+  ///
+  /// Бросает [PracticeNotFoundException], если практики с [practiceId] нет:
+  /// `UPDATE` меняет 0 строк, и доменный отказ приходит до вставки истории
+  /// (W34) — а не сырое нарушение внешнего ключа.
   Future<void> incrementCount(int practiceId, int amount) async {
     if (amount <= 0) {
       throw ArgumentError.value(amount, 'amount', 'must be positive');
@@ -133,7 +137,7 @@ class PracticeRepository {
       // Атомарный инкремент: current_count = current_count + amount.
       // PracticesCompanion.custom принимает Expression<int>, что позволяет
       // сослаться на колонку таблицы в правой части присваивания.
-      await (_database.update(_database.practices)
+      final updated = await (_database.update(_database.practices)
             ..where((t) => t.id.equals(practiceId)))
           .write(
         PracticesCompanion.custom(
@@ -141,6 +145,15 @@ class PracticeRepository {
           updatedAt: Variable(DateTime.now()),
         ),
       );
+
+      // W34: `UPDATE` по отсутствующему id меняет 0 строк. Без этой проверки
+      // вставка истории падала бы сырым FK-исключением (`count_history`
+      // ссылается на `practices`, app_database.dart:123): «практики нет»
+      // выглядело бы как «повреждена целостность БД». Доменный отказ — ДО
+      // вставки истории, поэтому следа в `count_history` не остаётся.
+      if (updated == 0) {
+        throw PracticeNotFoundException(practiceId);
+      }
 
       // Добавляем запись в историю
       await _database.into(_database.countHistory).insert(

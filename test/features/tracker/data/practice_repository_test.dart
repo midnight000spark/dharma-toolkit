@@ -321,6 +321,29 @@ void main() {
       });
     });
 
+    // W34: UPDATE по несуществующему id меняет 0 строк, а вставка истории
+    // падала сырым нарушением FK `count_history.practice_id`. Причина —
+    // «практики нет», а не «нарушен внешний ключ»: отказ обязан приходить из
+    // домена ДО вставки истории. Гард живёт на слое репозитория (урок 3).
+    group('W34: incrementCount несуществующего id', () {
+      test('→ PracticeNotFoundException, следов в истории нет', () async {
+        final db = AppDatabase.forTesting(
+            NativeDatabase.memory(setup: enableForeignKeys));
+        final repo = PracticeRepository(db);
+
+        await expectLater(
+          repo.incrementCount(9999, 1),
+          throwsA(isA<PracticeNotFoundException>()),
+        );
+
+        final history = await db.select(db.countHistory).get();
+        expect(history, isEmpty,
+            reason: 'гард стоит до вставки истории: FK-следа быть не должно');
+
+        await db.close();
+      });
+    });
+
     // C4 (D-45): строка с `preset_id` без `preset_practice_id` невидима
     // upsert-ключу материализации (tradition_tag, preset_practice_id), а
     // уникальный индекс SQLite на NULL не конфликтует → первый же applyPreset

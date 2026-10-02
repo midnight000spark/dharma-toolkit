@@ -106,3 +106,21 @@ class PracticeEntity {
     );
   }
 }
+
+/// Практика с указанным id не найдена при записи (W34).
+///
+/// Инкремент идёт двумя шагами: `UPDATE` счётчика и вставка строки истории,
+/// связанной с практикой внешним ключом. При отсутствующем id `UPDATE` меняет
+/// 0 строк, и без проверки следующий шаг падал бы сырым нарушением FK
+/// `count_history.practice_id` — причина «практики нет» выглядела бы как
+/// «повреждена целостность БД». Доменный отказ приходит до вставки истории.
+class PracticeNotFoundException implements Exception {
+  /// id, по которому не нашлось строки практики.
+  final int practiceId;
+
+  const PracticeNotFoundException(this.practiceId);
+
+  @override
+  String toString() =>
+      'PracticeNotFoundException: практика id=$practiceId не найдена';
+}
