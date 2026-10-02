@@ -24,6 +24,7 @@ import 'package:dharma_toolkit/core/events/event_bus_provider.dart';
 import 'package:dharma_toolkit/core/storage/storage_module.dart';
 import 'package:dharma_toolkit/features/calendar/data/calendar_special_days_source.dart';
 import 'package:dharma_toolkit/features/calendar/presentation/providers/calendar_providers.dart';
+import 'package:dharma_toolkit/features/events/domain/notification_plan.dart';
 import 'package:dharma_toolkit/features/events/domain/notification_scheduler.dart';
 import 'package:dharma_toolkit/features/events/domain/notification_settings.dart';
 import 'package:dharma_toolkit/features/events/platform/degraded_notification_scheduler.dart';
@@ -158,6 +159,51 @@ void main() {
       tags.add('');
       await pumpEventQueue();
       expect(container.read(activeSpecialDaysSourceProvider), isNull);
+    });
+  });
+
+  group('W19 — планировщик подключается после первого кадра', () {
+    final item = NotificationPlanItem(
+      id: 100000,
+      scheduledAt: DateTime(2026, 6, 2, 8),
+      title: 'Событие',
+      body: 'Текст',
+      payload: '',
+    );
+
+    test('порт не объявляет пункт поставленным, пока реальный планировщик '
+        'не подключён', () async {
+      final real = InMemoryNotificationScheduler();
+      final pending = Completer<NotificationScheduler>();
+      final deferred = DeferredNotificationScheduler(() => pending.future);
+
+      var completed = false;
+      final scheduling = deferred.schedule(item).then((_) => completed = true);
+      await pumpEventQueue();
+
+      expect(completed, isFalse,
+          reason: 'заглушка «сразу готово» потеряла бы напоминание молча; '
+              'метод обязан ждать реальный планировщик');
+
+      pending.complete(real);
+      await scheduling;
+
+      expect(real.scheduled.keys, [item.id],
+          reason: 'пункт обязан дойти до реального планировщика после connect');
+    });
+
+    test('connect() связывает порт с реальным планировщиком (post-frame)',
+        () async {
+      final real = InMemoryNotificationScheduler(
+          permission: NotificationPermission.denied);
+      final deferred = DeferredNotificationScheduler(() async => real);
+
+      deferred.connect();
+
+      expect(await deferred.requestNotificationsPermission(),
+          NotificationPermission.denied);
+      expect(real.permissionRequests, 1);
+      expect(await deferred.canScheduleExact(), isFalse);
     });
   });
 

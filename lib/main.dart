@@ -18,6 +18,7 @@ import 'core/recovery/startup.dart';
 import 'core/storage/storage_module.dart';
 import 'features/calendar/presentation/providers/calendar_providers.dart';
 import 'features/events/application/notification_replanner.dart';
+import 'features/events/domain/notification_plan.dart' show NotificationPlanItem;
 import 'features/events/domain/notification_scheduler.dart';
 import 'features/events/platform/degraded_notification_scheduler.dart';
 import 'features/events/platform/notification_gateway.dart';
@@ -94,7 +95,15 @@ Future<void> main() async {
     mountedRoot = await runStartupCycle<AppServices>(
       bootstrap: bootstrapServices,
       mountApp: (services) async {
-        final scheduler = await initNotifications();
+        // W19: платформенный планировщик (база таймзон `initializeTimeZones`,
+        // плагин, запрос зоны устройства) подключается ПОСЛЕ первого кадра.
+        // Раньше `await initNotifications()` стоял до `runApp`: молчащая
+        // платформа держала пустой экран до собственного ответа, и таймаут
+        // старта его бы не спас — кадр ещё не был отрисован. Порт обязан быть
+        // привязан к моменту создания `ProviderScope` (DI-гард W20), поэтому
+        // привязывается отложенная связь, а не заглушка: методы честно ждут
+        // реальный планировщик и не теряют напоминания молча.
+        final scheduler = DeferredNotificationScheduler(initNotifications);
         runApp(ProviderScope(
           overrides: [
             appDatabaseProvider.overrideWithValue(services.database),
@@ -104,6 +113,7 @@ Future<void> main() async {
           ],
           child: const DharmaToolkitApp(),
         ));
+        WidgetsBinding.instance.addPostFrameCallback((_) => scheduler.connect());
       },
       mountRecovery: mountRecoveryRoot,
     );
@@ -165,6 +175,55 @@ List<Override> platformPortOverrides({
       notificationSchedulerProvider.overrideWithValue(scheduler),
     ];
 
+/// Планировщик, подключаемый после первого кадра (W19).
+///
+/// Экземпляр отдаётся в `notificationSchedulerProvider` **синхронно** (порт
+/// обязан быть привязан — DI-гард W20), а реальный платформенный планировщик
+/// приходит асинхронно, когда приложение уже показало первый кадр.
+///
+/// Почему не заглушка: `DegradedNotificationScheduler` на время старта был бы
+/// ложью — напоминания терялись бы молча. Методы здесь ждут реальный
+/// планировщик; отказ инициализации домен получает честно (его возвращает
+/// [initNotifications] как деградацию с причиной).
+class DeferredNotificationScheduler implements NotificationScheduler {
+  DeferredNotificationScheduler(this._resolve);
+
+  final Future<NotificationScheduler> Function() _resolve;
+
+  Future<NotificationScheduler>? _pending;
+
+  /// Запустить подключение реального планировщика (post-frame из `main`).
+  void connect() {
+    _pending ??= _resolve();
+  }
+
+  /// Реальный планировщик. `connect()` — основной путь; ленивое разрешение —
+  /// страховка для вызова порта до первого кадра (например, в тесте или на
+  /// retry), чтобы метод не ждал подключения, которого не будет.
+  Future<NotificationScheduler> get _delegate => _pending ??= _resolve();
+
+  @override
+  Future<void> schedule(NotificationPlanItem item) async =>
+      (await _delegate).schedule(item);
+
+  @override
+  Future<void> cancel(int id) async => (await _delegate).cancel(id);
+
+  @override
+  Future<void> cancelRange({required int fromId, required int toId}) async =>
+      (await _delegate).cancelRange(fromId: fromId, toId: toId);
+
+  @override
+  Future<List<int>> pendingIds() async => (await _delegate).pendingIds();
+
+  @override
+  Future<bool> canScheduleExact() async => (await _delegate).canScheduleExact();
+
+  @override
+  Future<NotificationPermission> requestNotificationsPermission() async =>
+      (await _delegate).requestNotificationsPermission();
+}
+
 /// Подготовить планировщик уведомлений (пакет 6.2).
 ///
 /// Платформенный сервис требует асинхронной инициализации (база таймзон +
@@ -172,6 +231,10 @@ List<Override> platformPortOverrides({
 /// Отказ **не валит старт**: приложение работает без напоминаний, а причина
 /// уходит в лог — тишина вместо уведомлений была бы неотличима от «всё
 /// запланировано» (урок 1).
+///
+/// W19: сама инициализация ограничена [kStartupTimeout] — подвисший плагин
+/// или база таймзон не оставляет порт в вечном ожидании (напоминания не
+/// сработают, и это видно как честная деградация с причиной).
 Future<NotificationScheduler> initNotifications() async {
   try {
     final service = NotificationService(
@@ -179,7 +242,7 @@ Future<NotificationScheduler> initNotifications() async {
       timeZoneSource: const FlutterTimeZoneSource(),
       warn: debugPrint,
     );
-    await service.initialize();
+    await service.initialize().timeout(kStartupTimeout);
     return NotificationSchedulerAdapter(service);
   } catch (error, stack) {
     debugPrint('Уведомления недоступны: $error\n$stack');

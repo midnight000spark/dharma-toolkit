@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:dharma_toolkit/core/module/app_module.dart';
@@ -109,6 +110,54 @@ void main() {
       );
 
       expect(root, MountedRoot.recovery);
+    });
+  });
+
+  group('runStartupCycle — граница ожидания старта (W19)', () {
+    test('зависший bootstrap: по таймауту монтируется восстановление, '
+        'рабочий корень не ждёт платформу', () async {
+      Object? mountedError;
+      var appMounted = false;
+
+      final root = await runStartupCycle<_Services>(
+        // Bootstrap, который «отвечает» позже границы: до W19 цикл ждал его
+        // сколько угодно, и первый кадр не наступал.
+        bootstrap: () async {
+          await Future<void>.delayed(const Duration(milliseconds: 200));
+          return (
+            const _Services('поздний'),
+            const StartupOutcome(fatalFailures: [], degradedModules: [])
+          );
+        },
+        bootstrapTimeout: const Duration(milliseconds: 20),
+        mountApp: (_) async => appMounted = true,
+        mountRecovery: (error, outcome) => mountedError = error,
+      );
+
+      expect(root, MountedRoot.recovery,
+          reason: 'зависший старт обязан уводить на восстановление, а не '
+              'держать пустой экран бесконечно');
+      expect(mountedError, isA<TimeoutException>(),
+          reason: 'причина (таймаут) обязана дойти до экрана — иначе '
+              '«Попробовать снова» выглядит как несработавшая кнопка');
+      expect(appMounted, isFalse,
+          reason: 'рабочий корень не монтируется, пока bootstrap не ответил');
+    });
+
+    test('быстрый bootstrap при той же границе монтирует приложение '
+        '(таймаут не ломает счастливый путь)', () async {
+      final root = await runStartupCycle<_Services>(
+        bootstrap: () async => (
+          const _Services('быстрый'),
+          const StartupOutcome(fatalFailures: [], degradedModules: [])
+        ),
+        bootstrapTimeout: const Duration(milliseconds: 20),
+        mountApp: (_) async {},
+        mountRecovery: (error, outcome) =>
+            fail('восстановление при успешном старте не монтируется'),
+      );
+
+      expect(root, MountedRoot.app);
     });
   });
 

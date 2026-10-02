@@ -76,6 +76,17 @@ Future<StartupOutcome> bootstrapModules(
 /// ответом, из-за чего каждая попытка после первой уходила только в лог.
 enum MountedRoot { none, recovery, app }
 
+/// Граница ожидания старта (W19): bootstrap, не ответивший за это время, не
+/// держит пользователя у пустого экрана — монтируется восстановление.
+///
+/// Первый кадр не может зависеть от того, ответит ли платформа вообще:
+/// подвисший `opener` ленивой базы или молчащий плагин — это тот же чёрный
+/// экран, от которого уходили в B-5, только по причине «никто не ответил», а
+/// не «ответил отказом». Значение — компромисс: холодный старт с миграциями
+/// (F-31, ~81 с build_runner — не рантайм) укладывается заметно ниже, а
+/// человек не ждёт дольше, чем готов воспринимать пустоту.
+const Duration kStartupTimeout = Duration(seconds: 3);
+
 /// Один полный цикл старта (C3).
 ///
 /// Вынесено из `main`, потому что контроль потока обязан ловиться тестом, а
@@ -83,18 +94,25 @@ enum MountedRoot { none, recovery, app }
 /// - отказ bootstrap (в том числе на повторной попытке, где он исторически и
 ///   случался: `disposeAll` переподнимает ошибку ленивой базы) НЕ уходит
 ///   наружу — восстановление монтируется принудительно, с причиной;
+/// - **зависший** bootstrap (W19) не блокирует первый кадр бесконечно: ожидание
+///   ограничено [bootstrapTimeout], таймаут уходит тем же путём — в
+///   восстановление с причиной, а не в тишину;
 /// - бросок из [mountApp] — тоже;
 /// - возвращается то, что теперь в корне: вызывающий хранит это как условие
 ///   «корень не рабочий» для обработчика асинхронных отказов.
+///
+/// [bootstrapTimeout] — параметр (не константа внутри), чтобы граница
+/// проверялась детерминированным тестом за миллисекунды, а не за 3 секунды.
 Future<MountedRoot> runStartupCycle<T>({
   required Future<(T?, StartupOutcome)> Function() bootstrap,
   required Future<void> Function(T services) mountApp,
   required void Function(Object error, StartupOutcome outcome) mountRecovery,
+  Duration bootstrapTimeout = kStartupTimeout,
 }) async {
   const noOutcome =
       StartupOutcome(fatalFailures: [], degradedModules: []);
   try {
-    final (services, outcome) = await bootstrap();
+    final (services, outcome) = await bootstrap().timeout(bootstrapTimeout);
     if (services == null || !outcome.ok) {
       mountRecovery(
         outcome.fatalFailures.isNotEmpty
