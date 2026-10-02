@@ -310,68 +310,88 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Дхарма-тулкит')),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.storage_rounded, size: 48),
-              const SizedBox(height: 16),
-              const Text(
-                'Не удалось прочитать данные',
-                style: TextStyle(fontSize: 18),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              // B-19: детали исключения — в лог, а не на экран.
-              Text(
-                userFacingErrorText(
-                  'Попробуйте ещё раз. Если не поможет — сбросьте настройки.',
-                  details: widget.error,
-                ),
-                style: Theme.of(context).textTheme.bodySmall,
-                textAlign: TextAlign.center,
-                maxLines: 4,
-                overflow: TextOverflow.ellipsis,
-              ),
-              if (_retryFailure != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  _retryFailure!,
-                  key: const ValueKey('retry-failure'),
-                  style: Theme.of(context).textTheme.bodySmall,
+    return PopScope(
+      // S12: пока идёт повторная попытка или стирание, системный «назад»
+      // увёл бы с экрана посреди операции — результат остался бы невидимым.
+      key: const ValueKey('recovery-pop-scope'),
+      canPop: !_busy,
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Дхарма-тулкит')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.storage_rounded, size: 48),
+                const SizedBox(height: 16),
+                const Text(
+                  'Не удалось прочитать данные',
+                  style: TextStyle(fontSize: 18),
                   textAlign: TextAlign.center,
                 ),
-              ],
-              if (_wipeReport case final WipeReport report when !report.clean) ...[
                 const SizedBox(height: 8),
-                // C1(3): отказ стирания обязан быть виден. Без этого «Сбросить
-                // настройки» выглядит выполненным, а экран восстановления
-                // возвращается молча — тот же класс молчаливой деградации,
-                // что R-11/R-13/R-20.
+                // B-19: детали исключения — в лог, а не на экран.
                 Text(
-                  'Стирание прошло не полностью: данные могли остаться '
-                  'на устройстве.',
-                  key: const ValueKey('wipe-incomplete'),
+                  userFacingErrorText(
+                    'Попробуйте ещё раз. Если не поможет — сбросьте настройки.',
+                    details: widget.error,
+                  ),
                   style: Theme.of(context).textTheme.bodySmall,
                   textAlign: TextAlign.center,
+                  maxLines: 4,
+                  overflow: TextOverflow.ellipsis,
                 ),
+                if (_retryFailure != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    _retryFailure!,
+                    key: const ValueKey('retry-failure'),
+                    style: Theme.of(context).textTheme.bodySmall,
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+                if (_wipeReport case final WipeReport report
+                    when !report.clean) ...[
+                  const SizedBox(height: 8),
+                  // C1(3): отказ стирания обязан быть виден. Без этого
+                  // «Сбросить настройки» выглядит выполненным, а экран
+                  // восстановления возвращается молча — тот же класс
+                  // молчаливой деградации, что R-11/R-13/R-20.
+                  Text(
+                    'Стирание прошло не полностью: данные могли остаться '
+                    'на устройстве.',
+                    key: const ValueKey('wipe-incomplete'),
+                    style: Theme.of(context).textTheme.bodySmall,
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+                ..._limitedModeLines(),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: _busy ? null : () => _run(widget.onRetry),
+                  child: const Text('Попробовать снова'),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton(
+                  onPressed: _busy ? null : _confirmReset,
+                  child: const Text('Сбросить настройки'),
+                ),
+                // S12: занятость видна, а не только выключенные кнопки:
+                // «кнопки серые» без индикатора неотличимо от «экран завис».
+                if (_busy) ...[
+                  const SizedBox(height: 16),
+                  const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      key: ValueKey('recovery-busy'),
+                      strokeWidth: 2,
+                    ),
+                  ),
+                ],
               ],
-              ..._limitedModeLines(),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _busy ? null : () => _run(widget.onRetry),
-                child: const Text('Попробовать снова'),
-              ),
-              const SizedBox(height: 8),
-              OutlinedButton(
-                onPressed: _busy ? null : _confirmReset,
-                child: const Text('Сбросить настройки'),
-              ),
-            ],
+            ),
           ),
         ),
       ),

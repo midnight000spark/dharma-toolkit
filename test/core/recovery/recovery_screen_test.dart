@@ -55,6 +55,14 @@ class _FailingAuxiliary implements AppModule {
   Future<void> dispose() async {}
 }
 
+/// `PopScope` экрана восстановления (S12): его `canPop` — контракт с
+/// системным «назад». В тестовом binding `handlePopRoute` до маршрута не
+/// доходит, поэтому проверяется сам контракт, а не симуляция кнопки.
+PopScope<Object?> _recoveryPopScope(WidgetTester tester) =>
+    tester.widget<PopScope<Object?>>(
+      find.byKey(const ValueKey('recovery-pop-scope')),
+    );
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -160,7 +168,11 @@ void main() {
     await tester.tap(find.text('Сбросить настройки'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(TextButton, 'Сбросить'));
-    await tester.pumpAndSettle();
+    // S12: пока операция в полёте, на экране анимированный индикатор
+    // занятости — «покой» не наступит, поэтому проверяем кадрами, а не
+    // pumpAndSettle (иначе тест ждал бы вечно и падал по таймауту).
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
 
     // Гард R-27: пока стирание не завершилось (инжектированная задержка —
     // закрытые ворота), onReset не вызывается, а обе кнопки заняты: прежняя
@@ -184,6 +196,68 @@ void main() {
 
     expect(wiped, isTrue);
     expect(resets, 1, reason: 'после завершения стирания — один перезапуск');
+  });
+
+  // S12: занятость и уход. Пока идёт повтор/стирание, экран обязан показывать
+  // индикатор и не давать уйти системным «назад»: иначе результат операции
+  // остаётся невидимым, а недоделанное стирание опаснее ожидания.
+  testWidgets('S12: во время занятости виден индикатор и уход заблокирован',
+      (tester) async {
+    final gate = Completer<void>();
+
+    // Экран восстановления — на стеке (снизу есть куда вернуться).
+    await tester.pumpWidget(MaterialApp(
+      home: Builder(
+        builder: (context) => Scaffold(
+          body: Center(
+            child: ElevatedButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => RecoveryScreen(
+                    error: StateError('повреждённые данные'),
+                    onRetry: () async {},
+                    onReset: () async {},
+                    wipe: () async {
+                      await gate.future;
+                      return const WipeReport(prefsCleared: true);
+                    },
+                  ),
+                ),
+              ),
+              child: const Text('открыть восстановление'),
+            ),
+          ),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('открыть восстановление'));
+    await tester.pumpAndSettle();
+
+    // До операции экран свободен: индикатора нет, уход разрешён.
+    expect(find.byKey(const ValueKey('recovery-busy')), findsNothing);
+    expect(_recoveryPopScope(tester).canPop, isTrue);
+
+    await tester.tap(find.text('Сбросить настройки'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(TextButton, 'Сбросить'));
+    // Индикатор анимируется — проверяем кадрами, а не ожиданием покоя.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.byKey(const ValueKey('recovery-busy')), findsOneWidget,
+        reason: 'занятость обязана быть видна, а не только серые кнопки');
+    expect(_recoveryPopScope(tester).canPop, isFalse,
+        reason: 'уход посреди операции недопустим: результат остался бы '
+            'невидимым');
+
+    gate.complete();
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('recovery-busy')), findsNothing,
+        reason: 'после операции индикатор снят');
+    expect(_recoveryPopScope(tester).canPop, isTrue,
+        reason: 'после операции уход снова разрешён');
   });
 
   test('wipeLocalState стирает настройки и файл БД (реальный путь, R-27)',
