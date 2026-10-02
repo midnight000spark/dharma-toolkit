@@ -96,8 +96,14 @@ flutter:
   uses-material-design: true
 
   # Assets
+  # Каталоги паков (contentPacks/eventPacks пресетов) объявлены явно:
+  # каталоги ассетов Flutter не рекурсивны, незадекларированный пак
+  # не попадает в release-сборку. Инвариант — сторож
+  # test/architecture/content_pack_assets_guard_test.dart (W32/T5).
   assets:
     - presets/
+    - assets/content_packs/
+    - assets/events/
 
   # To add assets to your application, add an assets section, like this:
   # assets:
