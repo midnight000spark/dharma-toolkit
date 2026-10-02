@@ -29,7 +29,14 @@ import '../../domain/notification_settings.dart';
 /// Часы фичи: домен принимает «сегодня»/«сейчас» аргументом, поэтому
 /// единственная точка, где читается реальное время, — этот провайдер.
 /// Тесты оверрайдят его фиксированным значением (детерминизм, урок 5).
-final eventsClockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
+///
+/// W21: провайдер следит за [todayProvider] — на смену суток (таймер полуночи
+/// или возврат приложения) лента и план пересчитываются, а не остаются на
+/// вчерашнем дне.
+final eventsClockProvider = Provider<DateTime Function()>((ref) {
+  ref.watch(todayProvider);
+  return () => DateTime.now();
+});
 
 /// Загрузчик паков; читатель ассетов инъектируется (тесты не трогают
 /// `rootBundle` — F-58).

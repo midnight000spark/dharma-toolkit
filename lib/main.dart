@@ -335,6 +335,10 @@ class _DharmaToolkitAppState extends ConsumerState<DharmaToolkitApp> {
 
   ProviderSubscription<NotificationReplanner>? _replannerSubscription;
 
+  /// Наблюдатель смены суток/зоны (W21) и его подписка на жизненный цикл.
+  AppLifecycleListener? _lifecycle;
+  late final DayChangeWatcher _dayWatcher;
+
   @override
   void initState() {
     super.initState();
@@ -353,10 +357,33 @@ class _DharmaToolkitAppState extends ConsumerState<DharmaToolkitApp> {
         }
       },
     );
+    // W21: приложение может вернуться из фона уже в других сутках или в другой
+    // зоне — тогда дневные экраны и план напоминаний обязаны пересобраться.
+    _dayWatcher = DayChangeWatcher(onChanged: _onDayOrZoneChanged);
+    _lifecycle = _dayWatcher.start();
+  }
+
+  /// Смена суток или часового пояса, замеченная при возврате в приложение
+  /// (W21). Дневные провайдеры (лента, чтение дня, план) пересчитываются от
+  /// текущего момента, а не остаются на вчерашнем дне.
+  void _onDayOrZoneChanged() {
+    ref.invalidate(todayProvider);
+    try {
+      // D-36: план строится «на сейчас»; вчерашний календарь после смены суток
+      // уже неактуален. `start()` идемпотентен (повторная подписка — no-op) и
+      // ставит перепланирование в очередь репланнера (W3).
+      ref.read(notificationReplannerProvider).start();
+    } catch (error, stack) {
+      // Проводка порта уведомлений могла отказать (W20): её причина уже видна
+      // баннером, а реплан невозможен — это фиксируется, а не теряется молча.
+      debugPrint('Перепланирование при смене суток/зоны не запущено: '
+          '$error\n$stack');
+    }
   }
 
   @override
   void dispose() {
+    _lifecycle?.dispose();
     _replannerSubscription?.close();
     super.dispose();
   }
@@ -402,6 +429,68 @@ class _DharmaToolkitAppState extends ConsumerState<DharmaToolkitApp> {
         ],
       ),
     );
+  }
+}
+
+/// Сменились ли локальные сутки или смещение часового пояса (W21).
+///
+/// Чистая функция сравнения **снимков** (день и смещение зоны), а не
+/// инстантов: проверяется без часов и без смены зоны в тестовом процессе.
+/// `null` в предыдущем снимке — «сравнивать не с чем» (первый снимок), а не
+/// изменение.
+bool dayOrZoneChanged({
+  required DateTime? previousDay,
+  required Duration? previousOffset,
+  required DateTime day,
+  required Duration offset,
+}) =>
+    previousDay != day || previousOffset != offset;
+
+/// Наблюдатель смены суток/зоны (W21).
+///
+/// Приложение может пережить полночь или смену часового пояса в фоне
+/// (поездка, перевод часов) — само состояние от этого не меняется, и открытый
+/// экран остаётся на вчерашнем дне, а план напоминаний — собранным на вчера.
+/// [start] заводит [AppLifecycleListener]; при возврате в приложение
+/// [handleResume] сравнивает снимки и зовёт [onChanged], если что-то
+/// сменилось.
+///
+/// Часы инъектируемы: тест двигает их вручную (урок 5), а не спит до полуночи.
+class DayChangeWatcher {
+  DayChangeWatcher({required this.onChanged, DateTime Function()? clock})
+      : _clock = clock ?? DateTime.now;
+
+  /// Что делать при замеченной смене (инвалидация дня + перепланирование).
+  final VoidCallback onChanged;
+
+  final DateTime Function() _clock;
+
+  DateTime? _lastDay;
+  Duration? _lastOffset;
+
+  /// Начать слежение. Возвращённый listener диспозится владельцем.
+  AppLifecycleListener start() {
+    _remember(_clock());
+    return AppLifecycleListener(onResume: handleResume);
+  }
+
+  /// Возврат приложения: сравнить снимки и сообщить, если что-то сменилось.
+  void handleResume() {
+    final now = _clock();
+    final day = DateTime(now.year, now.month, now.day);
+    final changed = dayOrZoneChanged(
+      previousDay: _lastDay,
+      previousOffset: _lastOffset,
+      day: day,
+      offset: now.timeZoneOffset,
+    );
+    _remember(now);
+    if (changed) onChanged();
+  }
+
+  void _remember(DateTime now) {
+    _lastDay = DateTime(now.year, now.month, now.day);
+    _lastOffset = now.timeZoneOffset;
   }
 }
 

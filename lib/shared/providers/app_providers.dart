@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/config/config_module.dart';
@@ -41,6 +43,39 @@ final presetManagerProvider = Provider<PresetManager>(
     '(см. main.dart)',
   ),
 );
+
+/// Часы «сегодня» (W21): точка, где читается реальное локальное время.
+///
+/// Тесты оверрайдят её фиксированным моментом, поэтому вся арифметика суток
+/// проверяется детерминированно (урок 5).
+final todayClockProvider =
+    Provider<DateTime Function()>((ref) => DateTime.now);
+
+/// Следующая локальная полночь — момент смены суток (W21).
+///
+/// Именно `DateTime(y, m, d + 1)`, а не `+ Duration(days: 1)`: при переходе
+/// на летнее время сутки бывают 23 или 25 часов, и «плюс 24 часа» дало бы
+/// смену дня на час раньше или позже реальной полуночи. Нормализация
+/// переполнения полей (день 32 → 1-е число следующего месяца) — гарантия
+/// языка, поэтому и конец месяца, и конец года считаются корректно.
+DateTime nextLocalMidnight(DateTime now) =>
+    DateTime(now.year, now.month, now.day + 1);
+
+/// Сегодняшняя дата (W21) — единственный источник «какой сейчас день» для
+/// дневных экранов (чтение дня, лента событий, календарь).
+///
+/// **Живой:** на смену суток сам себя инвалидирует, поэтому экран, открытый
+/// через полночь, не остаётся на вчерашнем дне. Смена суток в фоне и смена
+/// часового пояса устройства приходят отдельным путём — обработчиком
+/// жизненного цикла в composition root (он тоже инвалидирует этот провайдер).
+final todayProvider = Provider<DateTime>((ref) {
+  final now = ref.watch(todayClockProvider)();
+  final untilMidnight = nextLocalMidnight(now).difference(now);
+  // Таймер — до полуночи, не периодический: каждый пересчёт заводит следующий.
+  final timer = Timer(untilMidnight, ref.invalidateSelf);
+  ref.onDispose(timer.cancel);
+  return DateTime(now.year, now.month, now.day);
+});
 
 /// Активный пресет как поток (D-16-подход, R-21): единственный реактивный
 /// источник «какой пресет выбран». Все производные провайдеры (тег традиции,
