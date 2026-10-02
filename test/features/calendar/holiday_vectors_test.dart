@@ -83,6 +83,52 @@ void main() {
       expect(ids.toSet().length, ids.length);
     });
 
+    // Пропуск/добавление/подмена вектора обязаны красить набор: размеры и
+    // состав id — контракт фикстуры, а не производная от её содержимого
+    // (finding ревью: динамические проверки не ловили удаление записи).
+    test('размеры групп и состав id зафиксированы', () {
+      expect(confirmed, hasLength(24));
+      expect(disputed, hasLength(4));
+      expect(refuted, hasLength(4));
+      expect(open, hasLength(3));
+      expect(confirmed.map((e) => e['id']).toSet(), {
+        'chotrul-duchen-2026', 'chotrul-duchen-2027',
+        'saga-dawa-duchen-2026', 'saga-dawa-duchen-2027',
+        'chokhor-duchen-2026', 'chokhor-duchen-2027',
+        'lhabab-duchen-2026', 'lhabab-duchen-2027',
+        'shoton-2026', 'shoton-2027',
+        'palden-lhamo-2026', 'palden-lhamo-2027',
+        'zamling-chisang-2026', 'guru-rinpoche-birth-2026',
+        'guru-rinpoche-birth-2027', 'magha-puja-2026', 'magha-puja-2027',
+        'visakha-puja-2026', 'visakha-puja-2027', 'asalha-puja-2026',
+        'vassa-2026', 'pavarana-2026', 'pavarana-2027', 'anapanasati-2027',
+      });
+      expect(disputed.map((e) => e['id']).toSet(), {
+        'asalha-puja-2027', 'vassa-2027',
+        'longchenpa-parinirvana-2026', 'longchenpa-parinirvana-2027',
+      });
+      expect(refuted.map((e) => e['id']).toSet(), {
+        'jigme-lingpa-parinirvana-2026', 'jigme-lingpa-parinirvana-2027',
+        'anapanasati-2026', 'model-intercalary-2027',
+      });
+      expect(open.map((e) => e['id']).toSet(), {
+        'zamling-chisang-2027', 'longchenpa-birth-2026',
+        'longchenpa-birth-2027',
+      });
+    });
+
+    test('атрибуция не ссылается на наш порт (слой A) как на подтверждение',
+        () {
+      final layerA = RegExp(r'порт|tibcal|F-45|наша реализация',
+          caseSensitive: false);
+      for (final it in [...confirmed, ...disputed, ...refuted, ...open]) {
+        for (final s in (it['sources'] as List).cast<String>()) {
+          expect(layerA.hasMatch(s), isFalse,
+              reason: '${it['id']}: слой A не является независимым: $s');
+        }
+      }
+    });
+
     test('закреплённое и помеченное не пересекаются по id', () {
       final pinned = {
         ...confirmed.map((e) => e['id']),
