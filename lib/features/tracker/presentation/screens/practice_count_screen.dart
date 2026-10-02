@@ -26,6 +26,25 @@ class PracticeCountScreen extends ConsumerWidget {
     // Стрим сам переэмитит новое значение — ничего больше делать не нужно.
   }
 
+  /// Повторная попытка чтения практики (W16): стрим пересоздаётся, экран
+  /// выходит из аварийной ветки без ухода с маршрута.
+  void _retry(WidgetRef ref) {
+    ref.invalidate(practiceByIdProvider(practiceId));
+  }
+
+  /// Аварийный выход из экрана (W16).
+  ///
+  /// Экран может быть смонтирован как корневой (deep link, аварийная ветка
+  /// без истории) — там `pop()` некуда. Есть история — назад; нет — на
+  /// главную, а не падение на пустом стеке.
+  void _leaveOrHome(BuildContext context) {
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/');
+    }
+  }
+
   /// Произвольный инкремент (FR-TRK-9): диалог → атомарный
   /// `incrementCount(amount)`, который пишет и счёт, и строку истории (B-8).
   Future<void> _enterAmount(BuildContext context, WidgetRef ref) async {
@@ -47,41 +66,19 @@ class PracticeCountScreen extends ConsumerWidget {
         appBar: AppBar(title: const Text('Практика')),
         body: const Center(child: CircularProgressIndicator()),
       ),
-      error: (error, stack) => Scaffold(
-        appBar: AppBar(title: const Text('Практика')),
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Ошибка загрузки'),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () => context.pop(),
-                child: const Text('Назад'),
-              ),
-            ],
-          ),
-        ),
+      error: (error, stack) => _EmergencyScaffold(
+        message: 'Ошибка загрузки',
+        onRetry: () => _retry(ref),
+        onLeave: () => _leaveOrHome(context),
       ),
       data: (practice) {
         if (practice == null) {
           // Практика не найдена (удалена, deep link на несуществующую) —
           // явное состояние вместо вечного спиннера (B-6).
-          return Scaffold(
-            appBar: AppBar(title: const Text('Практика')),
-            body: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text('Практика не найдена'),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => context.pop(),
-                    child: const Text('Назад'),
-                  ),
-                ],
-              ),
-            ),
+          return _EmergencyScaffold(
+            message: 'Практика не найдена',
+            onRetry: () => _retry(ref),
+            onLeave: () => _leaveOrHome(context),
           );
         }
 
@@ -145,6 +142,46 @@ class PracticeCountScreen extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+}
+
+/// Аварийное состояние экрана счёта (W16): сообщение, «Повторить» и
+/// безопасный выход. Обе ветки (ошибка чтения и «не найдена») делят одну
+/// форму — повторяющийся UI-костыль в двух местах недопустим (урок 3).
+class _EmergencyScaffold extends StatelessWidget {
+  const _EmergencyScaffold({
+    required this.message,
+    required this.onRetry,
+    required this.onLeave,
+  });
+
+  final String message;
+  final VoidCallback onRetry;
+  final VoidCallback onLeave;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Практика')),
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(message),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: onRetry,
+              child: const Text('Повторить'),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: onLeave,
+              child: const Text('Назад'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

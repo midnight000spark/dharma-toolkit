@@ -7,6 +7,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 void main() {
   group('PracticeCountScreen', () {
@@ -115,6 +116,92 @@ void main() {
 
       final practices = await repository.getByTradition('test');
       expect(practices.first.currentCount, 20);
+
+      await db.close();
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
+    testWidgets('W16: аварийная ветка в маршруте без истории — «Назад» уводит '
+        'на главную, а не падает на пустом стеке', (tester) async {
+      // initialLocation задаёт единственный маршрут: истории нет, `pop()`
+      // некуда — именно этот случай раньше был безусловным `context.pop()`.
+      final router = GoRouter(
+        initialLocation: '/practice/999999',
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, _) => const Scaffold(body: Text('Главная')),
+          ),
+          GoRoute(
+            path: '/practice/:id',
+            builder: (_, state) => PracticeCountScreen(
+              practiceId: int.parse(state.pathParameters['id']!),
+            ),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            practiceRepositoryProvider.overrideWithValue(repository),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('Практика не найдена'), findsOneWidget);
+
+      await tester.tap(find.text('Назад'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.text('Главная'), findsOneWidget,
+          reason: 'без истории выход обязан уводить на главную');
+      expect(find.text('Практика не найдена'), findsNothing);
+
+      await db.close();
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
+    testWidgets('W16: «Повторить» остаётся на маршруте и перечитывает '
+        'практику', (tester) async {
+      final router = GoRouter(
+        initialLocation: '/practice/999999',
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, _) => const Scaffold(body: Text('Главная')),
+          ),
+          GoRoute(
+            path: '/practice/:id',
+            builder: (_, state) => PracticeCountScreen(
+              practiceId: int.parse(state.pathParameters['id']!),
+            ),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            practiceRepositoryProvider.overrideWithValue(repository),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+
+      await tester.tap(find.text('Повторить'));
+      await tester.pump(const Duration(milliseconds: 100));
+
+      // Повтор не уводит с маршрута: экран остаётся в аварийном состоянии,
+      // пока практики нет (invalidate пересоздал стрим, а не «починил» UI).
+      expect(find.text('Практика не найдена'), findsOneWidget);
+      expect(find.text('Главная'), findsNothing);
 
       await db.close();
       await tester.pumpWidget(const SizedBox.shrink());
