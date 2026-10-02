@@ -298,6 +298,9 @@ Future<(AppServices?, StartupOutcome)> bootstrapServices() async {
   // Dev-посев: вместо хардкода практик — применение реального пресета
   // через реальный путь (B-3/3.4). Только debug и только если традиция ещё
   // не выбрана; отказ seeding — деградация, не катастрофа (5.4).
+  // S13: сам посев включается лишь явным `--dart-define=SEED=true`
+  // (см. [DevSeeder.seedIfEmpty]/[kDevSeedEnabled]) — иначе онбординг
+  // (`/pick`) в debug-сборке недостижим.
   if (kDebugMode) {
     try {
       await DevSeeder.seedIfEmpty(

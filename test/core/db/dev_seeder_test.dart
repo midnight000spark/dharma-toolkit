@@ -46,7 +46,7 @@ void main() {
     expect(manifestOrder.length, greaterThanOrEqualTo(2),
         reason: 'иначе мутация «available.first → available.last» не ловится');
 
-    await DevSeeder.seedIfEmpty(presets: presets, config: config);
+    await DevSeeder.seedIfEmpty(presets: presets, config: config, enabled: true);
 
     expect(presets.activePreset?.id, manifestOrder.first,
         reason: 'источник — порядок presets/index.json, а не хардкод школы');
@@ -58,11 +58,44 @@ void main() {
   });
 
   test('идемпотентен: при активном пресете ничего не меняет', () async {
-    await DevSeeder.seedIfEmpty(presets: presets, config: config);
+    await DevSeeder.seedIfEmpty(presets: presets, config: config, enabled: true);
     final firstId = presets.activePreset?.id;
 
-    await DevSeeder.seedIfEmpty(presets: presets, config: config);
+    await DevSeeder.seedIfEmpty(presets: presets, config: config, enabled: true);
 
     expect(presets.activePreset?.id, firstId);
+  });
+
+  // S13: посев — явный режим сборки, а не побочный эффект debug. Прежнее
+  // поведение применяло первый пресет на каждом старте, и экран выбора
+  // традиции (/pick) в отладочной сборке был недостижим.
+  group('S13: гейт посева', () {
+    test('режим по умолчанию совпадает с флагом сборки (SEED)', () async {
+      await DevSeeder.seedIfEmpty(presets: presets, config: config);
+
+      if (kDevSeedEnabled) {
+        expect(presets.activePreset, isNotNull,
+            reason: 'сборка с --dart-define=SEED=true обязана посеять');
+      } else {
+        expect(presets.activePreset, isNull,
+            reason: 'без флага посев выключен — онбординг достижим');
+        expect(
+          await PracticeRepository(db)
+              .getByTradition(config.allPresets.first.id),
+          isEmpty,
+          reason: 'пресет не применялся — практик нет',
+        );
+      }
+    });
+
+    test('явный enabled:false не сеет, enabled:true сеет', () async {
+      await DevSeeder.seedIfEmpty(
+          presets: presets, config: config, enabled: false);
+      expect(presets.activePreset, isNull);
+
+      await DevSeeder.seedIfEmpty(
+          presets: presets, config: config, enabled: true);
+      expect(presets.activePreset, isNotNull);
+    });
   });
 }

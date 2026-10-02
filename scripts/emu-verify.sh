@@ -11,6 +11,13 @@
 #   scripts/emu-verify.sh --expect-exact  # + требовать window=0 (грант выдан)
 #   scripts/emu-verify.sh --expect-inexact # + требовать непустое окно (без гранта)
 #
+# СБОРКА (S13): приложение обязано иметь применённый пресет, иначе план пуст и
+# pending-записей нет. Dev-посев включается явно:
+#   flutter build apk --debug --dart-define=SEED=true
+#   adb install -r build/app/outputs/flutter-apk/app-debug.apk
+# Без `SEED` сидер выключен, приложение останавливается на выборе традиции —
+# это ожидаемое поведение, а не поломка напоминаний.
+#
 # Переменные:
 #   EMU_SERIAL          — серийник (default: emulator-5554)
 #   EMU_EXPECT_HHMM     — ожидаемое локальное время напоминаний (default: 08:00, D-36)
@@ -136,7 +143,11 @@ echo "Записей по пакету: $count (exact: $exact_count, inexact: $i
 echo "Несовпадений времени $EXPECT_HHMM: $bad_time"
 
 fail=0
-[ "$count" -ge "$MIN_ALARMS" ] || { echo "FAIL: записей $count < $MIN_ALARMS"; fail=1; }
+[ "$count" -ge "$MIN_ALARMS" ] || {
+  echo "FAIL: записей $count < $MIN_ALARMS"
+  echo "      (S13: сборка без SEED? приложение на экране выбора традиции —" \
+       "соберите: flutter build apk --debug --dart-define=SEED=true)"
+  fail=1; }
 [ "$bad_time" -eq 0 ] || { echo "FAIL: $bad_time записей не в $EXPECT_HHMM"; fail=1; }
 
 case "$EXPECT_MODE" in

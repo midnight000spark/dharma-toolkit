@@ -12,6 +12,12 @@
 #   EMU_FIRE_LEAD=90 scripts/emu-fire.sh      # иная проходка перед моментом
 #   scripts/emu-fire.sh --no-replan           # не перезапускать приложение после прогона
 #
+# СБОРКА (S13): сценарию нужен применённый пресет (иначе плана нет). Dev-посев
+# включается явно:
+#   flutter build apk --debug --dart-define=SEED=true
+#   adb install -r build/app/outputs/flutter-apk/app-debug.apk
+# Без `SEED` приложение стартует на выборе традиции — pending-записей не будет.
+#
 # Переменные:
 #   EMU_SERIAL       — серийник (default: emulator-5554)
 #   EMU_EXPECT_HHMM  — локальное время напоминаний (default: 08:00, D-36)
