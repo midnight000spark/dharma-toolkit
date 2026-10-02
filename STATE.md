@@ -1,6 +1,6 @@
 # Состояние проекта "Дхарма-тулкит"
 
-> _Freshness — owner: пользователь · reviewed: 2026-10-02 (закрытие `warning-3c`; ревью — пасы 1–2, findings закрыты) · verified-by: `flutter analyze --fatal-infos` (0) / `flutter test` (**639/639**, лог `.tmp/logs/warning-3c-final-test.txt`) / `./scripts/check_docs.sh` (PASSED, 729 refs) · устройство — в 3c не перезапускалось (пакет уровня кода/сторожей): мутанты `.tmp/logs/warning-3c-*` + `flutter build bundle` exit 0, каталоги паков в `AssetManifest` (`.tmp/logs/warning-3c-11-bundle.txt`) · @ 51b460b / lock sha256:463d9b23e6ddb0c2._
+> _Freshness — owner: пользователь · reviewed: 2026-10-02 (пакет `holidays-vectors-1`: тест-векторы праздников 2026–2027, интеграции нет) · verified-by: `flutter analyze --fatal-infos` (0) / `flutter test` (**673/673**, лог `.tmp/logs/holidays-vectors-1-final-test.txt`) / `./scripts/check_docs.sh` (PASSED, 768 refs) · устройство — в пакете не перезапускалось (уровень тестов/фикстур); последний device-прогон — FIX-1 (`1336c9d`): мутанты `.tmp/logs/holidays-vectors-1-mutations.txt` (3 красные, восстановление 34/34) · @ b959e83 / lock sha256:463d9b23e6ddb0c2._
 
 ## Текущий статус
 **Этап**: 7 «Контент» — ⏳ в работе; 7.0 ✅ (данные/домен, тег `stage-7.0` на `67dc4cc`); предыдущие: этап 6 ✅ (тег `stage-6`), этап 5 ✅ (тег `stage-5b`). Критерий этапа 7 не закрыт — нужен UI чтения дня (SCR-13).
