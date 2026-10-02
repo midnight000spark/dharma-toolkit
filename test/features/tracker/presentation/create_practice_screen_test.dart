@@ -346,6 +346,6 @@ Future<void> _pumpCreateScreen(
       child: MaterialApp.router(routerConfig: router),
     ),
   );
-  router.push('/create');
+  unawaited(router.push('/create'));
   await tester.pumpAndSettle();
 }

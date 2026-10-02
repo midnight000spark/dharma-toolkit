@@ -63,6 +63,8 @@ class EventBus {
   void dispose() {
     if (_disposed) return;
     _disposed = true;
-    _controller.close();
+    // W18: закрытие — намеренно не ожидаем (dispose синхронный); unawaited
+    // фиксирует намерение явно, а не прячет future.
+    unawaited(_controller.close());
   }
 }

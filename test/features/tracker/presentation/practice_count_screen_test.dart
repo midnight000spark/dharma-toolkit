@@ -10,8 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 void main() {
-  group('PracticeCountScreen', () {
-    late AppDatabase db;
+  group('PracticeCountScreen', () {    late AppDatabase db;
     late PracticeRepository repository;
     late int practiceId;
 
@@ -207,6 +206,34 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     });
 
+    testWidgets('W18: отказ репозитория при «+» → snackbar, а не тишина',
+        (tester) async {
+      final throwing = _ThrowingIncrementRepository(db);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            practiceRepositoryProvider.overrideWithValue(throwing),
+          ],
+          child: MaterialApp(
+            home: PracticeCountScreen(practiceId: practiceId),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+
+      await tester.tap(find.text('+'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.byType(SnackBar), findsOneWidget,
+          reason: 'отказ действия обязан быть виден пользователю');
+      expect(find.text('Не удалось увеличить счёт'), findsOneWidget);
+
+      await db.close();
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
     // W17: на 320dp при крупном системном шрифте вёрстка переполнялась
     // (Row по горизонтали + Column по вертикали). Гард — отсутствие любого
     // исключения вёрстки на этом размере.
@@ -240,4 +267,15 @@ void main() {
       });
     }
   });
+}
+
+/// Репозиторий, у которого инкремент всегда падает (W18): проверяем, что
+/// отказ доходит до пользователя snackbar'ом, а не тонет молча.
+class _ThrowingIncrementRepository extends PracticeRepository {
+  _ThrowingIncrementRepository(super.db);
+
+  @override
+  Future<void> incrementCount(int practiceId, int amount) async {
+    throw StateError('БД недоступна');
+  }
 }

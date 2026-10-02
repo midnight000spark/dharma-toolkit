@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../shared/utils/error_text.dart';
 import '../../../../shared/utils/format.dart';
+import '../../../../shared/utils/user_action.dart';
 import '../../domain/practice.dart';
 import '../providers/practice_provider.dart';
 
@@ -50,8 +51,13 @@ class PracticeListScreen extends ConsumerWidget {
         ],
       ),
     );
-    if (confirmed == true) {
-      await ref.read(practiceRepositoryProvider).delete(practice.id!);
+    if (confirmed == true && context.mounted) {
+      // W18: отказ удаления виден, а не тонет в необработанной ошибке.
+      await runUserAction(
+        context,
+        () => ref.read(practiceRepositoryProvider).delete(practice.id!),
+        message: 'Не удалось удалить практику',
+      );
     }
   }
 

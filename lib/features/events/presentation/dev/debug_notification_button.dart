@@ -125,8 +125,9 @@ class _DebugNotificationButtonState
 
   @override
   void dispose() {
-    _presetSubscription?.cancel();
-    _settingsSubscription?.cancel();
+    // W18: отписка не ожидается (dispose синхронный) — намерение явное.
+    unawaited(_presetSubscription?.cancel());
+    unawaited(_settingsSubscription?.cancel());
     super.dispose();
   }
 

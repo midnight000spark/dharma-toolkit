@@ -5,6 +5,12 @@ analyzer:
     strict-casts: true
     strict-inference: true
     strict-raw-types: true
+  errors:
+    # W18: «запущенный и забытый» future — это молчаливое действие. Линты
+    # подняты до уровня ошибки, чтобы analyze ловил такие места, а не
+    # пользователь в рантайме.
+    discarded_futures: error
+    unawaited_futures: error
   exclude:
     - build/**
     - android/**
@@ -13,3 +19,8 @@ analyzer:
     - windows/**
     - macos/**
     - linux/**
+
+linter:
+  rules:
+    - discarded_futures
+    - unawaited_futures

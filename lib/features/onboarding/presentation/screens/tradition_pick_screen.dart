@@ -1,5 +1,6 @@
 import 'package:dharma_toolkit/core/config/preset_schema.dart';
 import 'package:dharma_toolkit/shared/providers/app_providers.dart';
+import 'package:dharma_toolkit/shared/utils/user_action.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -60,8 +61,15 @@ class _PresetTileState extends ConsumerState<_PresetTile> {
     if (_saving) return;
     setState(() => _saving = true);
     try {
-      await ref.read(presetManagerProvider).applyPreset(preset);
-      if (mounted) context.go('/');
+      // W18: отказ применения пресета виден; на главную уходим только при
+      // успехе — «ничего не произошло» здесь особенно дорого (традиция не
+      // выбрана, а пользователь считает, что выбрал).
+      final applied = await runUserAction(
+        context,
+        () => ref.read(presetManagerProvider).applyPreset(preset),
+        message: 'Не удалось применить традицию',
+      );
+      if (applied && mounted) context.go('/');
     } finally {
       if (mounted) setState(() => _saving = false);
     }

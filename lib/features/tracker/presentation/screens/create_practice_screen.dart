@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../shared/utils/format.dart';
+import '../../../../shared/utils/user_action.dart';
 import '../../domain/practice.dart';
 import '../providers/practice_provider.dart';
 
@@ -83,11 +84,14 @@ class _CreatePracticeScreenState extends ConsumerState<CreatePracticeScreen> {
         updatedAt: now,
       );
 
-      await repository.create(practice);
-
-      // Стрим списка сам обновится после insert — просто pop без result.
-      // go_router API, а не Navigator (6.5): навигация в приложении одна.
-      if (mounted) {
+      // W18: отказ создания обязан быть видимым; уходим с экрана только при
+      // успехе — иначе пользователь решит, что практика создана.
+      final created = await runUserAction(
+        context,
+        () => repository.create(practice),
+        message: 'Не удалось создать практику',
+      );
+      if (created && mounted) {
         context.pop();
       }
     } finally {

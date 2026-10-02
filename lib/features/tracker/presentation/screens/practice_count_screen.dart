@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../shared/utils/format.dart';
+import '../../../../shared/utils/user_action.dart';
 import '../providers/practice_provider.dart';
 
 /// Экран счёта для конкретной практики (I-3, I-4).
@@ -20,9 +21,15 @@ class PracticeCountScreen extends ConsumerWidget {
 
   const PracticeCountScreen({super.key, required this.practiceId});
 
-  Future<void> _increment(WidgetRef ref, int amount) async {
+  Future<void> _increment(BuildContext context, WidgetRef ref, int amount) async {
     final repository = ref.read(practiceRepositoryProvider);
-    await repository.incrementCount(practiceId, amount);
+    // W18: отказ инкремента (закрытая БД, FK и т.п.) обязан быть видимым —
+    // иначе тап выглядит как «ничего не произошло».
+    await runUserAction(
+      context,
+      () => repository.incrementCount(practiceId, amount),
+      message: 'Не удалось увеличить счёт',
+    );
     // Стрим сам переэмитит новое значение — ничего больше делать не нужно.
   }
 
@@ -52,8 +59,8 @@ class PracticeCountScreen extends ConsumerWidget {
       context: context,
       builder: (_) => const _CustomAmountDialog(),
     );
-    if (amount != null) {
-      await _increment(ref, amount);
+    if (amount != null && context.mounted) {
+      await _increment(context, ref, amount);
     }
   }
 
@@ -113,7 +120,7 @@ class PracticeCountScreen extends ConsumerWidget {
                       width: 120,
                       height: 120,
                       child: ElevatedButton(
-                        onPressed: () => _increment(ref, 1),
+                        onPressed: () => _increment(context, ref, 1),
                         style: ElevatedButton.styleFrom(
                           padding: EdgeInsets.zero,
                           textStyle: const TextStyle(fontSize: 48),
@@ -132,11 +139,11 @@ class PracticeCountScreen extends ConsumerWidget {
                       runSpacing: 8,
                       children: [
                         ElevatedButton(
-                          onPressed: () => _increment(ref, 10),
+                          onPressed: () => _increment(context, ref, 10),
                           child: const Text('+10'),
                         ),
                         ElevatedButton(
-                          onPressed: () => _increment(ref, 100),
+                          onPressed: () => _increment(context, ref, 100),
                           child: const Text('+100'),
                         ),
                         // FR-TRK-9 (5.0.5): произвольное число через диалог.
