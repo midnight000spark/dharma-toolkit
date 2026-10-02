@@ -69,6 +69,7 @@
 - **H-07** — `scripts/ci_status.sh`: предсказуемый временный файл без trap/timeout — `mktemp`+trap.
 - **JEV** — `opencode.json`: абсолютный путь к `jev-mcp` — переносимо или явно локально.
 - **P21** — `task-cli.ts` не запускается (ts-node + TypeScript 7) — пин `typescript@5.x`.
+- **LUNA** — `gpt-6-luna` (vision/ревью): TPM-лимит — входной контекст ~55k токенов уводит в rate limit/зависание, обход не найден (F-84).
 
 ## 6. Ждут действия (не решение)
 
