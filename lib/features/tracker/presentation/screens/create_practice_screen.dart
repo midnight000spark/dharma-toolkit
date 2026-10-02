@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -113,6 +114,11 @@ class _CreatePracticeScreenState extends ConsumerState<CreatePracticeScreen> {
             children: [
               TextFormField(
                 controller: _nameController,
+                // W31: имя ограничено 120 символами — без границы ввод на
+                // 5000 знаков проходил в БД и раздувал заголовки и список.
+                // Счётчик Material показывает остаток, обрезка — на месте ввода.
+                maxLength: 120,
+                maxLengthEnforcement: MaxLengthEnforcement.enforced,
                 decoration: const InputDecoration(labelText: 'Название'),
                 validator: (value) =>
                     value?.trim().isEmpty ?? true ? 'Введите название' : null,
@@ -144,6 +150,9 @@ class _CreatePracticeScreenState extends ConsumerState<CreatePracticeScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _unitController,
+                // W31: единица измерения — короткая подпись, 24 символа.
+                maxLength: 24,
+                maxLengthEnforcement: MaxLengthEnforcement.enforced,
                 decoration: const InputDecoration(labelText: 'Единица измерения'),
               ),
               const SizedBox(height: 32),

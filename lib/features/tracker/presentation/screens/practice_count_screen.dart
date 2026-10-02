@@ -91,7 +91,12 @@ class PracticeCountScreen extends ConsumerWidget {
 
         return Scaffold(
           appBar: AppBar(
-            title: Text(practice.name),
+            // W31: длинное имя (до 120 знаков) не переносится и не рвёт шапку.
+            title: Text(
+              practice.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
           // W17: SafeArea + скролл — при крупном системном шрифте содержимое
           // не обязано влезать в один экран.
@@ -127,29 +132,47 @@ class PracticeCountScreen extends ConsumerWidget {
                         ),
                         // W17: «+» масштабируется под доступное место, а не
                         // выдавливает вёрстку при крупном шрифте.
-                        child: const FittedBox(child: Text('+')),
+                        // W31: доступное имя главного действия — со счётом, а
+                        // не «+»: иначе незрячий пользователь не слышит
+                        // текущее значение и не понимает, что произошло.
+                        child: Semantics(
+                          label: 'Прибавить один, текущий счёт '
+                              '${practice.currentCount}',
+                          excludeSemantics: true,
+                          child: const FittedBox(child: Text('+')),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),
                     // W17: Wrap вместо Row — вторичные действия переносятся
                     // на новую строку на узком экране и крупном шрифте.
+                    // W31: у второстепенных кнопок есть подсказка-пояснение.
                     Wrap(
                       alignment: WrapAlignment.center,
                       spacing: 16,
                       runSpacing: 8,
                       children: [
-                        ElevatedButton(
-                          onPressed: () => _increment(context, ref, 10),
-                          child: const Text('+10'),
+                        Tooltip(
+                          message: 'Прибавить десять',
+                          child: ElevatedButton(
+                            onPressed: () => _increment(context, ref, 10),
+                            child: const Text('+10'),
+                          ),
                         ),
-                        ElevatedButton(
-                          onPressed: () => _increment(context, ref, 100),
-                          child: const Text('+100'),
+                        Tooltip(
+                          message: 'Прибавить сто',
+                          child: ElevatedButton(
+                            onPressed: () => _increment(context, ref, 100),
+                            child: const Text('+100'),
+                          ),
                         ),
                         // FR-TRK-9 (5.0.5): произвольное число через диалог.
-                        OutlinedButton(
-                          onPressed: () => _enterAmount(context, ref),
-                          child: const Text('Ввести число'),
+                        Tooltip(
+                          message: 'Ввести число вручную',
+                          child: OutlinedButton(
+                            onPressed: () => _enterAmount(context, ref),
+                            child: const Text('Ввести число'),
+                          ),
                         ),
                       ],
                     ),

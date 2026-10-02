@@ -97,7 +97,13 @@ class PracticeListScreen extends ConsumerWidget {
                 itemBuilder: (context, index) {
                   final practice = practices[index];
                   return ListTile(
-                    title: Text(practice.name),
+                    // W31: длинное имя (до 120 знаков) — одна строка с
+                    // многоточием, а не разъехавшаяся плитка.
+                    title: Text(
+                      practice.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     subtitle: Text(formatCount(practice.currentCount, practice.unit)),
                     trailing: practice.target != null
                         ? Text('${(practice.progress * 100).toInt()}%')

@@ -212,6 +212,67 @@ void main() {
     });
   });
 
+  // W31: без границы ввода в поле имени проходило 5000+ символов и уезжало в
+  // БД и заголовки; лимит обрезает ввод на месте (урок 4 — проверяется путь
+  // ввода, а не факт отрисовки).
+  group('W31: лимиты ввода', () {
+    late AppDatabase db;
+    late PracticeRepository repository;
+
+    setUp(() async {
+      db = AppDatabase.forTesting(NativeDatabase.memory());
+      repository = PracticeRepository(db);
+    });
+
+    tearDown(() async {
+      await db.close();
+    });
+
+    Future<void> pumpForm(WidgetTester tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            practiceRepositoryProvider.overrideWithValue(repository),
+          ],
+          child: const MaterialApp(
+            home: CreatePracticeScreen(traditionTag: 'sample'),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    String textOf(WidgetTester tester, String label) {
+      final editable = tester.widget<EditableText>(find.descendant(
+        of: find.widgetWithText(TextFormField, label),
+        matching: find.byType(EditableText),
+      ));
+      return editable.controller.text;
+    }
+
+    testWidgets('имя обрезается до 120 символов, а не уходит целиком',
+        (tester) async {
+      await pumpForm(tester);
+
+      await tester.enterText(
+          find.widgetWithText(TextFormField, 'Название'), 'а' * 10000);
+      await tester.pump();
+
+      expect(textOf(tester, 'Название').length, 120,
+          reason: 'W31: ввод обязан обрезаться лимитом поля');
+    });
+
+    testWidgets('единица измерения обрезается до 24 символов', (tester) async {
+      await pumpForm(tester);
+
+      await tester.enterText(
+          find.widgetWithText(TextFormField, 'Единица измерения'), 'б' * 5000);
+      await tester.pump();
+
+      expect(textOf(tester, 'Единица измерения').length, 24);
+    });
+  });
+
   // R-19: форма предлагала тип «Таймер», которого в MVP нет (FR-TRK-7 —
   // бэклог v1.1), и созданный «таймер» открывался экраном счёта по тапам.
   // Guard проверяет, что список типов берётся из доменного PracticeTypes

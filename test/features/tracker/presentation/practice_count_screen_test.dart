@@ -234,6 +234,65 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
     });
 
+    // W31: главное действие озвучивается со счётом, а не «+»; у
+    // второстепенных кнопок есть подсказки.
+    testWidgets('W31: доступное имя «+» содержит счёт и обновляется',
+        (tester) async {
+      final semantics = tester.ensureSemantics();
+      try {
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              practiceRepositoryProvider.overrideWithValue(repository),
+            ],
+            child: MaterialApp(
+              home: PracticeCountScreen(practiceId: practiceId),
+            ),
+          ),
+        );
+        await tester.pump(const Duration(milliseconds: 100));
+
+        expect(find.bySemanticsLabel('Прибавить один, текущий счёт 10'),
+            findsOneWidget,
+            reason: 'незрячий пользователь обязан слышать текущий счёт');
+
+        await tester.tap(find.text('+'));
+        await tester.pump(const Duration(milliseconds: 100));
+
+        expect(find.bySemanticsLabel('Прибавить один, текущий счёт 11'),
+            findsOneWidget,
+            reason: 'после тапа метка обязана отражать новый счёт');
+      } finally {
+        // Дескриптор обязан быть снят до конца теста, иначе фреймворк
+        // сообщает «SemanticsHandle was active» вместо результата проверки.
+        semantics.dispose();
+      }
+
+      await db.close();
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
+    testWidgets('W31: у второстепенных кнопок есть подсказки', (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            practiceRepositoryProvider.overrideWithValue(repository),
+          ],
+          child: MaterialApp(
+            home: PracticeCountScreen(practiceId: practiceId),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.byTooltip('Прибавить десять'), findsOneWidget);
+      expect(find.byTooltip('Прибавить сто'), findsOneWidget);
+      expect(find.byTooltip('Ввести число вручную'), findsOneWidget);
+
+      await db.close();
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
     // W17: на 320dp при крупном системном шрифте вёрстка переполнялась
     // (Row по горизонтали + Column по вертикали). Гард — отсутствие любого
     // исключения вёрстки на этом размере.
