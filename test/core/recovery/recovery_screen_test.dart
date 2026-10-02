@@ -576,6 +576,41 @@ void main() {
       expect(report.renamedDatabaseTo, isNotNull);
     });
 
+    // W33: накопление копий обязано быть видимым, а излишек сверх окна —
+    // не удаляться молча (п. 11.9: массовая чистка — право пользователя,
+    // хранить дольше — тоже).
+    test('W33: копии перечислены, излишек не удаляется молча', () async {
+      for (final ts in [1000, 2000, 3000, 4000]) {
+        File('$dbPath.corrupt-$ts').writeAsStringSync('копия $ts');
+      }
+
+      final report = await wipeLocalState();
+
+      // Новая копия (только что переименованная) + 4 прежние.
+      expect(report.corruptCopies, hasLength(5));
+      expect(report.corruptCopies.first.savedAt.millisecondsSinceEpoch,
+          greaterThan(4000),
+          reason: 'новейшая — только что сохранённая копия');
+      expect(report.hasExcessCorruptCopies, isTrue);
+      expect(report.retainedCorruptCopies, kRetainedCorruptCopies);
+      expect(
+        report.excessCorruptCopies.map((c) => c.fileName).toList(),
+        [
+          '$kAppDatabaseFileName.corrupt-2000',
+          '$kAppDatabaseFileName.corrupt-1000',
+        ],
+        reason: 'излишек — две самые старые: 3 последние хранятся',
+      );
+      expect(report.excessCorruptCopies.every((c) => c.sizeBytes > 0), isTrue,
+          reason: 'размер копии виден в отчёте');
+      for (final copy in report.excessCorruptCopies) {
+        expect(File(p.join(dir.path, copy.fileName)).existsSync(), isTrue,
+            reason: 'излишек не удаляется молча — решение за пользователем');
+      }
+      expect(report.clean, isTrue,
+          reason: 'перечисление копий — не отказ стирания');
+    });
+
     testWidgets('неполное стирание видно на экране, детали — в логе (C1(3))',
         (tester) async {
       await tester.pumpWidget(RecoveryApp(
@@ -601,6 +636,111 @@ void main() {
           find.textContaining('Стирание прошло не полностью'), findsOneWidget);
       expect(find.textContaining('errno 13'), findsNothing,
           reason: 'B-19: системные детали не уходят на экран');
+    });
+  });
+
+  // W33: политика хранения копий `.corrupt-<ts>` — окно из 3 последних,
+  // излишек виден человеку. Чистая часть проверяется без реального I/O
+  // (урок 5), экран — widget-тестом.
+  group('W33: копии `.corrupt-<ts>`', () {
+    test('parseCorruptCopies: новые первыми, не-копии отброшены', () {
+      final copies = parseCorruptCopies({
+        '$kAppDatabaseFileName.corrupt-300': 30,
+        '$kAppDatabaseFileName.corrupt-100': 10,
+        '$kAppDatabaseFileName.corrupt-200': 20,
+        'other.txt': 1,
+        kAppDatabaseFileName: 999,
+        '$kAppDatabaseFileName.corrupt-notanumber': 5,
+      });
+
+      expect(
+        copies.map((c) => c.fileName).toList(),
+        [
+          '$kAppDatabaseFileName.corrupt-300',
+          '$kAppDatabaseFileName.corrupt-200',
+          '$kAppDatabaseFileName.corrupt-100',
+        ],
+        reason: 'новейшая первой; чужой префикс и нечисловой хвост отброшены',
+      );
+      expect(copies.first.sizeBytes, 30);
+    });
+
+    testWidgets('переполнение копий видно человеку (count, дата/размер)',
+        (tester) async {
+      await tester.pumpWidget(RecoveryApp(
+        error: StateError('повреждённые данные'),
+        onRetry: () async {},
+        onReset: () async {},
+        wipe: () async => WipeReport(
+          prefsCleared: true,
+          corruptCopies: [
+            for (final ts in [5000, 4000, 3000, 2000, 1000])
+              CorruptDatabaseCopy(
+                fileName: '$kAppDatabaseFileName.corrupt-$ts',
+                savedAt: DateTime.fromMillisecondsSinceEpoch(ts),
+                sizeBytes: ts,
+              ),
+          ],
+        ),
+      ));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('corrupt-copies-summary')), findsNothing,
+          reason: 'до стирания копий в отчёте нет');
+
+      await tester.tap(find.text('Сбросить настройки'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, 'Сбросить'));
+      await tester.pumpAndSettle();
+
+      expect(
+          find.byKey(const ValueKey('corrupt-copies-summary')), findsOneWidget);
+      expect(
+        find.textContaining('Сохранённых копий повреждённой базы: 5'),
+        findsOneWidget,
+      );
+      // Излишек (2 самые старые) перечислен, дата и размер видны.
+      expect(
+        find.byKey(ValueKey('corrupt-copy-$kAppDatabaseFileName.corrupt-2000')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(ValueKey('corrupt-copy-$kAppDatabaseFileName.corrupt-1000')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(ValueKey('corrupt-copy-$kAppDatabaseFileName.corrupt-3000')),
+        findsNothing,
+        reason: 'копии внутри окна не выдаются за излишек',
+      );
+      expect(find.textContaining('не удалялись автоматически'), findsOneWidget,
+          reason: 'человеку прямо сказано: чистка не сделана, право за ним');
+    });
+
+    testWidgets('копий в пределах окна — тревоги нет', (tester) async {
+      await tester.pumpWidget(RecoveryApp(
+        error: StateError('повреждённые данные'),
+        onRetry: () async {},
+        onReset: () async {},
+        wipe: () async => WipeReport(
+          prefsCleared: true,
+          corruptCopies: [
+            for (final ts in [2000, 1000])
+              CorruptDatabaseCopy(
+                fileName: '$kAppDatabaseFileName.corrupt-$ts',
+                savedAt: DateTime.fromMillisecondsSinceEpoch(ts),
+                sizeBytes: ts,
+              ),
+          ],
+        ),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Сбросить настройки'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, 'Сбросить'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('corrupt-copies-summary')), findsNothing,
+          reason: 'в пределах окна хранения тревожить человека нечем');
     });
   });
 }

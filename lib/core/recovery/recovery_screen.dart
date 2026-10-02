@@ -30,20 +30,132 @@ class WipeReport {
   /// Человекочитаемые формулировки того, что не получилось. Пусто = чисто.
   final List<String> errors;
 
+  /// Копии `.corrupt-<ts>` в папке документов на момент отчёта, новейшая
+  /// первой (W33). Пусто — копий нет (или папка недоступна; тогда причина в
+  /// [errors]). Это данные для восстановления счёта, поэтому отчёт обязан
+  /// называть их вслух, а не оставлять накопление молчаливым.
+  final List<CorruptDatabaseCopy> corruptCopies;
+
   const WipeReport({
     required this.prefsCleared,
     this.renamedDatabaseTo,
     this.removedSidecars = const [],
     this.errors = const [],
+    this.corruptCopies = const [],
   });
 
   bool get clean => errors.isEmpty;
+
+  /// Сколько копий хранится как рабочее окно: [kRetainedCorruptCopies]
+  /// последних (W33, решение п. 11.9).
+  int get retainedCorruptCopies => corruptCopies.length < kRetainedCorruptCopies
+      ? corruptCopies.length
+      : kRetainedCorruptCopies;
+
+  /// Копии старше окна хранения, новейшая из них — первой.
+  ///
+  /// Они **не удаляются автоматически**: молчаливая массовая чистка — это
+  /// потеря данных для восстановления, а политика оставляет решение за
+  /// человеком (п. 11.9). Экран обязан перечислить их и их дату/размер.
+  List<CorruptDatabaseCopy> get excessCorruptCopies => corruptCopies
+      .skip(kRetainedCorruptCopies)
+      .toList(growable: false);
+
+  /// Есть ли копии сверх окна хранения — повод показать их человеку.
+  bool get hasExcessCorruptCopies =>
+      corruptCopies.length > kRetainedCorruptCopies;
 }
 
 /// Файлы, которые SQLite держит рядом с базой. Стирать только основной файл —
 /// значит оставить журнал, по которому база «восстанавливается» обратно под
 /// удалённый путь.
 const List<String> _databaseSidecarSuffixes = ['-journal', '-wal', '-shm'];
+
+/// Сколько последних копий повреждённой базы считается рабочим окном (W33).
+///
+/// Решение 30.09 (п. 11.9): хранить 3 последние копии. Копии старше окна —
+/// не мусор, а данные для восстановления счёта, поэтому этот модуль их не
+/// удаляет: он их перечисляет человеку ([WipeReport.excessCorruptCopies]).
+const int kRetainedCorruptCopies = 3;
+
+/// Префикс имени копии: полное имя файла базы и разделитель `.corrupt-`.
+const String _corruptCopyPrefix = '$kAppDatabaseFileName.corrupt-';
+
+/// Копия повреждённой базы (`.corrupt-<ts>`), пережившая стирание (W33).
+///
+/// Основной файл не удаляется, а переименовывается — шанс вытащить счёт
+/// (дух D-26). Со временем такие копии накапливаются, поэтому у каждой есть
+/// момент и размер: без них «сколько копий и что с ними» неотличимо от
+/// молчаливого накопления.
+class CorruptDatabaseCopy {
+  /// Имя файла в папке документов. Полный путь намеренно не хранится: экран
+  /// показывает человеку дату и размер, а не путь (B-19).
+  final String fileName;
+
+  /// Момент сохранения, восстановленный из `<ts>` имени файла.
+  final DateTime savedAt;
+
+  /// Размер копии в байтах; `0`, если размер прочитать не удалось.
+  final int sizeBytes;
+
+  const CorruptDatabaseCopy({
+    required this.fileName,
+    required this.savedAt,
+    required this.sizeBytes,
+  });
+}
+
+/// Отбор копий `.corrupt-<ts>` из листинга каталога (W33).
+///
+/// Чистая функция над «имя файла → размер»: отделена от файлового обхода,
+/// чтобы политика хранения (окно из [kRetainedCorruptCopies] последних и
+/// явный излишек) проверялась детерминированным тестом без реального I/O
+/// (урок 5). Сортировка — по моменту, новейшая первой; ничья по времени
+/// разводится именем, чтобы порядок был тотальным. Имена, не являющиеся нашей
+/// копией (чужой префикс или нечисловой хвост), отбрасываются.
+List<CorruptDatabaseCopy> parseCorruptCopies(Map<String, int> nameToSize) {
+  final copies = <CorruptDatabaseCopy>[];
+  for (final entry in nameToSize.entries) {
+    final name = entry.key;
+    if (!name.startsWith(_corruptCopyPrefix)) continue;
+    final timestamp = int.tryParse(name.substring(_corruptCopyPrefix.length));
+    if (timestamp == null) continue;
+    copies.add(CorruptDatabaseCopy(
+      fileName: name,
+      savedAt: DateTime.fromMillisecondsSinceEpoch(timestamp),
+      sizeBytes: entry.value,
+    ));
+  }
+  copies.sort((a, b) {
+    final byMoment = b.savedAt.compareTo(a.savedAt);
+    return byMoment != 0 ? byMoment : b.fileName.compareTo(a.fileName);
+  });
+  return copies;
+}
+
+/// Собрать копии `.corrupt-<ts>` в папке документов (W33).
+///
+/// Здесь только файловый обход и размеры; решение «окно/излишек» принимает
+/// чистая [parseCorruptCopies]. Отказ листинга не глотается: вызывающий
+/// обязан занести его в отчёт.
+Future<List<CorruptDatabaseCopy>> _collectCorruptCopies(Directory dir) async {
+  final nameToSize = <String, int>{};
+  await for (final entity in dir.list()) {
+    if (entity is! File) continue;
+    final name = p.basename(entity.path);
+    if (!name.startsWith(_corruptCopyPrefix)) continue;
+    int size;
+    try {
+      size = await entity.length();
+    } catch (_) {
+      // Размер не прочитался — копию всё равно показываем с нулём: скрыть
+      // существующую копию хуже, чем показать её без размера.
+      size = 0;
+    }
+    nameToSize[name] = size;
+  }
+  return parseCorruptCopies(nameToSize);
+}
 
 /// Аварийное стирание локального состояния (B-5).
 ///
@@ -63,6 +175,7 @@ Future<WipeReport> wipeLocalState({
   final errors = <String>[];
   final removedSidecars = <String>[];
   String? renamedDatabaseTo;
+  var corruptCopies = const <CorruptDatabaseCopy>[];
 
   if (closeDatabase != null) {
     try {
@@ -113,6 +226,17 @@ Future<WipeReport> wipeLocalState({
       errors.add('файл базы не переименован: $e');
       debugPrint('recovery: не удалось переименовать файл БД: $e');
     }
+
+    // W33: после переименования перечисляем все копии `.corrupt-<ts>`.
+    // Накопление без политики — это то, что видит пользователь как «данные
+    // копились сами»; отчёт обязан назвать их количество, дату и размер, а
+    // излишек сверх окна — не удалять молча (п. 11.9).
+    try {
+      corruptCopies = await _collectCorruptCopies(dir);
+    } catch (e) {
+      errors.add('копии повреждённой базы не перечислены: $e');
+      debugPrint('recovery: не удалось перечислить копии БД: $e');
+    }
   } catch (e) {
     errors.add('папка документов недоступна: $e');
     debugPrint('recovery: не удалось добраться до файлов БД: $e');
@@ -123,6 +247,7 @@ Future<WipeReport> wipeLocalState({
     renamedDatabaseTo: renamedDatabaseTo,
     removedSidecars: removedSidecars,
     errors: errors,
+    corruptCopies: corruptCopies,
   );
 }
 
@@ -308,6 +433,40 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
     ];
   }
 
+  /// Переполнение копий повреждённой базы (W33): сколько копий, сколько
+  /// хранится, какие лишние, их дата и размер — и что с ними НЕ сделали.
+  ///
+  /// Появляется только при переполнении: молчаливое накопление — это когда
+  /// копии растут, а человек об этом не знает. Здесь он видит и список, и
+  /// прямое «удалять или нет — ваше право».
+  List<Widget> _corruptCopiesNotice(WipeReport report) {
+    return [
+      const SizedBox(height: 12),
+      Text(
+        'Сохранённых копий повреждённой базы: ${report.corruptCopies.length}. '
+        'Хранятся ${report.retainedCorruptCopies} последние.',
+        key: const ValueKey('corrupt-copies-summary'),
+        style: Theme.of(context).textTheme.bodySmall,
+        textAlign: TextAlign.center,
+      ),
+      const SizedBox(height: 4),
+      for (final copy in report.excessCorruptCopies)
+        Text(
+          '${_formatCopyMoment(copy.savedAt)} · ${_formatCopySize(copy.sizeBytes)}',
+          key: ValueKey('corrupt-copy-${copy.fileName}'),
+          style: Theme.of(context).textTheme.bodySmall,
+          textAlign: TextAlign.center,
+        ),
+      const SizedBox(height: 4),
+      Text(
+        'Лишние копии не удалялись автоматически — удалить их можно вручную.',
+        key: const ValueKey('corrupt-copies-retained'),
+        style: Theme.of(context).textTheme.bodySmall,
+        textAlign: TextAlign.center,
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -366,6 +525,10 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
                     textAlign: TextAlign.center,
                   ),
                 ],
+                if (_wipeReport case final WipeReport report
+                    when report.hasExcessCorruptCopies) ...[
+                  ..._corruptCopiesNotice(report),
+                ],
                 ..._limitedModeLines(),
                 const SizedBox(height: 24),
                 ElevatedButton(
@@ -397,6 +560,24 @@ class _RecoveryScreenState extends State<RecoveryScreen> {
       ),
     );
   }
+}
+
+/// Дата и время копии для человека: «15.01.2026 08:00». Без пути и без
+/// системных зон — только момент, который пользователь может узнать.
+String _formatCopyMoment(DateTime moment) {
+  String two(int value) => value.toString().padLeft(2, '0');
+  return '${two(moment.day)}.${two(moment.month)}.${moment.year} '
+      '${two(moment.hour)}:${two(moment.minute)}';
+}
+
+/// Размер копии для человека: байты / КБ / МБ. Нужен, чтобы «копия» была не
+/// абстракцией: видно, сколько занимает то, что решено сохранить.
+String _formatCopySize(int bytes) {
+  if (bytes < 1024) return '$bytes Б';
+  if (bytes < 1024 * 1024) {
+    return '${(bytes / 1024).toStringAsFixed(1)} КБ';
+  }
+  return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} МБ';
 }
 
 /// Замена красного экрана Flutter (5.3): человекочитаемо, без падения кадра.
