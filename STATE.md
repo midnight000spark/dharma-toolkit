@@ -1,6 +1,6 @@
 # Состояние проекта "Дхарма-тулкит"
 
-> _Freshness — owner: пользователь · reviewed: 2026-10-01 (пакет `warning-3b`) · verified-by: `flutter analyze --fatal-infos` (0) / `flutter test` (**618/618**, лог в файл) / `./scripts/check_docs.sh` (PASSED, 718 refs) · устройство — W2-сценарий `scripts/emu-w2-check.sh` на эмуляторе API 35 (показ `id=100000` → пережил `am kill` → после `enabled=0` и перезапуска: 0 записей / 0 pending; `.tmp/logs/warning-3b-w2-device.txt`) · @ 3aabe0b / lock sha256:463d9b23e6ddb0c2._
+> _Freshness — owner: пользователь · reviewed: 2026-10-02 (закрытие `warning-3c`; ревью — пасы 1–2, findings закрыты) · verified-by: `flutter analyze --fatal-infos` (0) / `flutter test` (**639/639**, лог `.tmp/logs/warning-3c-final-test.txt`) / `./scripts/check_docs.sh` (PASSED, 729 refs) · устройство — в 3c не перезапускалось (пакет уровня кода/сторожей): мутанты `.tmp/logs/warning-3c-*` + `flutter build bundle` exit 0, каталоги паков в `AssetManifest` (`.tmp/logs/warning-3c-11-bundle.txt`) · @ 51b460b / lock sha256:463d9b23e6ddb0c2._
 
 ## Текущий статус
 **Этап**: 7 «Контент» — ⏳ в работе; 7.0 ✅ (данные/домен, тег `stage-7.0` на `67dc4cc`); предыдущие: этап 6 ✅ (тег `stage-6`), этап 5 ✅ (тег `stage-5b`). Критерий этапа 7 не закрыт — нужен UI чтения дня (SCR-13).
