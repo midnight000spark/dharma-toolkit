@@ -86,58 +86,69 @@ class PracticeCountScreen extends ConsumerWidget {
           appBar: AppBar(
             title: Text(practice.name),
           ),
-          body: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  '${practice.currentCount}',
-                  style: Theme.of(context).textTheme.displayLarge,
-                ),
-                if (practice.target != null) ...[
-                  const SizedBox(height: 16),
-                  LinearProgressIndicator(
-                    value: practice.progress,
-                  ),
-                  const SizedBox(height: 8),
-                  Text('Цель: ${practice.target}'),
-                ],
-                const SizedBox(height: 32),
-                // SCR-9: крупная центральная кнопка «+» (шаг 1).
-                SizedBox(
-                  width: 120,
-                  height: 120,
-                  child: ElevatedButton(
-                    onPressed: () => _increment(ref, 1),
-                    style: ElevatedButton.styleFrom(
-                      textStyle: const TextStyle(fontSize: 48),
-                    ),
-                    child: const Text('+'),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // Вторичные +10/+100 и «Ввести число» — меньшими кнопками ниже.
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+          // W17: SafeArea + скролл — при крупном системном шрифте содержимое
+          // не обязано влезать в один экран.
+          body: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    ElevatedButton(
-                      onPressed: () => _increment(ref, 10),
-                      child: const Text('+10'),
+                    Text(
+                      '${practice.currentCount}',
+                      style: Theme.of(context).textTheme.displayLarge,
                     ),
-                    const SizedBox(width: 16),
-                    ElevatedButton(
-                      onPressed: () => _increment(ref, 100),
-                      child: const Text('+100'),
+                    if (practice.target != null) ...[
+                      const SizedBox(height: 16),
+                      LinearProgressIndicator(
+                        value: practice.progress,
+                      ),
+                      const SizedBox(height: 8),
+                      Text('Цель: ${practice.target}'),
+                    ],
+                    const SizedBox(height: 32),
+                    // SCR-9: крупная центральная кнопка «+» (шаг 1).
+                    SizedBox(
+                      width: 120,
+                      height: 120,
+                      child: ElevatedButton(
+                        onPressed: () => _increment(ref, 1),
+                        style: ElevatedButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          textStyle: const TextStyle(fontSize: 48),
+                        ),
+                        // W17: «+» масштабируется под доступное место, а не
+                        // выдавливает вёрстку при крупном шрифте.
+                        child: const FittedBox(child: Text('+')),
+                      ),
                     ),
-                    const SizedBox(width: 16),
-                    // FR-TRK-9 (5.0.5): произвольное число через диалог.
-                    OutlinedButton(
-                      onPressed: () => _enterAmount(context, ref),
-                      child: const Text('Ввести число'),
+                    const SizedBox(height: 16),
+                    // W17: Wrap вместо Row — вторичные действия переносятся
+                    // на новую строку на узком экране и крупном шрифте.
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 16,
+                      runSpacing: 8,
+                      children: [
+                        ElevatedButton(
+                          onPressed: () => _increment(ref, 10),
+                          child: const Text('+10'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => _increment(ref, 100),
+                          child: const Text('+100'),
+                        ),
+                        // FR-TRK-9 (5.0.5): произвольное число через диалог.
+                        OutlinedButton(
+                          onPressed: () => _enterAmount(context, ref),
+                          child: const Text('Ввести число'),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
           ),
         );

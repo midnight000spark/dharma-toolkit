@@ -206,5 +206,38 @@ void main() {
       await db.close();
       await tester.pumpWidget(const SizedBox.shrink());
     });
+
+    // W17: на 320dp при крупном системном шрифте вёрстка переполнялась
+    // (Row по горизонтали + Column по вертикали). Гард — отсутствие любого
+    // исключения вёрстки на этом размере.
+    for (final scale in <double>[1.5, 2.0]) {
+      testWidgets('W17: без overflow 320×568 @textScale $scale',
+          (tester) async {
+        tester.view.physicalSize = const Size(320, 568);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.reset);
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        addTearDown(
+            tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              practiceRepositoryProvider.overrideWithValue(repository),
+            ],
+            child: MaterialApp(
+              home: PracticeCountScreen(practiceId: practiceId),
+            ),
+          ),
+        );
+        await tester.pump(const Duration(milliseconds: 100));
+
+        expect(tester.takeException(), isNull,
+            reason: 'вёрстка экрана счёта переполнилась при scale $scale');
+
+        await db.close();
+        await tester.pumpWidget(const SizedBox.shrink());
+      });
+    }
   });
 }
