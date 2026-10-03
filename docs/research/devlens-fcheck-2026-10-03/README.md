@@ -36,7 +36,7 @@
 Перенесено 2026-10-03. Проверить целостность: `sha256sum <файл>`.
 
 ```
-ef4231c4a11fb4e9aec35f870fb8861da7ca61bcd3ff27a88764d246e3dca396  FINDINGS.md
+a6699d2535a87b2e350d1f230f43fa0ee7c945911a9fbbd149087594d26d335d  FINDINGS.md
 ```
 
 ## Ограничения
