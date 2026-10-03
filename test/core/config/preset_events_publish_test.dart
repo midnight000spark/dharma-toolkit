@@ -64,7 +64,7 @@ void main() {
     final manager = PresetManager(() => db, storage, eventBus: bus);
 
     await manager.applyPreset(preset('nyingma'));
-    await manager.switchPreset(preset('theravada_default'));
+    await manager.applyPreset(preset('theravada_default'));
     await pumpEventQueue();
 
     expect(events.map((e) => e.traditionTag),

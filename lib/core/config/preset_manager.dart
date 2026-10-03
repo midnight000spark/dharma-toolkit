@@ -157,11 +157,9 @@ class PresetManager implements AppModule, ReportsOwnFailures {
     eventBus?.publish(PresetChanged(traditionTag: preset.id));
   }
 
-  /// Switch preset: apply new. Data of the old tradition is NOT deleted (D-26):
-  /// строки остаются под своим traditionTag и переживут возврат к пресету.
-  Future<void> switchPreset(PresetSchema newPreset) async {
-    await applyPreset(newPreset);
-  }
+  // S10: алиас `switchPreset` снят — он был чистым дублем [applyPreset] без
+  // собственной семантики. Смена пресета не удаляет данные старой традиции
+  // (D-26): строки остаются под своим traditionTag и переживут возврат.
 
   /// Reset preset: снять активный пресет. Данные практик НЕ удаляются (D-26);
   /// повторное применение того же пресета восстановит строки со счётчиками.

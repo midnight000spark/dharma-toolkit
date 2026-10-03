@@ -375,7 +375,7 @@ void main() {
         '(cancelRange вызван ${scheduler.cancelRangeCalls}×)');
 
     // Смена традиции: событие шины, план строится по НОВОМУ пресету.
-    await manager.switchPreset(config.getPreset('theravada_default')!);
+    await manager.applyPreset(config.getPreset('theravada_default')!);
     await pumpEventQueue();
     await replanner.settled;
     final theravadaIds = await scheduler.pendingIds();
@@ -422,7 +422,7 @@ void main() {
     // Возврат на традицию с МЕНЬШИМ числом пунктов (Тхеравада 8 → Ньингма 4):
     // без снятия своей полосы перед постановкой здесь остались бы чужие id —
     // это и есть проверяемое поведение D-36, а не деталь реализации.
-    await manager.switchPreset(config.getPreset('nyingma')!);
+    await manager.applyPreset(config.getPreset('nyingma')!);
     await pumpEventQueue();
     await replanner.settled;
     final backIds = await scheduler.pendingIds();

@@ -166,7 +166,7 @@ void main() {
           .write(const PracticesCompanion(currentCount: Value(21000)));
 
       //Switch туда: Тхеравада — свой тег, пустой список своих практик.
-      await presetManager.switchPreset(th);
+      await presetManager.applyPreset(th);
       final tag = presetManager.activePreset!.id;
       final thRows = await (database.select(database.practices)
             ..where((t) => t.traditionTag.equals(tag)))
@@ -176,7 +176,7 @@ void main() {
       expect(await nyPractices(), hasLength(4));
 
       // Switch обратно: те же строки с сохранённым счётом.
-      await presetManager.switchPreset(ny);
+      await presetManager.applyPreset(ny);
       final back = await nyPractices();
       expect(back, hasLength(4));
       final restored =

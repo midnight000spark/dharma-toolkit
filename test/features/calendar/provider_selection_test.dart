@@ -1,7 +1,7 @@
 /// Реактивный выбор календаря по активному пресету (5b.4, R-21/D-32).
 ///
 /// Поведенческие тесты пути переключения (урок 4): провайдер обязан сменить
-/// реализацию на `applyPreset`/`switchPreset`/`resetPreset` БЕЗ перезапуска
+/// реализацию на `applyPreset`/`resetPreset` БЕЗ перезапуска
 /// контейнера. Тесты краснеют, если:
 ///  * проводка вернётся на чтение plain-поля `activePreset` (R-21 —
 ///    мина Этапа 8: смена традиции из настроек не дойдёт до UI);
@@ -106,7 +106,7 @@ void main() {
     expect(container.read(activeCalendarProviderProvider),
         isA<TibetanCalendarProvider>());
 
-    await manager.switchPreset(_theravada);
+    await manager.applyPreset(_theravada);
     await settleTag('theravada_default');
 
     final cal = container.read(activeCalendarProviderProvider);

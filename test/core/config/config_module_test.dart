@@ -396,7 +396,7 @@ void main() {
       final module = ConfigModule();
       await module.init();
 
-      expect(module.availablePresetIds, contains('good'),
+      expect(module.allPresets.map((p) => p.id), contains('good'),
           reason: 'один бракованный файл не имеет права валить загрузку всех');
       expect(module.allPresets, hasLength(1));
       expect(module.tree, hasLength(1));

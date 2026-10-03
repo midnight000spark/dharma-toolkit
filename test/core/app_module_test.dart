@@ -36,7 +36,7 @@ class _StubModule implements AppModule {
 }
 
 /// Модуль, падающий на init (B-23): проверяем, что повторный [initAll]
-/// не выдаёт пустой «allOk» за уже провалившийся прогон.
+/// не выдаёт пустой отчёт за уже провалившийся прогон.
 class _FailingModule implements AppModule {
   @override
   String get id => 'failing';
@@ -131,7 +131,7 @@ void main() {
       expect(module2.initCallCount, 1);
     });
 
-    test('повторный initAll возвращает тот же отчёт, а не пустой allOk '
+    test('повторный initAll возвращает тот же отчёт, а не пустой '
         '(B-23)', () async {
       final registry = ModuleRegistry.instance;
       registry.register(_FailingModule());
@@ -139,8 +139,8 @@ void main() {
       final first = await registry.initAll();
       final second = await registry.initAll();
 
-      expect(first.allOk, isFalse);
-      expect(second.allOk, isFalse,
+      expect(first.failures, isNotEmpty);
+      expect(second.failures, isNotEmpty,
           reason: 'второй вызов не должен выдавать успех за провал первого');
       expect(second.failures.map((f) => f.moduleId), ['failing']);
     });
@@ -169,7 +169,7 @@ void main() {
       expect(gate.completedInits, 1);
       expect(reports[0], same(reports[1]),
           reason: 'оба вызова получают один и тот же отчёт');
-      expect(reports[0].allOk, isTrue);
+      expect(reports[0].failures, isEmpty);
     });
 
     test('disposeAll calls dispose in reverse registration order', () async {

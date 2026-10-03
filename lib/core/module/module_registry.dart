@@ -65,7 +65,8 @@ class ModuleInitReport {
 
   const ModuleInitReport(this.failures);
 
-  bool get allOk => failures.isEmpty;
+  // S10: геттер `allOk` снят (test-only сахар). Читатели спрашивают
+  // `failures.isEmpty` напрямую — это и есть контракт отчёта.
 }
 
 /// Application module registry. Singleton at runtime.

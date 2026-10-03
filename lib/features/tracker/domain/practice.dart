@@ -71,40 +71,9 @@ class PracticeEntity {
     return currentCount / target!;
   }
 
-  /// Осталось до цели
-  int? get remaining {
-    if (target == null) return null;
-    return target! - currentCount;
-  }
-
-  /// Копия с изменёнными полями (мелочь D-24). Поля не переданы — сохраняют
-  /// значение оригинала; обнуляемые поля (target/unit/presetId/id)
-  /// copyWith не очищает.
-  PracticeEntity copyWith({
-    int? id,
-    String? presetId,
-    String? name,
-    String? type,
-    int? target,
-    String? unit,
-    String? traditionTag,
-    int? currentCount,
-    DateTime? createdAt,
-    DateTime? updatedAt,
-  }) {
-    return PracticeEntity(
-      id: id ?? this.id,
-      presetId: presetId ?? this.presetId,
-      name: name ?? this.name,
-      type: type ?? this.type,
-      target: target ?? this.target,
-      unit: unit ?? this.unit,
-      traditionTag: traditionTag ?? this.traditionTag,
-      currentCount: currentCount ?? this.currentCount,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-    );
-  }
+  // S10: `remaining` и `copyWith` сняты — у них не было ни одного потребителя
+  // в `lib/` (только собственные тесты). Оба вернутся вместе с экраном,
+  // который их реально использует (редактирование/«осталось N», SCR-8).
 }
 
 /// Практика с указанным id не найдена при записи (W34).

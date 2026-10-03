@@ -51,47 +51,4 @@ void main() {
       expect(p.currentCount, 150);
     });
   });
-
-  group('PracticeEntity.copyWith', () {
-    test('меняет только названное поле, остальные сохраняются', () {
-      final original = PracticeEntity(
-        id: 1,
-        presetId: 'pres-1',
-        name: 'Нёндро',
-        type: 'counter',
-        target: 100000,
-        unit: 'повторения',
-        traditionTag: 'nyingma',
-        currentCount: 42,
-        createdAt: DateTime(2026, 1, 1, 10),
-        updatedAt: DateTime(2026, 1, 1, 11),
-      );
-
-      final changed = original.copyWith(currentCount: 43);
-
-      expect(changed.currentCount, 43);
-      expect(changed.id, original.id);
-      expect(changed.presetId, original.presetId);
-      expect(changed.name, original.name);
-      expect(changed.type, original.type);
-      expect(changed.target, original.target);
-      expect(changed.unit, original.unit);
-      expect(changed.traditionTag, original.traditionTag);
-      expect(changed.createdAt, original.createdAt);
-      expect(changed.updatedAt, original.updatedAt);
-      // оригинал не mutated
-      expect(original.currentCount, 42);
-    });
-
-    test('copyWith с несколькими полями — все применены', () {
-      final changed = make(target: 10, count: 1).copyWith(
-        name: 'Другое',
-        target: 20,
-        currentCount: 5,
-      );
-      expect(changed.name, 'Другое');
-      expect(changed.target, 20);
-      expect(changed.currentCount, 5);
-    });
-  });
 }

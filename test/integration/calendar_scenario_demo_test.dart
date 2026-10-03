@@ -126,13 +126,13 @@ void main() {
         [4, 11, 18, 26]);
 
     // ─ Шаг 2. Переключаю на Ньингму (контейнер не пересоздавался).
-    await manager.switchPreset(config.getPreset('nyingma')!);
+    await manager.applyPreset(config.getPreset('nyingma')!);
     await settleTag('nyingma');
     final cal2 = container.read(activeCalendarProviderProvider);
     expect(cal2, isA<TibetanCalendarProvider>(),
         reason: 'смена пресета без перезапуска обязана сменить календарь (R-21)');
     final days2 = cal2!.getSpecialDays(wFrom, wTo);
-    _printSection('Шаг 2 · Ньингма после switchPreset, тот же контейнер'
+    _printSection('Шаг 2 · Ньингма после applyPreset, тот же контейнер'
         ' (tag=${cal2.traditionTag})', days2);
 
     // 10/25 сентября на месте; Лосар-2027 = 07.02 (вектор F-45).
@@ -157,7 +157,7 @@ void main() {
         isNot(days1.map((d) => (d.date, d.type)).toSet()));
 
     // ─ Шаг 3. Возврат на Тхераваду — тоже без перезапуска.
-    await manager.switchPreset(config.getPreset('theravada_default')!);
+    await manager.applyPreset(config.getPreset('theravada_default')!);
     await settleTag('theravada_default');
     final cal3 = container.read(activeCalendarProviderProvider);
     expect(cal3, isA<UposathaCalendarProvider>(),

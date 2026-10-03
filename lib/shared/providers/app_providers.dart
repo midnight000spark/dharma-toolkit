@@ -93,7 +93,7 @@ final activePresetStreamProvider = StreamProvider<PresetSchema?>(
 /// (W4/S6, п. 11.3), а поле схемы `tradition` — таксономия.
 ///
 /// **Реактивен (R-21, 5b.4):** StreamProvider поверх потока пресетов;
-/// `applyPreset`/`switchPreset`/`resetPreset` меняют тег без перезапуска.
+/// `applyPreset`/`resetPreset` меняют тег без перезапуска.
 /// До первого эвента и при сброшенном пресете — пустая строка.
 final activeTraditionTagProvider = StreamProvider<String>(
   (ref) => ref

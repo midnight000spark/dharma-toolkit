@@ -118,7 +118,7 @@ void main() {
       expect(storageModule.getString('active_preset_id'), isNull);
     });
 
-    test('switchPreset replaces active preset', () async {
+    test('applyPreset replaces active preset', () async {
       final preset1 = PresetSchema(
         id: 'preset1',
         name: 'Пресет 1',
@@ -144,7 +144,7 @@ void main() {
       await presetManager.applyPreset(preset1);
       expect(presetManager.activePreset!.id, 'preset1');
 
-      await presetManager.switchPreset(preset2);
+      await presetManager.applyPreset(preset2);
       expect(presetManager.activePreset!.id, 'preset2');
       expect(presetManager.activePreset!.tradition, 'vajrayana');
     });

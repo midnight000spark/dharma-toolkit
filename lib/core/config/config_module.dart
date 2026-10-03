@@ -122,8 +122,8 @@ class ConfigModule implements AppModule, ReportsOwnFailures {
   /// All loaded presets.
   Iterable<PresetSchema> get allPresets => _presets.values;
 
-  /// Идентификаторы пресетов, реально доступных в сборке.
-  Set<String> get availablePresetIds => _presets.keys.toSet();
+  // S10: `availablePresetIds` снят — потребителя в `lib/` не было (только
+  // тесты). Доступные id читаются из [allPresets] (`p.id`).
 
   /// Дерево традиций (D-11). Экран выбора показывает его целиком,
   /// помечая недоступное как «скоро».

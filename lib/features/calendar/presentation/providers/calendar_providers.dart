@@ -72,8 +72,8 @@ final calendarProviderForTagProvider =
 
 /// Календарь активного пресета (R-21): реактивная связка «тег → реализация».
 ///
-/// Меняется без перезапуска вместе с `applyPreset`/`switchPreset`/
-/// `resetPreset` (покрывается потоком [activeTraditionTagProvider]).
+/// Меняется без перезапуска вместе с `applyPreset`/`resetPreset`
+/// (покрывается потоком [activeTraditionTagProvider]).
 /// `null` — активного пресета нет или для него нет календаря в реестре.
 final activeCalendarProviderProvider = Provider<CalendarProvider?>((ref) {
   // C9: явные состояния вместо `.value`. Ошибка потока тегов выходит наружу

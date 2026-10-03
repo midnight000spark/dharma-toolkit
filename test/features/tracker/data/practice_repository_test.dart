@@ -398,7 +398,17 @@ void main() {
         expect(asEntity.presetId, 'nyingma');
 
         await expectLater(
-          repo.create(asEntity.copyWith(id: null, name: 'Копия')),
+          repo.create(PracticeEntity(
+            presetId: asEntity.presetId,
+            name: 'Копия',
+            type: asEntity.type,
+            target: asEntity.target,
+            unit: asEntity.unit,
+            traditionTag: asEntity.traditionTag,
+            currentCount: asEntity.currentCount,
+            createdAt: asEntity.createdAt,
+            updatedAt: asEntity.updatedAt,
+          )),
           throwsArgumentError,
         );
 

@@ -75,7 +75,7 @@ void main() {
   }
 
   /// Ждём ожидаемый тег и возвращаем выбранный календарь. Явное ожидание
-  /// вместо «сверить с текущим» — иначе после switchPreset helper мог бы
+  /// вместо «сверить с текущим» — иначе после applyPreset helper мог бы
   /// увидеть ещё старый тег и провалить гонку в тест (урок 5).
   Future<CalendarProvider?> settledCal(String expectedTag) async {
     await settleTag(expectedTag);
@@ -136,7 +136,7 @@ void main() {
         () async {
       await manager.applyPreset(config.getPreset('nyingma')!);
       await settledCal('nyingma');
-      await manager.switchPreset(config.getPreset('theravada_default')!);
+      await manager.applyPreset(config.getPreset('theravada_default')!);
       final cal = await settledCal('theravada_default');
       expect(cal, isA<UposathaCalendarProvider>());
 

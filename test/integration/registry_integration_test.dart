@@ -75,7 +75,7 @@ void main() {
       // ConfigModule читает манифест index.json и грузит перечисленные пресеты.
       expect(configModule.getPreset('nyingma'), isNotNull);
       expect(configModule.getPreset('theravada_default'), isNotNull);
-      expect(configModule.availablePresetIds,
+      expect(configModule.allPresets.map((p) => p.id),
           containsAll(<String>['nyingma', 'theravada_default']));
       // tree.json — не мёртвый ассет: дерево традиций прочитано (B-4).
       expect(configModule.tree, isNotEmpty);
