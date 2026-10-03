@@ -30,7 +30,7 @@
 | W33-хвост | Копии `.corrupt-*` сверх окна 3: удалять автоматически (видимо, не молча) или оставить только ручное удаление? Сейчас: перечисляются человеку, не удаляются (п. 11.9). **Отложено владельцем 2026-10-02 на этап гигиены** | 🔒 | этап гигиены (`docs-hygiene-1`) | `lib/core/recovery/recovery_screen.dart` (W33) |
 | Н5 | Release-signing gate: подпись release debug-ключом; финальный `applicationId` (TODO-комментарий не удалять) | 🔒 | до Этапа 10 | `docs/REMEDIATION-PLAN-2026-09-30.md#pre-stage-8` |
 | Н6 | `allowBackup` (итоговый манифест) + имя приложения | 🔒 | до Этапа 9/10 | `docs/REMEDIATION-PLAN-2026-09-30.md#pre-stage-8` |
-| S15 | Русское имя приложения (`strings.xml`); сейчас label `dharma_toolkit` | 🔒 | до выпуска | `docs/REMEDIATION-PLAN-2026-09-30.md#suggestion-1` |
+| S15 | Русское имя приложения: конкретное имя выбирает владелец (не выдумываем). После решения техчасть — `strings.xml` + `android:label="@string/app_name"` вместо `dharma_toolkit` | 🔒 | до выпуска | `docs/REMEDIATION-PLAN-2026-09-30.md#suggestion-1` |
 
 ## 3. Решено ранее — ждёт исполнения
 
