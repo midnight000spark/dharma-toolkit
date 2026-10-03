@@ -19,9 +19,9 @@
 library;
 
 import '../../../core/calendar/special_days_source.dart';
-import '../data/event_pack_loader.dart';
 import 'event_feed.dart';
 import 'event_pack.dart';
+import 'event_pack_failure.dart';
 import 'feed_entry.dart';
 
 /// Строит ленту из особых дней календаря и записей паков.

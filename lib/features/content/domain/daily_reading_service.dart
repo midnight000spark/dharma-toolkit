@@ -23,9 +23,9 @@ library;
 
 import '../../../core/calendar/special_days_source.dart';
 import '../../../../core/content/daily_reading.dart';
-import '../data/content_pack_loader.dart';
 import 'content_fallbacks.dart';
 import 'content_pack.dart';
+import 'content_pack_failure.dart';
 import 'content_rotation.dart';
 
 /// Собирает чтения конкретного дня из паков активной традиции.

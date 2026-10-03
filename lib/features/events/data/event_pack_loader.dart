@@ -23,24 +23,16 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 
 import '../domain/event_pack.dart';
+import '../domain/event_pack_failure.dart';
 import 'event_pack_parser.dart';
+
+// EventPackFailure переехал в домен (W24): его потребитель — доменный
+// EventFeedService, а domain не вправе зависеть от data. Реэкспорт сохраняет
+// прежний публичный API загрузчика — потребителям/тестам менять импорт не нужно.
+export '../domain/event_pack_failure.dart';
 
 /// Читатель ассета по ключу (продовый дефолт — `rootBundle.loadString`).
 typedef EventPackAssetReader = Future<String> Function(String assetKey);
-
-/// Почему конкретный пак не доехал до модели.
-class EventPackFailure {
-  /// Ключ ассета, на котором споткнулись.
-  final String assetKey;
-
-  /// Причина для человека (ассет/JSON/схема — с путём поля).
-  final String reason;
-
-  const EventPackFailure(this.assetKey, this.reason);
-
-  @override
-  String toString() => '$assetKey: $reason';
-}
 
 /// Итог загрузки: то, что доехало, и то, что сломалось (с причинами).
 class EventPackLoadResult {

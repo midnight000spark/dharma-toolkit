@@ -28,62 +28,16 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 
 import '../domain/content_pack.dart';
+import '../domain/content_pack_failure.dart';
 import 'content_pack_parser.dart';
+
+// ContentPackFailure переехал в домен (W24): его потребители — доменные
+// DailyReadingService/ContentFeedService, а domain не вправе зависеть от data.
+// Реэкспорт сохраняет прежний публичный API загрузчика.
+export '../domain/content_pack_failure.dart';
 
 /// Читатель ассета по ключу (продовый дефолт — `rootBundle.loadString`).
 typedef ContentPackAssetReader = Future<String> Function(String assetKey);
-
-/// Почему конкретный пак (или запись внутри пака) не доехал до модели.
-class ContentPackFailure {
-  /// Ключ ассета, на котором споткнулись.
-  final String assetKey;
-
-  /// Причина для человека (ассет/JSON/схема — с путём поля).
-  final String reason;
-
-  const ContentPackFailure(this.assetKey, this.reason);
-
-  /// Человеческая причина сбоя — без внутренних путей, путей полей и id (C8г):
-  /// именно она показывается пользователю; техническая строка [reason]
-  /// остаётся диагностике. Вид сбоя известен по формулировке загрузчика
-  /// (строки контрактно закреплены тестами загрузчика).
-  String get userReason {
-    final text = reason;
-    if (text.startsWith('ассет не прочитан')) return 'файл пака недоступен';
-    if (text.startsWith('битый JSON')) return 'пак повреждён: не читается';
-    if (text.startsWith('ожидался объект пака')) {
-      return 'пак повреждён: неверный формат';
-    }
-    if (text.startsWith('Контент-пак невалиден')) {
-      return 'пак не прошёл проверку схемы';
-    }
-    if (text.startsWith('дубль packId')) return 'пак пропущен: дубликат';
-    if (text.startsWith('запись отвергнута')) {
-      return 'часть записей пака повреждена';
-    }
-    return 'пак не прочитан';
-  }
-
-  /// Отвергнута ли запись внутри доехавшего пака (C8а), а не пак целиком:
-  /// различие существенно — в первом случае пак в [ContentPackLoadResult.packs]
-  /// есть, и «пак не загружен» было бы ложью (находка ревью critical-1).
-  bool get isEntryRejection => reason.startsWith('запись отвергнута');
-
-  /// Строка пользовательского канала (C8г/C8б): единая формулировка для ленты
-  /// и чтения дня — два пути не расходятся. Для отвергнутой записи пак на
-  /// месте, поэтому говорится о частичной потере, а не о незагрузке.
-  String get userNote => isEntryRejection
-      ? 'Контент-пак загружен частично: $userReason.'
-      : 'Контент-пак не загружен: $userReason.';
-
-  /// Строка диагностики: ключ ассета и техническая причина (C8г/C8б).
-  String get debugNote => isEntryRejection
-      ? 'Запись пака не разобрана ($assetKey): $reason'
-      : 'Пак не загружен ($assetKey): $reason';
-
-  @override
-  String toString() => '$assetKey: $reason';
-}
 
 /// Итог загрузки: то, что доехало, и то, что сломалось (с причинами).
 class ContentPackLoadResult {

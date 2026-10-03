@@ -13,7 +13,11 @@ import 'package:flutter_test/flutter_test.dart';
 ///  1. feature → feature запрещён (изоляция фич, D-5);
 ///  2. core → features запрещён, КРОМЕ `lib/core/db/` — единственного
 ///     ослабления принципа №1, агрегации схемы Drift (D-20);
-///  3. конкретный список нарушений падает с текстом, по которому видно файл,
+///  3. domain → data внутри одной фичи запрещён (W24): домен не знает, откуда
+///     приходят данные (паки приходят моделями, загрузчик — деталь data);
+///     общие типы отказов (`EventPackFailure`/`ContentPackFailure`) живут в
+///     домене, загрузчик их реэкспортирует;
+///  4. конкретный список нарушений падает с текстом, по которому видно файл,
 ///     строку и нарушенное правило.
 ///
 /// Самодостаточность сторожа доказана мутацией 3.2 (нарушения вносились руками
@@ -53,6 +57,32 @@ void main() {
       final violations = findViolations({
         'lib/core/db/app_database.dart':
             "import '../../features/tracker/data/t.dart';",
+      });
+      expect(violations, isEmpty);
+    });
+
+    test('domain → data внутри фичи нарушает (W24)', () {
+      final violations = findViolations({
+        'lib/features/events/domain/x.dart':
+            "import '../data/event_pack_loader.dart';",
+      });
+      expect(violations, hasLength(1));
+      expect(violations.single.rule, 'domain→data');
+    });
+
+    test('domain → data чужой фичи ловится как feature→feature', () {
+      final violations = findViolations({
+        'lib/features/events/domain/x.dart':
+            "import '../../content/data/y.dart';",
+      });
+      expect(violations, hasLength(1));
+      expect(violations.single.rule, 'feature→feature');
+    });
+
+    test('presentation → data разрешено (composition знает загрузчик)', () {
+      final violations = findViolations({
+        'lib/features/events/presentation/x.dart':
+            "import '../data/event_pack_loader.dart';",
       });
       expect(violations, isEmpty);
     });
@@ -115,6 +145,19 @@ void main() {
       );
     });
 
+    test('домен не импортирует data внутри своей фичи (W24)', () {
+      final violations = findViolations(readProjectFiles())
+          .where((v) => v.rule == 'domain→data')
+          .toList();
+      expect(
+        violations,
+        isEmpty,
+        reason: 'слой domain не знает о data: общие типы отказов живут в '
+            'домене, загрузчик их реэкспортирует:\n'
+            '${violations.map((v) => v.describe()).join('\n')}',
+      );
+    });
+
     test('слабление D-20 зафиксировано: точка агрегации — только core/db', () {
       // Единственный разрешённый путь ядро→фичи — lib/core/db/. Если кто-то
       // вынесет агрегацию в новый файл (core/database.dart и т.п.) или, что
@@ -165,6 +208,13 @@ List<Violation> findViolations(Map<String, String> files) {
       }
       if (isCore(edge.source) && !isCoreDb(edge.source) && targetFeature != null) {
         violations.add(Violation(edge, 'core→features'));
+        continue;
+      }
+      final sourceLayer = layerOf(edge.source);
+      if (sourceLayer == 'domain' &&
+          layerOf(edge.target) == 'data' &&
+          sourceFeature == targetFeature) {
+        violations.add(Violation(edge, 'domain→data'));
       }
     }
   }
@@ -177,6 +227,15 @@ String? featureOf(String path) {
   final rest = path.substring(prefix.length);
   final slash = rest.indexOf('/');
   return slash == -1 ? rest : rest.substring(0, slash);
+}
+
+/// Слой фичи `lib/features/<feature>/<layer>/…` (domain/data/presentation);
+/// null — файл лежит не в слое (например, сразу под фичей).
+String? layerOf(String path) {
+  const prefix = 'lib/features/';
+  if (!path.startsWith(prefix)) return null;
+  final parts = path.substring(prefix.length).split('/');
+  return parts.length < 3 ? null : parts[1];
 }
 
 bool isCore(String path) => path.startsWith('lib/core/');
