@@ -18,6 +18,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../support/provider_error_matcher.dart';
 import 'preset_helper.dart';
 
 /// Источник особых дней, который фича видит через порт ядра.
@@ -230,7 +231,7 @@ void main() {
 
       expect(
         () => container.read(notificationSchedulerProvider),
-        throwsA(isA<StateError>()
+        throwsProviderError(isA<StateError>()
             .having((e) => e.message, 'message', contains('6.2'))),
       );
     });

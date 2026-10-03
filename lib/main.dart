@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+// Riverpod 3: `Override` вынесен из основного экспорта в `misc.dart` (F-86).
+import 'package:flutter_riverpod/misc.dart' show Override;
 
 import 'app_router.dart';
 import 'core/calendar/special_days_source.dart';

@@ -161,6 +161,10 @@ void main() {
           reason: 'без истории выход обязан уводить на главную');
       expect(find.text('Практика не найдена'), findsNothing);
 
+      // Riverpod 3: dispose стрима практики после ухода с экрана планирует
+      // таймер очистки Drift (`markAsClosed` → `Timer.run`); прогреть его до
+      // `db.close()`, иначе close ждёт таймер внутри fake-async.
+      await tester.pump(const Duration(milliseconds: 10));
       await db.close();
       await tester.pumpWidget(const SizedBox.shrink());
     });

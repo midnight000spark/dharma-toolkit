@@ -8,6 +8,8 @@ import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../support/provider_error_matcher.dart';
+
 /// DI по D-22 (R-11, R-13): репозиторий получает БД только через
 /// appDatabaseProvider с оверрайдом в composition root. Service locator
 /// (`ModuleRegistry.instance.get`) в провайдерах отсутствует — эти тесты
@@ -97,7 +99,7 @@ void main() {
 
     expect(
       () => bare.read(practiceRepositoryProvider),
-      throwsUnimplementedError,
+      throwsProviderError(isA<UnimplementedError>()),
     );
   });
 

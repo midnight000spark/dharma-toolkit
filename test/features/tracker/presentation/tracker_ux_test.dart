@@ -86,12 +86,17 @@ void main() {
     return rows.map((r) => r.count).toList();
   }
 
-  /// Завершение по проверенному паттерну reactive_tracker_test: закрыть БД
-  /// до unmount ProviderScope — иначе dispose стримов Drift оставляет
-  /// pending timer внутри fake-async.
+  /// Завершение теста.
+  ///
+  /// Riverpod 3 приостанавливает (pause) стримы провайдеров, чьи виджеты не
+  /// видны (неактивный маршрут), а `AppDatabase.close()` ждёт закрытия
+  /// приостановленных слушателей Drift — закрытие до снятия дерева виснет.
+  /// Порядок под v3: снять дерево (подписки отменяются) → прогнать таймер
+  /// очистки Drift (`markAsClosed` планирует `Timer.run`) → закрыть БД.
   Future<void> finish(WidgetTester tester) async {
-    await db.close();
     await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 10));
+    await db.close();
   }
 
   group('Удаление трекера long-press (FR-TRK-11)', () {

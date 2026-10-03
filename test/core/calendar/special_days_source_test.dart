@@ -20,6 +20,8 @@ import 'package:dharma_toolkit/core/calendar/special_days_source.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../support/provider_error_matcher.dart';
+
 /// Минимальный источник: календарь без тибетских дат (как упосатха).
 class _StubSource implements SpecialDaysSource {
   _StubSource(this.traditionTag);
@@ -47,13 +49,13 @@ void main() {
       addTearDown(container.dispose);
 
       expect(() => container.read(specialDaysSourceProvider),
-          throwsA(isA<StateError>()));
+          throwsProviderError(isA<StateError>()));
 
       // Сообщение обязано называть владельца привязки, иначе диагностика
       // композиции упирается в «что-то не то».
       expect(
         () => container.read(specialDaysSourceProvider),
-        throwsA(predicate(
+        throwsProviderError(predicate(
             (e) => e is StateError && e.message.contains('не привязан'))),
       );
     });

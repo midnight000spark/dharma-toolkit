@@ -9,11 +9,13 @@ import '../../domain/practice.dart';
 /// Замена `FutureProvider.autoDispose.family` на `StreamProvider.family`:
 /// Drift `.watch()` сам переэмитит список при любом изменении БД, поэтому
 /// ручной `invalidate` после создания/счёта больше не нужен (B-1).
-final practiceListProvider = StreamProvider.autoDispose.family<List<PracticeEntity>, String>(
+final practiceListProvider =
+    StreamProvider.family<List<PracticeEntity>, String>(
   (ref, traditionTag) {
     final repository = ref.read(practiceRepositoryProvider);
     return repository.watchByTradition(traditionTag);
   },
+  isAutoDispose: true,
 );
 
 /// Стрим одной практики по ID (I-3).
@@ -21,11 +23,13 @@ final practiceListProvider = StreamProvider.autoDispose.family<List<PracticeEnti
 /// Если практика удалена или не существует, стрим эмитит `null` — экран
 /// показывает состояние «не найдена» с кнопкой «назад» вместо вечного
 /// спиннера (B-6).
-final practiceByIdProvider = StreamProvider.autoDispose.family<PracticeEntity?, int>(
+final practiceByIdProvider =
+    StreamProvider.family<PracticeEntity?, int>(
   (ref, id) {
     final repository = ref.read(practiceRepositoryProvider);
     return repository.watchById(id);
   },
+  isAutoDispose: true,
 );
 
 /// Репозиторий трекеров поверх единой БД приложения (D-22).

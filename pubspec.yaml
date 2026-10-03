@@ -51,8 +51,8 @@ dependencies:
   # SharedPreferences for simple key-value storage
   shared_preferences: ^2.3.3
   
-  # Riverpod for state management
-  flutter_riverpod: ^2.6.1
+  # Riverpod for state management (3.x — пакет pre-stage-8/Н1, F-86)
+  flutter_riverpod: ^3.4.3
   
   # go_router for declarative navigation
   go_router: ^18.0.0

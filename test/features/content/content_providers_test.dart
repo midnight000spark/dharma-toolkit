@@ -26,6 +26,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../support/provider_error_matcher.dart';
 import 'content_preset_helper.dart';
 
 /// Источник тибетских дат, который фича видит только через порт ядра.
@@ -374,7 +375,8 @@ void main() {
       final container = ProviderContainer();
       addTearDown(container.dispose);
 
-      expect(() => container.read(contentSourceProvider), throwsStateError);
+      expect(() => container.read(contentSourceProvider),
+          throwsProviderError(isA<StateError>()));
     });
 
     test('непривязанный порт календаря роняет сервис громко, а не молча',
@@ -383,7 +385,7 @@ void main() {
       await container.read(activePresetStreamProvider.future);
 
       expect(() => container.read(dailyReadingServiceProvider),
-          throwsStateError);
+          throwsProviderError(isA<StateError>()));
     });
   });
 
@@ -393,7 +395,10 @@ void main() {
   group('C9 — ошибка загрузки паков не глушится', () {
     test('отказ обновления паков выходит наружу, а не подменяется «пусто»',
         () async {
-      final failPacks = StateProvider<bool>((ref) => false);
+      // Riverpod 3: `StateProvider` — legacy (вынесен в `legacy.dart`);
+      // современный эквивалент — `NotifierProvider` (F-86, migration guide).
+      final failPacks =
+          NotifierProvider<_FailPacksFlag, bool>(_FailPacksFlag.new);
       final container = ProviderContainer(overrides: [
         contentClockProvider.overrideWithValue(() => _now),
         activeTraditionTagProvider.overrideWith((ref) => Stream.value('nyingma')),
@@ -416,12 +421,22 @@ void main() {
       await container.read(contentPacksProvider.future);
 
       // …а обновление падает: ошибка обязана дойти до потребителя.
-      container.read(failPacks.notifier).state = true;
+      container.read(failPacks.notifier).fail();
       await expectLater(
           container.read(contentPacksProvider.future), throwsStateError);
 
-      expect(() => container.read(dailyReadingProvider), throwsStateError,
+      expect(() => container.read(dailyReadingProvider),
+          throwsProviderError(isA<StateError>()),
           reason: 'сохранённое «пусто» не имеет права маскировать отказ');
     });
   });
+}
+
+/// Тестовый флаг отказа паков (C9): заменяет legacy-`StateProvider` из
+/// Riverpod 2 на современный `Notifier` (F-86, migration guide 3.0).
+class _FailPacksFlag extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void fail() => state = true;
 }

@@ -40,6 +40,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../support/provider_error_matcher.dart';
 import 'in_memory_notification_scheduler.dart';
 import 'platform_fakes.dart';
 
@@ -124,11 +125,11 @@ void main() {
       addTearDown(container.dispose);
 
       expect(() => container.read(specialDaysSourceProvider),
-          throwsA(isA<StateError>()));
+          throwsProviderError(isA<StateError>()));
       expect(() => container.read(specialDaysSourceForTagProvider('nyingma')),
-          throwsA(isA<StateError>()));
+          throwsProviderError(isA<StateError>()));
       expect(() => container.read(notificationSchedulerProvider),
-          throwsA(isA<StateError>()));
+          throwsProviderError(isA<StateError>()));
     });
 
     test('смена тега переключает источник дней без перезапуска', () async {

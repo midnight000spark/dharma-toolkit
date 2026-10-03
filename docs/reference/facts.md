@@ -1272,3 +1272,33 @@
     `pub.dev/api/packages/flutter_riverpod` (сверено 2026-10-03).
 - **Источник**: pub.dev / riverpod.dev (Tier-0 перед апгрейдом, пакет `pre-stage-8`/Н1)
 - **Дата**: 2026-10-03
+
+<a id="f-87"></a>
+### F-87: Riverpod 3 паузит `StreamProvider`, а Drift `close()` ждёт приостановленного слушателя (ловушка апгрейда)
+- **Что**:
+  - В Riverpod 3 `StreamProvider` **приостанавливает** `StreamSubscription`,
+    когда провайдер не слушается активно (виджет/маршрут вне видимости,
+    TickerMode); при снятии слушателя пауза приходит раньше отмены.
+  - `StreamQueryStore.close()` в Drift (2.34.3) ждёт
+    `listener.controller.close()` каждого слушателя, а закрытие
+    **приостановленного** `MultiStreamController` не завершается, пока
+    подписка не возобновится → `AppDatabase.close()` виснет. Дополнительно
+    `markAsClosed` планирует `Timer.run` и `close()` ждёт `_pendingTimers`,
+    который в widget-тестах (fake-async) не прожигается без `pump`.
+  - **Наблюдено** (пакет `pre-stage-8`/Н1): два виджет-теста уходили в
+    10-минутный таймаут — `practice_count_screen_test` (W16, уход с экрана →
+    `ProviderException`-независимо) и `tracker_ux_test` (удаление: маршрут
+    списка неактивен → подписка приостановлена). Диагноз изоляцией:
+    `container.dispose()` → `db.close()` завершается; снятие виджета без
+    прогрева таймера — нет.
+  - **Рабочий teardown под v3**: снять дерево (`pumpWidget(SizedBox)`) →
+    `pump(10 ms)` (прожечь `markAsClosed`) → `db.close()`; в W16 достаточно
+    `pump(10 ms)` перед `close()` после ухода с экрана.
+  - **Прод-риск ограничен**: в бою `AppDatabase.close()` вызывается только
+    путём аварийного стирания (recovery root, основные провайдеры не
+    смонтированы), но связку «пауза стрима + close» нельзя забывать в новых
+    местах закрытия БД.
+- **Источник**: живой прогон red→green (пакет `pre-stage-8`/Н1);
+  `drift-2.34.3/lib/src/runtime/executor/stream_queries.dart`
+  (`StreamQueryStore.close`, `markAsClosed`); Riverpod 3.4.3 guide/changelog
+- **Дата**: 2026-10-03
