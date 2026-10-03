@@ -26,7 +26,12 @@ class PracticeRepository {
         (t) => OrderingTerm.asc(t.id),
       ];
 
-  /// Получить все практики для конкретной традиции
+  /// Получить все практики для конкретной традиции — одноразовое чтение.
+  ///
+  /// S10: метод оставлен осознанно как часть контракта репозитория —
+  /// детерминированный не-реактивный путь чтения (сценарии и тесты), парный
+  /// к реактивному [watchByTradition]. Удаление заменило бы ~30 вызовов на
+  /// `stream.first` и внесло бы лишнюю асинхронность в тесты (урок 5).
   Future<List<PracticeEntity>> getByTradition(String traditionTag) async {
     final query = _database.select(_database.practices)
       ..where((t) => t.traditionTag.equals(traditionTag))

@@ -174,5 +174,29 @@ void main() {
       expect(events.first, NotificationSettings.defaults);
       expect(events.last.hour, 4);
     });
+
+    test('watch изолирован по тегу: две традиции не мешают друг другу', () async {
+      // S7: фильтр вынесен в SQL (`where` + `watchSingleOrNull`). Тест ловит
+      // регрессию «singleOrNull без where»: при двух строках он бы бросил
+      // «multiple rows», а не отдал значение своей традиции.
+      final nyingma = <NotificationSettings>[];
+      final theravada = <NotificationSettings>[];
+      final subA = store.watch('nyingma').listen(nyingma.add);
+      final subB = store.watch('theravada_default').listen(theravada.add);
+      addTearDown(subA.cancel);
+      addTearDown(subB.cancel);
+
+      await pumpEventQueue();
+      await store.write(
+          'nyingma', NotificationSettings(enabled: true, hour: 4, minute: 0));
+      await store.write('theravada_default',
+          NotificationSettings(enabled: false, hour: 21, minute: 30));
+      await pumpEventQueue();
+
+      expect(nyingma.last.hour, 4);
+      expect(nyingma.last.minute, 0);
+      expect(theravada.last.hour, 21);
+      expect(theravada.last.minute, 30);
+    });
   });
 }

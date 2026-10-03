@@ -126,7 +126,7 @@ onUpgrade: (Migrator m, int from, int to) async {
 | препосылка downgrade | старая версия ровно на 1 ниже текущей (не даёт downgrade-тесту протхнуть проверку) |
 | downgrade | `from > to` бросает `StateError` с направлением перехода и **не портит файл** (B-12) |
 | атомарность цепочки (W6) | сбой перед последней веткой откатывает схему к исходной версии; следующий прогон мигрирует до конца |
-| FK на тест-пути (W7) | `forTesting(NativeDatabase.memory())` без `setup:` получает `foreign_keys = ON` и каскад B-11 |
+| FK на тест-пути (W7) | `withExecutor(NativeDatabase.memory())` без `setup:` получает `foreign_keys = ON` и каскад B-11 |
 | FK на прод-пути (W7) | `NativeDatabase(file, setup: enableForeignKeys)`: pragma ON, сирота в `count_history` отбит, каскад работает |
 | фикстура v2 (W27) | снимок генератора replay-ится в базу; единицы времени — секунды, значения читает drift-маппинг |
 | почти-реальная legacy-база (C4/D-45) | переход v2 → текущая сохраняет счёт и историю, инвариант `preset_id ⇒ preset_practice_id` не нарушен |
@@ -175,7 +175,7 @@ FIX-1) отличалась от генератора в двух местах: 
 ```bash
 mkdir -p /tmp/rev && git archive <ревизия-нужной-версии-схемы> | tar -x -C /tmp/rev
 cd /tmp/rev && flutter pub get        # lock той ревизии, не текущего дерева
-# тест: AppDatabase.forTesting(NativeDatabase.memory()) → первый запрос →
+# тест: AppDatabase.withExecutor(NativeDatabase.memory()) → первый запрос →
 #   SELECT type, name, sql FROM sqlite_master WHERE sql IS NOT NULL ORDER BY rowid
 ```
 
