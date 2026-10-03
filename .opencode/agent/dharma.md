@@ -64,7 +64,8 @@ color: primary
 - Метки [ГИПОТЕЗА]/[ФАКТ]/[РЕШЕНИЕ]/[УГРОЗА]; Tier-0-факты — только первоисточник;
   версии сверять с pubspec.lock (F-24).
 - Скилл к MCP — до первого вызова MCP: прочитать соответствующий `SKILL.md`
-  (`jev-mcp` → `.opencode/skills/jev-mcp/SKILL.md` и т.п.); вызов тула MCP
+  (`jev-mcp` → `.opencode/skills/jev-mcp/SKILL.md`, `dart` →
+  `.opencode/skills/dart-mcp/SKILL.md` и т.п.); вызов тула MCP
   без прочитанного скилла к нему запрещён.
 - Owner-gated (только руки владельца): git push, удаления, новые зависимости,
   правки ROADMAP/БФТ. Предлагать, не выполнять.
