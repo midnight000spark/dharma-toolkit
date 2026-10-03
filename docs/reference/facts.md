@@ -1245,3 +1245,30 @@
   (вне репо), снимок HEAD `13d4d59`, инструменты запускались только на копиях в `/tmp`);
   кандидаты — `docs/OPEN-QUESTIONS.md` (owner-gated, D8)
 - **Дата**: 2026-10-03
+
+<a id="f-86"></a>
+### F-86: Riverpod 3.4.3 — Tier-0 апгрейда 2.6.1 → 3.x (пакет `pre-stage-8`/Н1)
+- **Что**:
+  - **Версия/лицензия**: актуальная стабильная — `flutter_riverpod`/`riverpod`
+    **3.4.3** (pub.dev, 2026-09; publisher `dash-overflow.net`, лицензия **MIT**).
+    Кодогенерация Riverpod (`riverpod_generator`) в проекте не используется.
+  - **Требования**: `environment: sdk ^3.12.0`, `flutter >=3.0.0` — совместимо
+    с пином проекта Flutter **3.47.5** / Dart **3.13.4**. Транзитивные зависимости
+    стабильного 3.4.3: `riverpod 3.4.3`, `collection ^1.15.0`, `meta ^1.15.0`,
+    `state_notifier >=0.7.2 <2.0.0`.
+  - **Breaking changes 3.0, релевантные коду** (официальный migration guide):
+    `StateProvider`/`StateNotifierProvider`/`ChangeNotifierProvider` вынесены в
+    `package:flutter_riverpod/legacy.dart`; удалены интерфейсы `AutoDispose*`
+    (`Provider.autoDispose` → `Provider(isAutoDispose: true)`) и подклассы `Ref`
+    (`FutureProviderRef` и т.п. — использовать `Ref`); `AsyncValue.value` при
+    ошибке возвращает `null`, `.valueOrNull` удалён; ошибки чтения/ожидания
+    провайдера заворачиваются в `ProviderException`; авторетрай отказавших
+    провайдеров по умолчанию (отключается `retry: (_, __) => null` на
+    `ProviderScope`/`ProviderContainer`); все обновления фильтруются по `==`;
+    использование `Ref` после dispose бросает `UnmountedRefException`; слушатели
+    вне видимого дерева (TickerMode) — пауза.
+  - **Источник**: `https://riverpod.dev/docs/3.0_migration`, changelog
+    `pub.dev/packages/riverpod/changelog`, метаданные API
+    `pub.dev/api/packages/flutter_riverpod` (сверено 2026-10-03).
+- **Источник**: pub.dev / riverpod.dev (Tier-0 перед апгрейдом, пакет `pre-stage-8`/Н1)
+- **Дата**: 2026-10-03
