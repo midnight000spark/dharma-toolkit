@@ -1,7 +1,8 @@
 import 'package:dharma_toolkit/core/events/app_event.dart';
 import 'package:dharma_toolkit/core/events/event_bus.dart';
-import 'package:dharma_toolkit/core/events/test_events.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'test_events.dart';
 
 /// Another test event to verify type filtering.
 class _TestPongEvent extends AppEvent {
