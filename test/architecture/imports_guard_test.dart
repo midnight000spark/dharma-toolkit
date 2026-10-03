@@ -17,7 +17,9 @@ import 'package:flutter_test/flutter_test.dart';
 ///     приходят данные (паки приходят моделями, загрузчик — деталь data);
 ///     общие типы отказов (`EventPackFailure`/`ContentPackFailure`) живут в
 ///     домене, загрузчик их реэкспортирует;
-///  4. конкретный список нарушений падает с текстом, по которому видно файл,
+///  4. shared → features запрещён (W25): общий слой ниже фич — знает core,
+///     но не конкретные фичи (иначе общий код тянет за собой модуль);
+///  5. конкретный список нарушений падает с текстом, по которому видно файл,
 ///     строку и нарушенное правило.
 ///
 /// Самодостаточность сторожа доказана мутацией 3.2 (нарушения вносились руками
@@ -83,6 +85,25 @@ void main() {
       final violations = findViolations({
         'lib/features/events/presentation/x.dart':
             "import '../data/event_pack_loader.dart';",
+      });
+      expect(violations, isEmpty);
+    });
+
+    test('shared → features нарушает (W25)', () {
+      final violations = findViolations({
+        'lib/shared/providers/x.dart':
+            "import '../../features/tracker/data/t.dart';",
+      });
+      expect(violations, hasLength(1));
+      expect(violations.single.rule, 'shared→features');
+    });
+
+    test('shared → core и shared → shared разрешены (граф app_providers)', () {
+      final violations = findViolations({
+        'lib/shared/providers/app_providers.dart': [
+          "import '../../core/config/preset_manager.dart';",
+          "import 'other.dart';",
+        ].join('\n'),
       });
       expect(violations, isEmpty);
     });
@@ -158,6 +179,19 @@ void main() {
       );
     });
 
+    test('shared не импортирует фичи (W25)', () {
+      final violations = findViolations(readProjectFiles())
+          .where((v) => v.rule == 'shared→features')
+          .toList();
+      expect(
+        violations,
+        isEmpty,
+        reason: 'общий слой знает core, но не конкретные фичи (иначе '
+            'общий код тянет за собой модуль):\n'
+            '${violations.map((v) => v.describe()).join('\n')}',
+      );
+    });
+
     test('слабление D-20 зафиксировано: точка агрегации — только core/db', () {
       // Единственный разрешённый путь ядро→фичи — lib/core/db/. Если кто-то
       // вынесет агрегацию в новый файл (core/database.dart и т.п.) или, что
@@ -210,6 +244,10 @@ List<Violation> findViolations(Map<String, String> files) {
         violations.add(Violation(edge, 'core→features'));
         continue;
       }
+      if (isShared(edge.source) && targetFeature != null) {
+        violations.add(Violation(edge, 'shared→features'));
+        continue;
+      }
       final sourceLayer = layerOf(edge.source);
       if (sourceLayer == 'domain' &&
           layerOf(edge.target) == 'data' &&
@@ -241,6 +279,8 @@ String? layerOf(String path) {
 bool isCore(String path) => path.startsWith('lib/core/');
 
 bool isCoreDb(String path) => path.startsWith('lib/core/db/');
+
+bool isShared(String path) => path.startsWith('lib/shared/');
 
 /// Снимок всех .dart файлов lib/: путь → содержимое.
 Map<String, String> readProjectFiles() {
