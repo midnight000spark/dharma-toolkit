@@ -1209,3 +1209,39 @@
   `dharma-reviewer` с запиненной моделью, поэтому не затронуто.
 - **Источник**: наблюдение владельца (вне репо)
 - **Дата**: 2026-10-02
+
+<a id="f-85"></a>
+### F-85: внешний анализ DevLens/fcheck (2026-10-03) — проценты не метрика качества, находки проверены вручную
+- **Что**:
+  - `Architecture Score 95/100` и `Compliance 64%` — **не метрика качества
+    проекта**, а мера несовпадения набора анализаторов с Flutter/Riverpod.
+    Полезны отдельные находки, а не проценты; гнаться за score/`--strict`,
+    «чинить» magic numbers и убирать импорты `main.dart` — не нужно.
+  - **0 файловых циклов** у DevLens — независимое подтверждение guard-тестов
+    модульности (D-5/D-20): цикл, который ловит `fcheck`, папковый и разложим
+    (см. ниже), файловых циклов нет.
+  - **Разложение 4 `folderCycle`** (fcheck): `core/db ↔ features/*/data` —
+    принятое ослабление **D-20** (агрегация схемы), не дефект;
+    `core/db ↔ features/tracker/domain` — `tracker/domain/practice.dart:46`
+    `PracticeEntity.fromRow(Practice row)` тянет Drift-строку из `core/db`
+    (домен знает слой БД — кандидат, не пойман T1-сторожем, т.к. это `core/db`,
+    а не feature-`data`); `core/db/dev_seeder.dart → core/config` — внутри ядра, шум.
+  - **Реальные находки**: дублирование `_parseDateRule`/`_intInRange` между
+    `content/data/content_pack_parser.dart` и `events/data/event_pack_parser.dart`
+    (осознанное, D-35; кандидат на общий парсер); инверсия `core → shared` в
+    `core/recovery/recovery_screen.dart` (→ `shared/l10n`, `shared/utils`);
+    `gittoken.md` в рабочем каталоге (148 Б, в индексе нет) — гигиена секретов.
+  - **Ложные срабатывания** (не переоткрывать): `'nyingma'`/`'theravada_default'`
+    в `calendar_providers.dart` — реестр **D-32**, защищён сторожем; README
+    `missingReadme` — артефакт песочницы; 344 magic numbers — отступы Material;
+    33 unusedVariable — параметры замыканий; 21 one_class_per_file — внутренние
+    `State` Flutter; `content/**` dead_code — UI чтения дня ещё не подключён
+    (Q3/SCR-13); `main.dart` «god class» — composition root.
+  - **Риски инструментов**: `fcheck --fix` переписывает `.dart` на месте (на
+    реальном дереве не запускать); DevLens «offline» тянет `unpkg.com`/fonts;
+    `fcheck.mmd`/`fcheck.puml` 1.5.0 пустые.
+- **Источник**: `docs/research/devlens-fcheck-2026-10-03/` (дистиллят;
+  исходный отчёт — `devlens-fcheck-analysis-2026-10-03.md` в домашнем каталоге
+  (вне репо), снимок HEAD `13d4d59`, инструменты запускались только на копиях в `/tmp`);
+  кандидаты — `docs/OPEN-QUESTIONS.md` (owner-gated, D8)
+- **Дата**: 2026-10-03
