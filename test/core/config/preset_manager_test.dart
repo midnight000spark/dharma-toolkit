@@ -21,7 +21,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
 
     // Create in-memory database for testing
-    database = AppDatabase.forTesting(NativeDatabase.memory());
+    database = AppDatabase.withExecutor(NativeDatabase.memory());
     storageModule = StorageModule();
     await storageModule.init();
 

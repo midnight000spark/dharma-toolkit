@@ -30,7 +30,7 @@ void main() {
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
-    database = AppDatabase.forTesting(NativeDatabase.memory());
+    database = AppDatabase.withExecutor(NativeDatabase.memory());
     storage = StorageModule();
     await storage.init();
     manager = PresetManager(() => database, storage);

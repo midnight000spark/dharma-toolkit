@@ -17,7 +17,7 @@ void main() {
     late PracticeRepository repository;
 
     setUp(() async {
-      db = AppDatabase.forTesting(NativeDatabase.memory());
+      db = AppDatabase.withExecutor(NativeDatabase.memory());
       repository = PracticeRepository(db);
     });
 
@@ -99,7 +99,7 @@ void main() {
     late AppDatabase db;
 
     setUp(() async {
-      db = AppDatabase.forTesting(NativeDatabase.memory());
+      db = AppDatabase.withExecutor(NativeDatabase.memory());
     });
 
     tearDown(() async {
@@ -220,7 +220,7 @@ void main() {
     late PracticeRepository repository;
 
     setUp(() async {
-      db = AppDatabase.forTesting(NativeDatabase.memory());
+      db = AppDatabase.withExecutor(NativeDatabase.memory());
       repository = PracticeRepository(db);
     });
 
@@ -282,7 +282,7 @@ void main() {
     late PracticeRepository repository;
 
     setUp(() async {
-      db = AppDatabase.forTesting(
+      db = AppDatabase.withExecutor(
           NativeDatabase.memory(setup: enableForeignKeys));
       repository = PracticeRepository(db);
     });

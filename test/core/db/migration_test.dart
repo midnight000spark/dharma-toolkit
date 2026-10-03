@@ -17,7 +17,7 @@ class _AppDatabaseV1 extends AppDatabase {
   // Форму с super.executor подсказка use_super_parameters не принимает:
   // super-параметр дженерика сопоставляется только с безымянным супер-конструктором.
   // ignore: use_super_parameters
-  _AppDatabaseV1(QueryExecutor executor) : super.forTesting(executor);
+  _AppDatabaseV1(QueryExecutor executor) : super.withExecutor(executor);
 
   @override
   int get schemaVersion => 1;
@@ -41,7 +41,7 @@ class _AppDatabaseV1 extends AppDatabase {
 /// миграцию и «покраснеет» по неверной причине).
 class _AppDatabaseV6 extends AppDatabase {
   // ignore: use_super_parameters — см. комментарий у _AppDatabaseV1
-  _AppDatabaseV6(QueryExecutor executor) : super.forTesting(executor);
+  _AppDatabaseV6(QueryExecutor executor) : super.withExecutor(executor);
 
   @override
   int get schemaVersion => 6;
@@ -58,7 +58,7 @@ class _AppDatabaseV6 extends AppDatabase {
 /// препосылки.
 class _AppDatabaseDowngrade extends AppDatabase {
   // ignore: use_super_parameters — см. комментарий у _AppDatabaseV1
-  _AppDatabaseDowngrade(QueryExecutor executor) : super.forTesting(executor);
+  _AppDatabaseDowngrade(QueryExecutor executor) : super.withExecutor(executor);
 
   @override
   int get schemaVersion => 4;
@@ -86,7 +86,7 @@ List<String> _schemaV2Statements() => File('test/fixtures/schema_v2_drift.sql')
 /// именно то состояние, в котором живут пользовательские базы до 5.0.2.
 class _AppDatabaseV2 extends AppDatabase {
   // ignore: use_super_parameters — см. комментарий у _AppDatabaseV1
-  _AppDatabaseV2(QueryExecutor executor) : super.forTesting(executor);
+  _AppDatabaseV2(QueryExecutor executor) : super.withExecutor(executor);
 
   @override
   int get schemaVersion => 2;
@@ -108,7 +108,7 @@ class _AppDatabaseV2 extends AppDatabase {
 /// а не сырым DDL: так проверяется реальный переход 3 → 4, а не имитация.
 class _AppDatabaseV3Step extends AppDatabase {
   // ignore: use_super_parameters — см. комментарий у _AppDatabaseV1
-  _AppDatabaseV3Step(QueryExecutor executor) : super.forTesting(executor);
+  _AppDatabaseV3Step(QueryExecutor executor) : super.withExecutor(executor);
 
   @override
   int get schemaVersion => 3;
@@ -121,7 +121,7 @@ class _AppDatabaseV3Step extends AppDatabase {
 /// а не сырым DDL: так проверяется реальный переход 4 → 5, а не имитация.
 class _AppDatabaseV4Step extends AppDatabase {
   // ignore: use_super_parameters — см. комментарий у _AppDatabaseV1
-  _AppDatabaseV4Step(QueryExecutor executor) : super.forTesting(executor);
+  _AppDatabaseV4Step(QueryExecutor executor) : super.withExecutor(executor);
 
   @override
   int get schemaVersion => 4;
@@ -134,7 +134,7 @@ class _AppDatabaseV4Step extends AppDatabase {
 /// получается честный второй прогон веток поверх уже мигрированной базы.
 class _AppDatabaseNoMigration extends AppDatabase {
   // ignore: use_super_parameters — см. комментарий у _AppDatabaseV1
-  _AppDatabaseNoMigration(QueryExecutor executor) : super.forTesting(executor);
+  _AppDatabaseNoMigration(QueryExecutor executor) : super.withExecutor(executor);
 
   @override
   MigrationStrategy get migration => MigrationStrategy();
@@ -185,7 +185,7 @@ void main() {
     File dbFile() => File('${tempDir.path}/app.sqlite');
 
     test('свежая установка создаёт схему текущей версии', () async {
-      final db = AppDatabase.forTesting(NativeDatabase(dbFile()));
+      final db = AppDatabase.withExecutor(NativeDatabase(dbFile()));
 
       expect(
         await _tableNames(db),
@@ -231,7 +231,7 @@ void main() {
 
       // Сессия 2: открываем актуальной версией — срабатывает onUpgrade.
       {
-        final db = AppDatabase.forTesting(NativeDatabase(dbFile()));
+        final db = AppDatabase.withExecutor(NativeDatabase(dbFile()));
 
         expect(
           await _tableNames(db),
@@ -261,7 +261,7 @@ void main() {
       // Мигрируем и сразу пишем в новые таблицы: проверяем, что схема
       // создана целиком, а не только по названиям таблиц.
       {
-        final db = AppDatabase.forTesting(NativeDatabase(dbFile()));
+        final db = AppDatabase.withExecutor(NativeDatabase(dbFile()));
 
         final id = await db.into(db.practices).insert(
               PracticesCompanion.insert(
@@ -289,7 +289,7 @@ void main() {
     });
 
     test('колонки practices соответствуют объявленным', () async {
-      final db = AppDatabase.forTesting(NativeDatabase(dbFile()));
+      final db = AppDatabase.withExecutor(NativeDatabase(dbFile()));
 
       expect(
         await _columnNames(db, 'practices'),
@@ -337,7 +337,7 @@ void main() {
 
       // Сессия 2: открываем актуальной версией с включёнными FK (I-2).
       {
-        final db = AppDatabase.forTesting(
+        final db = AppDatabase.withExecutor(
           NativeDatabase(dbFile(), setup: enableForeignKeys),
         );
 
@@ -403,7 +403,7 @@ void main() {
 
       // Сессия 3: актуальная версия выполняет ветку 4.
       {
-        final db = AppDatabase.forTesting(
+        final db = AppDatabase.withExecutor(
           NativeDatabase(dbFile(), setup: enableForeignKeys),
         );
         expect(await _userVersion(db), db.schemaVersion);
@@ -464,7 +464,7 @@ void main() {
 
       // Сессия 3: актуальная версия выполняет ветку 5.
       {
-        final db = AppDatabase.forTesting(
+        final db = AppDatabase.withExecutor(
           NativeDatabase(dbFile(), setup: enableForeignKeys),
         );
         expect(await _userVersion(db), db.schemaVersion);
@@ -486,7 +486,7 @@ void main() {
 
     test('уникальный индекс не даёт дублей пресетных практик, но волен '
         'для кастомных и других традиций (B-3)', () async {
-      final db = AppDatabase.forTesting(
+      final db = AppDatabase.withExecutor(
         NativeDatabase(dbFile(), setup: enableForeignKeys),
       );
 
@@ -527,7 +527,7 @@ void main() {
         () async {
       // Готовим базу актуальной версии.
       {
-        final db = AppDatabase.forTesting(NativeDatabase(dbFile()));
+        final db = AppDatabase.withExecutor(NativeDatabase(dbFile()));
         await _tableNames(db);
         await db.close();
       }
@@ -554,21 +554,21 @@ void main() {
       // Держит _AppDatabaseDowngrade в согласии со схемой: если версия
       // уедет, downgrade-тест ниже должен быть обновлён, а не протхнуть
       // проверку «на 1 ниже» молча.
-      final current = AppDatabase.forTesting(NativeDatabase.memory());
+      final current = AppDatabase.withExecutor(NativeDatabase.memory());
       final older = _AppDatabaseDowngrade(NativeDatabase.memory());
       expect(older.schemaVersion, current.schemaVersion - 1);
     });
 
     test('downgrade не поддерживается: открытие старой версией бросает '
         'StateError и не трогает данные (R-8/B-12)', () async {
-      final current = AppDatabase.forTesting(NativeDatabase.memory())
+      final current = AppDatabase.withExecutor(NativeDatabase.memory())
           .schemaVersion;
       final older = _AppDatabaseDowngrade(NativeDatabase.memory()).schemaVersion;
       expect(older, current - 1); // согласовано с тестом-препосылкой выше
 
       // Сессия 1: пользовательская база текущей версии с данными.
       {
-        final db = AppDatabase.forTesting(NativeDatabase(dbFile()));
+        final db = AppDatabase.withExecutor(NativeDatabase(dbFile()));
         await db.into(db.presets).insert(
               PresetsCompanion.insert(
                 id: 'nyingma',
@@ -620,7 +620,7 @@ void main() {
       // же версия схемы. Это суть митигации R-8: падение у разработчика,
       // а не порча пользовательских данных.
       {
-        final db = AppDatabase.forTesting(NativeDatabase(dbFile()));
+        final db = AppDatabase.withExecutor(NativeDatabase(dbFile()));
         expect(await _userVersion(db), current);
 
         final presets = await db.select(db.presets).get();
@@ -658,7 +658,7 @@ void main() {
       // веткой. Шов debugFailBeforeVersion — единственный способ уронить
       // середину цепочки, не порча данных и не игра с таймингами.
       {
-        final db = AppDatabase.forTesting(NativeDatabase(dbFile()));
+        final db = AppDatabase.withExecutor(NativeDatabase(dbFile()));
         expect(db.schemaVersion, lastBranch,
             reason: 'тест написан под цепочку, где 5 — последняя ветка; '
                 'при добавлении версии обновить и это ожидаемое, и сценарий');
@@ -699,7 +699,7 @@ void main() {
       // Сессия 4: откат не сломал базу — тот же файл до мигрируется до
       // конца, данные целы.
       {
-        final db = AppDatabase.forTesting(NativeDatabase(dbFile()));
+        final db = AppDatabase.withExecutor(NativeDatabase(dbFile()));
         expect(await _userVersion(db), db.schemaVersion);
         expect(await _columnNames(db, 'practices'), contains('preset_practice_id'));
         expect(await _columnNames(db, 'practices'), contains('sort_order'));
@@ -734,7 +734,7 @@ void main() {
 
       // Первый прогон 2 → текущая.
       {
-        final db = AppDatabase.forTesting(
+        final db = AppDatabase.withExecutor(
           NativeDatabase(dbFile(), setup: enableForeignKeys),
         );
         expect(await _userVersion(db), db.schemaVersion);
@@ -753,7 +753,7 @@ void main() {
 
       // Второй прогон тех же веток поверх уже мигрированной схемы.
       {
-        final db = AppDatabase.forTesting(
+        final db = AppDatabase.withExecutor(
           NativeDatabase(dbFile(), setup: enableForeignKeys),
         );
         expect(await _userVersion(db), db.schemaVersion,
@@ -784,9 +784,9 @@ void main() {
 
     test('FK включены на тест-пути без setup: pragma ON и каскад (W7)',
         () async {
-      // Ровно та ветка, что раньше молча жила с FK OFF: forTesting +
+      // Ровно та ветка, что раньше молча жила с FK OFF: withExecutor +
       // NativeDatabase.memory() без `setup: enableForeignKeys`.
-      final db = AppDatabase.forTesting(NativeDatabase.memory());
+      final db = AppDatabase.withExecutor(NativeDatabase.memory());
 
       expect(await _foreignKeysEnabled(db), isTrue,
           reason: 'PRAGMA обязан применяться в migration.beforeOpen, а не '
@@ -813,7 +813,7 @@ void main() {
     });
 
     test('FK включены и на прод-пути (NativeDatabase + setup) (W7)', () async {
-      final db = AppDatabase.forTesting(
+      final db = AppDatabase.withExecutor(
         NativeDatabase(dbFile(), setup: enableForeignKeys),
       );
 
@@ -888,7 +888,7 @@ void main() {
       // моменты, что и записи прод-пути: после миграции 2 → текущая версия
       // дата не уезжает в 1970-й или в 45-й век.
       {
-        final db = AppDatabase.forTesting(NativeDatabase(dbFile()));
+        final db = AppDatabase.withExecutor(NativeDatabase(dbFile()));
         final rows = await db.select(db.practices).get();
         expect(rows.map((r) => r.name), containsAll(['Простирания', 'Без явной даты']));
         final stored = rows.firstWhere((r) => r.name == 'Простирания').createdAt;
@@ -934,7 +934,7 @@ void main() {
       }
 
       {
-        final db = AppDatabase.forTesting(
+        final db = AppDatabase.withExecutor(
           NativeDatabase(dbFile(), setup: enableForeignKeys),
         );
         expect(await _userVersion(db), db.schemaVersion);
@@ -978,7 +978,7 @@ void main() {
       final storage = StorageModule();
       await storage.init();
 
-      final db = AppDatabase.forTesting(
+      final db = AppDatabase.withExecutor(
         NativeDatabase(dbFile(), setup: enableForeignKeys),
       );
       final manager = PresetManager(() => db, storage);
@@ -1057,7 +1057,7 @@ void main() {
         await v2.close();
       }
 
-      final db = AppDatabase.forTesting(
+      final db = AppDatabase.withExecutor(
         NativeDatabase(dbFile(), setup: enableForeignKeys),
       );
 

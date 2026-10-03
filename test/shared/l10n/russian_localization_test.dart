@@ -32,7 +32,7 @@ void main() {
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
-    db = AppDatabase.forTesting(
+    db = AppDatabase.withExecutor(
       NativeDatabase.memory(setup: enableForeignKeys),
     );
     storage = StorageModule();

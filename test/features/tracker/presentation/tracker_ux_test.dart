@@ -22,7 +22,7 @@ void main() {
   late int practiceId;
 
   setUp(() async {
-    db = AppDatabase.forTesting(
+    db = AppDatabase.withExecutor(
       NativeDatabase.memory(setup: enableForeignKeys),
     );
     repository = PracticeRepository(db);

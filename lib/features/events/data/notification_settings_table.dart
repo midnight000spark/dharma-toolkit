@@ -11,7 +11,9 @@ import 'package:drift/drift.dart';
 /// Значения хранятся «как есть»: диапазоны (0..23 / 0..59) проверяет домен
 /// ([NotificationSettings]) на чтении и записи, а не CHECK-констрейнт: ошибка
 /// обязана быть видимой (R-23), а не «тихо отклонённой вставкой».
-@TableIndex(name: 'idx_notification_settings_tradition', columns: {#traditionTag})
+/// S7: отдельный `@TableIndex` по `tradition_tag` снят — он дублировал
+/// неявный индекс первичного ключа `{traditionTag}` (лишняя запись на каждый
+/// upsert). Чтение по тегу по-прежнему индексировано.
 class NotificationSettingsRows extends Table {
   /// Имя SQL-таблицы задано явно: Drift по умолчанию вывел бы его из имени
   /// класса (`notification_settings_rows`), а BFT/D-36 называют таблицу

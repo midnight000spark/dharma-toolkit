@@ -16,7 +16,7 @@ void main() {
 
       // Первая сессия: создаём практику и инкрементим
       {
-        final db = AppDatabase.forTesting(NativeDatabase(File(dbPath), setup: enableForeignKeys));
+        final db = AppDatabase.withExecutor(NativeDatabase(File(dbPath), setup: enableForeignKeys));
         final repo = PracticeRepository(db);
 
         final now = DateTime.now();
@@ -36,7 +36,7 @@ void main() {
 
       // Вторая сессия: открываем ту же БД и проверяем счёт
       {
-        final db = AppDatabase.forTesting(NativeDatabase(File(dbPath), setup: enableForeignKeys));
+        final db = AppDatabase.withExecutor(NativeDatabase(File(dbPath), setup: enableForeignKeys));
         final repo = PracticeRepository(db);
 
         final practices = await repo.getByTradition('test');
@@ -52,7 +52,7 @@ void main() {
     });
 
     test('изоляция по traditionTag', () async {
-      final db = AppDatabase.forTesting(NativeDatabase.memory(setup: enableForeignKeys));
+      final db = AppDatabase.withExecutor(NativeDatabase.memory(setup: enableForeignKeys));
       final repo = PracticeRepository(db);
 
       final now = DateTime.now();
@@ -87,7 +87,7 @@ void main() {
     });
 
     test('incrementCount обновляет currentCount', () async {
-      final db = AppDatabase.forTesting(NativeDatabase.memory(setup: enableForeignKeys));
+      final db = AppDatabase.withExecutor(NativeDatabase.memory(setup: enableForeignKeys));
       final repo = PracticeRepository(db);
 
       final now = DateTime.now();
@@ -111,7 +111,7 @@ void main() {
     });
 
     test('watchByTradition эмитит список и реагирует на инкремент', () async {
-      final db = AppDatabase.forTesting(NativeDatabase.memory(setup: enableForeignKeys));
+      final db = AppDatabase.withExecutor(NativeDatabase.memory(setup: enableForeignKeys));
       final repo = PracticeRepository(db);
 
       final now = DateTime.now();
@@ -146,7 +146,7 @@ void main() {
 
     test('watchById эмитит null после удаления практики (лекарство B-6)',
         () async {
-      final db = AppDatabase.forTesting(NativeDatabase.memory(setup: enableForeignKeys));
+      final db = AppDatabase.withExecutor(NativeDatabase.memory(setup: enableForeignKeys));
       final repo = PracticeRepository(db);
 
       final now = DateTime.now();
@@ -177,7 +177,7 @@ void main() {
 
     test('два параллельных incrementCount дают строго +2 (атомарность, B-8)',
         () async {
-      final db = AppDatabase.forTesting(NativeDatabase.memory(setup: enableForeignKeys));
+      final db = AppDatabase.withExecutor(NativeDatabase.memory(setup: enableForeignKeys));
       final repo = PracticeRepository(db);
 
       final now = DateTime.now();
@@ -205,7 +205,7 @@ void main() {
 
     // B-10: create() обязан сохранять переданные даты, а не дефолты БД.
     test('create() сохраняет заданные createdAt/updatedAt (B-10)', () async {
-      final db = AppDatabase.forTesting(NativeDatabase.memory(setup: enableForeignKeys));
+      final db = AppDatabase.withExecutor(NativeDatabase.memory(setup: enableForeignKeys));
       final repo = PracticeRepository(db);
 
       // Даты с точностью до секунды — Drift хранит DateTime без мисек (F-33).
@@ -227,7 +227,7 @@ void main() {
     });
 
     test('порядок getByTradition по createdAt детерминирован (B-10)', () async {
-      final db = AppDatabase.forTesting(NativeDatabase.memory(setup: enableForeignKeys));
+      final db = AppDatabase.withExecutor(NativeDatabase.memory(setup: enableForeignKeys));
       final repo = PracticeRepository(db);
 
       // I-6: разнос > 1 секунды — Drift усекает даты до секунд,
@@ -267,7 +267,7 @@ void main() {
     group('R-23: incrementCount отклоняет неположительный amount', () {
       Future<(AppDatabase, PracticeRepository, int)> seed() async {
         final db =
-            AppDatabase.forTesting(NativeDatabase.memory(setup: enableForeignKeys));
+            AppDatabase.withExecutor(NativeDatabase.memory(setup: enableForeignKeys));
         final repo = PracticeRepository(db);
         final now = DateTime.now();
         final id = await repo.create(PracticeEntity(
@@ -327,7 +327,7 @@ void main() {
     // домена ДО вставки истории. Гард живёт на слое репозитория (урок 3).
     group('W34: incrementCount несуществующего id', () {
       test('→ PracticeNotFoundException, следов в истории нет', () async {
-        final db = AppDatabase.forTesting(
+        final db = AppDatabase.withExecutor(
             NativeDatabase.memory(setup: enableForeignKeys));
         final repo = PracticeRepository(db);
 
@@ -352,7 +352,7 @@ void main() {
     // (см. обоснование в PracticeRepository.create и D-45).
     group('C4/D-45: create не заводит пресетных строк', () {
       test('presetId != null → ArgumentError, в БД ни следа', () async {
-        final db = AppDatabase.forTesting(
+        final db = AppDatabase.withExecutor(
             NativeDatabase.memory(setup: enableForeignKeys));
         final repo = PracticeRepository(db);
         final now = DateTime.now();
@@ -379,7 +379,7 @@ void main() {
           () async {
         // Лазейка: materialization пишет preset_id сама, entity умеет нести
         // presetId (fromRow) — и кто-то может подать этот entity в create.
-        final db = AppDatabase.forTesting(
+        final db = AppDatabase.withExecutor(
             NativeDatabase.memory(setup: enableForeignKeys));
         final repo = PracticeRepository(db);
         final now = DateTime.now();

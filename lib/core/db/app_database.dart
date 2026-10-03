@@ -64,8 +64,9 @@ class AppDatabase extends _$AppDatabase {
   /// не открывая файл в ФС разработчика/CI.
   AppDatabase.withExecutor(super.executor);
 
-  /// Constructor for testing with in-memory database.
-  AppDatabase.forTesting(QueryExecutor executor) : this.withExecutor(executor);
+  /// S7: алиас `forTesting` снят — он дублировал [AppDatabase.withExecutor]
+  /// без семантики. Тесты используют тот же шов, что и composition root
+  /// (`database_module.dart`), — один путь вместо двух.
 
   /// Текущая версия схемы БД.
   ///
@@ -112,7 +113,7 @@ class AppDatabase extends _$AppDatabase {
       beforeOpen: (OpeningDetails details) async {
         // W7: `foreign_keys` — свойство СОЕДИНЕНИЯ, а не схемы. Пока pragma
         // жил только в `setup:` прод-исполнителя (`_openConnection`), любая
-        // база без этого setup — прежде всего `AppDatabase.forTesting` —
+        // база без этого setup — прежде всего тестовая (`withExecutor`) —
         // открывалась с FK OFF, и каскад B-11 в тестах молча не срабатывал
         // (тот же класс, что B-22: расхождение прод/тест в семантике
         // удалений). Здесь ветка одна для любого исполнителя.
@@ -212,7 +213,7 @@ class AppDatabase extends _$AppDatabase {
 /// pragma каскад из объявления таблицы — только бумага.
 ///
 /// С W7 основная гарантия живёт в `migration.beforeOpen` (см. [AppDatabase]) и
-/// действует на ЛЮБОМ исполнителе, включая `forTesting` без `setup:`. Этот
+/// действует на ЛЮБОМ исполнителе, включая тестовый без `setup:`. Этот
 /// колбэк остался как дубль прод-соединения: он включает FK до того, как
 /// начнутся миграции, — `beforeOpen` drift вызывается после них. Постепенно
 /// дубли устраняются по мере исчезновения потребителей (тест на PRAGMA

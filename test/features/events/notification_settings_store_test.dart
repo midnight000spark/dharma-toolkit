@@ -19,7 +19,7 @@ void main() {
   late NotificationSettingsStore store;
 
   setUp(() {
-    db = AppDatabase.forTesting(NativeDatabase.memory());
+    db = AppDatabase.withExecutor(NativeDatabase.memory());
     store = NotificationSettingsStore(db);
   });
 

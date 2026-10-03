@@ -5,7 +5,7 @@
 -- фикстура v2»):
 --   git archive f0b6c5e | tar -x -C <чистая папка>   # schemaVersion == 2
 --   flutter pub get                                    #(lock той ревизии)
---   тест: AppDatabase.forTesting(NativeDatabase.memory()) → первый запрос
+--   тест: AppDatabase.withExecutor(NativeDatabase.memory()) → первый запрос
 --         → SELECT type, name, sql FROM sqlite_master
 --
 -- f0b6c5e — коммит, добавивший practices и count_history; presets существовал

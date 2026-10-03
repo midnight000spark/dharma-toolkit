@@ -23,7 +23,7 @@ void main() {
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
-    db = AppDatabase.forTesting(NativeDatabase.memory(setup: enableForeignKeys));
+    db = AppDatabase.withExecutor(NativeDatabase.memory(setup: enableForeignKeys));
     storage = StorageModule();
     await storage.init();
     presets = PresetManager(() => db, storage);

@@ -22,7 +22,7 @@ void main() {
     late PracticeRepository repository;
 
     setUp(() async {
-      db = AppDatabase.forTesting(NativeDatabase.memory());
+      db = AppDatabase.withExecutor(NativeDatabase.memory());
       repository = PracticeRepository(db);
     });
 

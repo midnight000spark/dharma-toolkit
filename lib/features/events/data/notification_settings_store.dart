@@ -46,16 +46,15 @@ class NotificationSettingsStore {
   /// Поток настроек: перепланирование подписывается на него (D-36 — «смена
   /// настроек» один из триггеров). Первый эвент — текущее состояние
   /// (включая дефолт при отсутствии строки).
-  Stream<NotificationSettings> watch(String traditionTag) => _db
-      .select(_db.notificationSettingsRows)
-      .watch()
-      .map((rows) {
-        final row = rows
-            .where((r) => r.traditionTag == traditionTag)
-            .firstOrNull;
-        if (row == null) return NotificationSettings.defaults;
-        return _fromRow(row, traditionTag);
-      })
+  ///
+  /// S7: фильтр по тегу — в SQL (`where`), а не после чтения всей таблицы
+  /// в Dart: запрос обязан читать строку своей традиции, а не весь набор.
+  Stream<NotificationSettings> watch(String traditionTag) => (_db
+          .select(_db.notificationSettingsRows)
+        ..where((t) => t.traditionTag.equals(traditionTag)))
+      .watchSingleOrNull()
+      .map((row) =>
+          row == null ? NotificationSettings.defaults : _fromRow(row, traditionTag))
       .distinct();
 
   /// Записать настройки традиции (upsert по ключу-тегу).

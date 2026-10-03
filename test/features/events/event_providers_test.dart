@@ -68,7 +68,7 @@ const _packJson = '''
 void main() {
   late AppDatabase db;
 
-  setUp(() => db = AppDatabase.forTesting(NativeDatabase.memory()));
+  setUp(() => db = AppDatabase.withExecutor(NativeDatabase.memory()));
   tearDown(() => db.close());
 
   ProviderContainer containerWith({

@@ -36,7 +36,7 @@ void main() {
   testWidgets('тап по Ньингма на /pick создаёт четыре практики в списке',
       (tester) async {
     SharedPreferences.setMockInitialValues({});
-    final database = AppDatabase.forTesting(
+    final database = AppDatabase.withExecutor(
       NativeDatabase.memory(setup: enableForeignKeys),
     );
     final storage = StorageModule();
@@ -97,7 +97,7 @@ void main() {
   testWidgets('R-22: второй тап по карточке во время применения игнорируется',
       (tester) async {
     SharedPreferences.setMockInitialValues({});
-    final database = AppDatabase.forTesting(
+    final database = AppDatabase.withExecutor(
       NativeDatabase.memory(setup: enableForeignKeys),
     );
     final storage = StorageModule();

@@ -74,7 +74,7 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     // FK включаем как в проде (I-2): каскад без PRAGMA — бумага.
-    database = AppDatabase.forTesting(
+    database = AppDatabase.withExecutor(
       NativeDatabase.memory(setup: enableForeignKeys),
     );
     storageModule = StorageModule();

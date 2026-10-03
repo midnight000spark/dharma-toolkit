@@ -20,7 +20,7 @@ void main() {
   late List<NotificationSettingsChanged> events;
 
   setUp(() {
-    db = AppDatabase.forTesting(NativeDatabase.memory());
+    db = AppDatabase.withExecutor(NativeDatabase.memory());
     bus = EventBus();
     events = [];
     bus.on<NotificationSettingsChanged>().listen(events.add);

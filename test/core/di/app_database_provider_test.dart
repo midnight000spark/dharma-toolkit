@@ -36,7 +36,7 @@ void main() {
   }
 
   setUp(() async {
-    db = AppDatabase.forTesting(
+    db = AppDatabase.withExecutor(
       NativeDatabase.memory(setup: enableForeignKeys),
     );
     container = ProviderContainer(

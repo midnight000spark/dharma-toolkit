@@ -1702,10 +1702,6 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'idx_practices_tradition_preset',
     'CREATE UNIQUE INDEX idx_practices_tradition_preset ON practices (tradition_tag, preset_practice_id)',
   );
-  late final Index idxNotificationSettingsTradition = Index(
-    'idx_notification_settings_tradition',
-    'CREATE INDEX idx_notification_settings_tradition ON notification_settings (tradition_tag)',
-  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1716,7 +1712,6 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     countHistory,
     notificationSettingsRows,
     idxPracticesTraditionPreset,
-    idxNotificationSettingsTradition,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([

@@ -42,7 +42,7 @@ void main() {
 
   Future<GoRouter> pumpApp(WidgetTester tester) async {
     SharedPreferences.setMockInitialValues({});
-    database = AppDatabase.forTesting(
+    database = AppDatabase.withExecutor(
       NativeDatabase.memory(setup: enableForeignKeys),
     );
     storage = StorageModule();
@@ -131,7 +131,7 @@ void main() {
     addTearDown(tagController.close);
 
     SharedPreferences.setMockInitialValues({});
-    database = AppDatabase.forTesting(
+    database = AppDatabase.withExecutor(
       NativeDatabase.memory(setup: enableForeignKeys),
     );
     storage = StorageModule();
