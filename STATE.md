@@ -1,6 +1,6 @@
 # Состояние проекта "Дхарма-тулкит"
 
-> _Freshness — owner: пользователь · reviewed: 2026-10-03 (пакет `docs-hygiene-1`: D1–D8, трек «доки» — разгрузка hot-истории, финализация указателей, CI-гейт доков, скилл `dart-mcp`, дистиллят DevLens/fcheck, кандидаты в OPEN-QUESTIONS; **приёмка владельца — предложена**) · verified-by: `flutter analyze --fatal-infos` (0) / `flutter test` (**723/723**, 2026-10-03) / `./scripts/check_docs.sh --strict` (PASSED, 60 файлов) · @ feb1535 / lock sha256:463d9b23e6ddb0c2._
+> _Freshness — owner: пользователь · reviewed: 2026-10-03 (пакет `docs-hygiene-1`: D1–D8, трек «доки» — разгрузка hot-истории, финализация указателей, CI-гейт доков, скилл `dart-mcp`, дистиллят DevLens/fcheck, кандидаты в OPEN-QUESTIONS; продолжение — `stack-hygiene-finalize`: синхронизация ROADMAP-changelog и гигиена лексики истории БФТ; **приёмка владельца — предложена**) · verified-by: `flutter analyze --fatal-infos` (0) / `flutter test` (**723/723**, 2026-10-03) / `./scripts/check_docs.sh --strict` (PASSED, 60 файлов) · @ a299197 / lock sha256:463d9b23e6ddb0c2._
 
 ## Текущий статус
 **Этап**: 7 «Контент» — ⏳ в работе; 7.0 ✅ (данные/домен, тег `stage-7.0` на `67dc4cc`); предыдущие: этап 6 ✅ (тег `stage-6`), этап 5 ✅ (тег `stage-5b`). Критерий этапа 7 не закрыт — нужен UI чтения дня (SCR-13).
