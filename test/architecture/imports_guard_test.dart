@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import 'source_scan.dart';
+
 /// Архитектурные guard-тесты (D-5, D-20; починка R-10 в 5.0.5).
 ///
 /// Прежняя версия ловила только абсолютные `package:dharma_toolkit/features/...`
@@ -137,6 +139,31 @@ void main() {
             "// import '../../features/tracker/y.dart'; (контракт)",
       });
       expect(violations, isEmpty);
+    });
+
+    test('многострочный импорт ловится', () {
+      final violations = findViolations({
+        'lib/features/tracker/x.dart': "import\n  '../calendar/y.dart';",
+      });
+      expect(violations, hasLength(1));
+      expect(violations.single.rule, 'feature→feature');
+    });
+
+    test('импорт в блочном комментарии не нарушение', () {
+      final violations = findViolations({
+        'lib/core/module/x.dart':
+            "/*\nimport '../../features/tracker/y.dart';\n*/",
+      });
+      expect(violations, isEmpty);
+    });
+
+    test('условный импорт: обе ветки — рёбра', () {
+      final violations = findViolations({
+        'lib/features/tracker/x.dart':
+            "import '../calendar/a.dart' if (dart.library.io) "
+                "'../content/b.dart';",
+      });
+      expect(violations, hasLength(2));
     });
   });
 
@@ -300,29 +327,29 @@ Map<String, String> readProjectFiles() {
 /// нормализованные пути проекта. package:dharma_toolkit/… → lib/…;
 /// относительные — от dirname источника с сворачиванием ../.
 /// Внешние пакетные импорты игнорируются.
+///
+/// Разбор устойчив к находкам ревью: комментарии (`//`, `/* */`) снимаются
+/// лексическим сканером до разбора, поэтому `import` в комментарии не ребро;
+/// директива разбирается **целиком** (в т.ч. многострочная) — все строковые
+/// литералы в её теле становятся рёбрами (условный импорт даёт обе ветки).
+/// `part` не рассматривается: не создаёт связей между модулями.
 List<ImportEdge> importEdges(String path, String contents) {
   final edges = <ImportEdge>[];
-  final lines = contents.split('\n');
-  for (var i = 0; i < lines.length; i++) {
-    final directive = parseImportDirective(lines[i]);
-    if (directive == null) continue;
-    final target = resolveImport(directive, sourcePath: path);
-    if (target != null) {
-      edges.add(ImportEdge(path, target, i + 1, directive));
+  final code = stripComments(contents);
+  final directive =
+      RegExp(r'^\s*(?:import|export)\s+([\s\S]*?);', multiLine: true);
+  final spec = RegExp('''["']([^"']+)["']''');
+  for (final match in directive.allMatches(code)) {
+    final line = '\n'.allMatches(code.substring(0, match.start)).length + 1;
+    for (final uri in spec.allMatches(match.group(1)!)) {
+      final raw = uri.group(1)!;
+      final target = resolveImport(raw, sourcePath: path);
+      if (target != null) {
+        edges.add(ImportEdge(path, target, line, raw));
+      }
     }
   }
   return edges;
-}
-
-/// Директивы import/export (part не рассматриваем: part не создаёт связей
-/// между модулями). Комментарий внутри строки не импортирует:
-/// `// import ...` отфильтрован по ведущим `//`.
-String? parseImportDirective(String line) {
-  final trimmed = line.trimLeft();
-  if (trimmed.startsWith('//')) return null;
-  final match =
-      RegExp('''^(?:import|export)\\s+["']([^"']+)["']''').firstMatch(trimmed);
-  return match?.group(1);
 }
 
 /// Разрешение spec → путь проекта; null — вне проекта или не .dart.

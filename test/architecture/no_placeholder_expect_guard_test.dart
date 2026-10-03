@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import 'source_scan.dart';
+
 /// W27: в `test/` не должно быть тавтологичных заглушек `expect(true, …)`.
 ///
 /// Урок 1 аудита: тест, который не мог упасть, не доказал ничего. Заглушка
@@ -11,15 +13,18 @@ import 'package:flutter_test/flutter_test.dart';
 /// (fix-r27) обязано было не оставить заглушек — этот сторож делает проверку
 /// машинной, чтобы заглушка не вернулась молча.
 ///
-/// Скан идёт по коду, а не по комментариям (иначе описание антипаттерна в
-/// docstring'ах само стало бы «нарушением»), и по всему `test/**`. Детектор
-/// проверяется синтетикой отдельным тестом.
+/// Скан идёт по **коду**, а не по тексту: комментарии (`//`, `/* */`) и
+/// содержимое строковых литералов снимаются лексическим сканером
+/// (`source_scan.dart`) до поиска, поэтому описание антипаттерна в docstring'е
+/// или строке не считается нарушением (находка ревью tests-quality-1).
 void main() {
-  test('детектор видит заглушку и не путает её с комментарием/именем', () {
-    expect(hasPlaceholderExpect("expect(" "true" ", isTrue);"), isTrue);
+  test('детектор видит заглушку и не путает её с текстом', () {
+    expect(hasPlaceholderExpect('expect(true, isTrue);'), isTrue);
     expect(hasPlaceholderExpect('expect(\n  true,\n  isTrue,\n);'), isTrue);
-    expect(hasPlaceholderExpect('// expect(' 'true, isTrue);'), isFalse);
-    expect(hasPlaceholderExpect('/// был заглушкой `expect(' 'true, isTrue)`'),
+    expect(hasPlaceholderExpect('// expect(true, isTrue);'), isFalse);
+    expect(hasPlaceholderExpect('/* expect(true, isTrue); */'), isFalse);
+    expect(hasPlaceholderExpect("'пример: expect(true, isTrue)'"), isFalse);
+    expect(hasPlaceholderExpect('/// был заглушкой `expect(true, isTrue)`'),
         isFalse);
     expect(hasPlaceholderExpect('expect(trueCount, 1);'), isFalse);
     expect(hasPlaceholderExpect('expect(result, isTrue);'), isFalse);
@@ -37,7 +42,7 @@ void main() {
     for (final path in files) {
       final content = File(path).readAsStringSync();
       if (!hasPlaceholderExpect(content)) continue;
-      final stripped = stripLineComments(content).split('\n');
+      final stripped = stripNonCode(content).split('\n');
       final hit = stripped.indexWhere(_placeholder.hasMatch);
       offenders.add(hit == -1
           ? '$path — многострочная заглушка expect(true)'
@@ -54,17 +59,7 @@ void main() {
 
 final _placeholder = RegExp(r'expect\(\s*true\s*,');
 
-/// Убрать `//`-комментарии построчно (описание антипаттерна в docstring'ах —
-/// не код).
-String stripLineComments(String source) => source
-    .split('\n')
-    .map((line) {
-      final at = line.indexOf('//');
-      return at == -1 ? line : line.substring(0, at);
-    })
-    .join('\n');
-
-/// Есть ли заглушка `expect(true, …)` в [source] (заглушка в `//`-комментарии
-/// не считается кодом).
+/// Есть ли заглушка `expect(true, …)` в [source]: комментарии и содержимое
+/// строк снимаются (описание антипаттерна — не код).
 bool hasPlaceholderExpect(String source) =>
-    _placeholder.hasMatch(stripLineComments(source));
+    _placeholder.hasMatch(stripNonCode(source));

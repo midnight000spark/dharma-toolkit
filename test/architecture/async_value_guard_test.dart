@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import 'source_scan.dart';
+
 /// C9-сторож: `.value` у `AsyncValue`, полученного из Riverpod-`ref`, запрещён.
 ///
 /// Пакет critical-1 (C9) заменил в 14 местах `ref.watch(...).value` на явные
@@ -30,6 +32,14 @@ void main() {
     test('ref.read(...).value — нарушение', () {
       expect(
         findRefValueUses('final p = ref.read(activePresetStreamProvider).value;'),
+        hasLength(1),
+      );
+    });
+
+    test('многострочная C9-форма тоже ловится', () {
+      expect(
+        findRefValueUses('final t = ref.watch(\n  activeTraditionTagProvider,\n)'
+            '.value;'),
         hasLength(1),
       );
     });
@@ -68,11 +78,9 @@ void main() {
         .toList()
       ..sort();
     for (final path in files) {
-      final lines = File(path).readAsStringSync().split('\n');
-      for (var i = 0; i < lines.length; i++) {
-        if (findRefValueUses(lines[i]).isNotEmpty) {
-          offenders.add('$path:${i + 1} — ${lines[i].trim()}');
-        }
+      final hits = findRefValueUses(File(path).readAsStringSync());
+      for (final hit in hits) {
+        offenders.add('$path — $hit');
       }
     }
     expect(
@@ -84,16 +92,17 @@ void main() {
   });
 }
 
-/// C9-форма: `.value` сразу на `ref.watch/read/listen(...)`.
-final _refValue = RegExp(r'ref\.(?:watch|read|listen)\(.*\)\.value\b');
+/// C9-форма: `.value` сразу на `ref.watch/read/listen(...)`; разбор не
+/// ограничен строкой — многострочные формы ловятся, комментарии сняты.
+final _refValue = RegExp(r'ref\.(?:watch|read|listen)\([\s\S]*?\)\.value\b');
 
-/// Найти C9-формы в [source] (строка кода или файл), игнорируя `//`-комментарии.
+/// Найти C9-формы в [source] (`//`/`/* */`-комментарии сняты до поиска).
 List<String> findRefValueUses(String source) {
-  final result = <String>[];
-  for (final raw in source.split('\n')) {
-    final commentAt = raw.indexOf('//');
-    final code = commentAt == -1 ? raw : raw.substring(0, commentAt);
-    if (_refValue.hasMatch(code)) result.add(code.trim());
+  final code = stripComments(source);
+  final hits = <String>[];
+  for (final match in _refValue.allMatches(code)) {
+    final line = '\n'.allMatches(code.substring(0, match.start)).length + 1;
+    hits.add('line $line: ${match.group(0)!.replaceAll('\n', ' ')}');
   }
-  return result;
+  return hits;
 }
