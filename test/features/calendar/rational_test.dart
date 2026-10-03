@@ -27,7 +27,6 @@ void main() {
       final x = r(0, -5);
       expect(x.numerator, BigInt.zero);
       expect(x.denominator, BigInt.one);
-      expect(x.isZero, isTrue);
     });
 
     test('нулевой знаменатель бросает ArgumentError', () {
@@ -38,12 +37,11 @@ void main() {
   group('арифметика точна', () {
     test('1/3 + 1/3 + 1/3 == 1 точно', () {
       final third = r(1, 3);
-      expect(third + third + third, Rational.one);
+      expect(third + third + third, r(1, 1));
     });
 
     test('деление на ноль бросает', () {
-      expect(() => Rational.one / Rational.zero, throwsArgumentError);
-      expect(() => Rational.one % Rational.zero, throwsArgumentError);
+      expect(() => r(1, 1) / Rational.zero, throwsArgumentError);
     });
 
     test('сложение/вычитание разноточечных', () {
@@ -82,8 +80,8 @@ void main() {
       final den = (BigInt.one << 64) - BigInt.one;
       final x = Rational(big, den);
       // double здесь дал бы ровно 1.0 и потерял разницу; Rational — нет.
-      expect(x > Rational.one, isTrue);
-      expect(x - Rational.one, Rational.div(2, 1) / Rational(den, BigInt.one));
+      expect(x > r(1, 1), isTrue);
+      expect(x - r(1, 1), Rational.div(2, 1) / Rational(den, BigInt.one));
     });
   });
 
@@ -101,57 +99,27 @@ void main() {
     });
   });
 
-  group('floor/ceil, включая отрицательные (семантика Python)', () {
+  group('floor, включая отрицательные (семантика Python)', () {
     test('floor', () {
       expect(r(3, 2).floor(), BigInt.from(1));
       expect(r(-3, 2).floor(), BigInt.from(-2));
-      expect(Rational.one.floor(), BigInt.one);
+      expect(r(1, 1).floor(), BigInt.one);
       expect(r(-4, 2).floor(), BigInt.from(-2));
       expect(r(0, 5).floor(), BigInt.zero);
-    });
-
-    test('ceil', () {
-      expect(r(3, 2).ceil(), BigInt.from(2));
-      expect(r(-3, 2).ceil(), BigInt.from(-1));
-      expect(r(-4, 2).ceil(), BigInt.from(-2));
-    });
-
-    test('floor-мод: -1/2 % 1 == 1/2 (как Fraction % 1 в tibcal)', () {
-      expect(r(-1, 2) % Rational.one, r(1, 2));
-      expect(r(7, 2) % Rational.one, r(1, 2));
-      expect(r(6, 2) % Rational.one, Rational.zero);
-      expect(r(5, 2) % r(3, 2), Rational.one); // 2.5 − 1×1.5 = 1
-      expect(r(7, 2) % r(3, 2), r(1, 2)); // 3.5 − 2×1.5 = 0.5
-      expect(r(-7, 2) % r(3, 2), Rational.one); // floormod: −3.5 + 3×1.5 = 1
     });
 
     test('fractionalPart ∈ [0,1) для отрицательных', () {
       final f = r(-13, 5).fractionalPart();
       expect(f >= Rational.zero, isTrue);
-      expect(f < Rational.one, isTrue);
+      expect(f < r(1, 1), isTrue);
       expect(f, r(2, 5));
     });
   });
 
-  group('abs / sign /toString', () {
-    test('abs', () {
-      expect(r(-3, 4).abs(), r(3, 4));
-      expect(r(3, 4).abs(), r(3, 4));
-    });
-
-    test('sign', () {
-      expect(r(-1, 2).sign, -1);
-      expect(Rational.zero.sign, 0);
-      expect(r(1, 2).sign, 1);
-    });
-
+  group('toString', () {
     test('toString', () {
       expect(r(3, 2).toString(), '3/2');
       expect(Rational.fromInt(5).toString(), '5');
-    });
-
-    test('toDouble приближает (для логов)', () {
-      expect(r(1, 2).toDouble(), closeTo(0.5, 1e-12));
     });
   });
 }

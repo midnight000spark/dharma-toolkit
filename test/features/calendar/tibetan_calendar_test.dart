@@ -176,7 +176,14 @@ void main() {
             day: m['day'] as int,
             isLeapDay: false);
         final regular = tibetanToGregorian(base, cache: sharedCache);
-        final leap = tibetanToGregorian(base.copyWith(isLeapDay: true), cache: sharedCache);
+        final leap = tibetanToGregorian(
+            TibetanDate(
+                year: m['year'] as int,
+                month: m['month'] as int,
+                isLeapMonth: m['leapMonth'] as bool,
+                day: m['day'] as int,
+                isLeapDay: true),
+            cache: sharedCache);
         expect(isoOf(leap), m['leapDate'], reason: 'вставной день');
         expect(isoOf(regular), m['regularDate'], reason: 'обычный день');
         expect(leap.isBefore(regular), isTrue,

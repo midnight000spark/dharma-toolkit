@@ -50,27 +50,8 @@ class TibetanDate {
     this.julianDay = 0,
   });
 
-  /// Копия с переопределёнными полями.
-  TibetanDate copyWith({
-    int? year,
-    int? month,
-    bool? isLeapMonth,
-    int? day,
-    bool? isLeapDay,
-    bool? isSkipped,
-    DateTime? gregorian,
-    int? julianDay,
-  }) =>
-      TibetanDate(
-        year: year ?? this.year,
-        month: month ?? this.month,
-        isLeapMonth: isLeapMonth ?? this.isLeapMonth,
-        day: day ?? this.day,
-        isLeapDay: isLeapDay ?? this.isLeapDay,
-        isSkipped: isSkipped ?? this.isSkipped,
-        gregorian: gregorian ?? this.gregorian,
-        julianDay: julianDay ?? this.julianDay,
-      );
+  // §4.1(i): `copyWith` снят — вне собственного теста у него не было
+  // потребителей; тест-вектор строит нужную дату напрямую.
 
   @override
   bool operator ==(Object other) =>

@@ -11,6 +11,11 @@
 library;
 
 /// Точная дробь `numerator / denominator` на BigInt.
+///
+/// Поверхность сужена до нужного календарю (§4.1(i) ревью 19.09): `ceil`,
+/// `abs`, `sign`, `isNegative`, `isZero`, `toDouble`, `operator %` и статик
+/// `one` сняты — у них не было потребителей вне собственных тестов. Возврат —
+/// только вместе с реальным потребителем, не «на будущее».
 class Rational implements Comparable<Rational> {
   /// Числитель (несёт знак).
   final BigInt numerator;
@@ -55,9 +60,6 @@ class Rational implements Comparable<Rational> {
 
   /// 0.
   static final Rational zero = Rational.fromInt(0);
-
-  /// 1.
-  static final Rational one = Rational.fromInt(1);
 
   static BigInt _gcd(BigInt a, BigInt b) {
     var x = a.abs();
@@ -131,34 +133,9 @@ class Rational implements Comparable<Rational> {
   /// Python: floor(−3/2) = −2).
   BigInt floor() => _floorDiv(numerator, denominator);
 
-  /// Наибольшее целое, не превосходящее по модулю снизу — потолок.
-  BigInt ceil() => -_floorDiv(-numerator, denominator);
-
-  /// Модуль.
-  Rational abs() => this < zero ? -this : this;
-
-  /// Знак: −1, 0, 1.
-  int get sign => numerator.sign;
-
-  /// Истина, если значение < 0.
-  bool get isNegative => numerator < BigInt.zero;
-
-  /// Истина, если значение равно 0.
-  bool get isZero => numerator == BigInt.zero;
-
   /// Дробная часть `this − floor(this)` ∈ [0, 1) — как `x % 1` у Fraction
   /// в tibcal (строки 193–194).
   Rational fractionalPart() => this - Rational(floor(), BigInt.one);
-
-  /// Floor-остаток `this % other` (знак результата совпадает со знаком
-  /// делителя, как у `Fraction % Fraction` в Python).
-  Rational operator %(Rational other) {
-    if (other.isZero) {
-      throw ArgumentError('Rational: modulo by zero');
-    }
-    final q = (this / other).floor();
-    return this - other * Rational(q, BigInt.one);
-  }
 
   static BigInt _floorDiv(BigInt a, BigInt b) {
     // Dart `%` для b > 0 даёт floor-остаток (0 <= r < b); b здесь положителен
@@ -167,10 +144,6 @@ class Rational implements Comparable<Rational> {
     final t = (a - r) ~/ b;
     return t;
   }
-
-  /// Приближение двойным числом — **только для логирования/отладки UI**.
-  /// Запрещено в календарных формулах (D-18, I-1).
-  double toDouble() => numerator / denominator;
 
   @override
   String toString() =>
