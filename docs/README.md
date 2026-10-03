@@ -1,6 +1,6 @@
 # docs/ — индекс документации (traffic cop)
 
-> _Freshness — owner: пользователь · reviewed: 2026-09-17 · verified-by: `./scripts/check_docs.sh` (PASSED)._
+> _Freshness — owner: пользователь · reviewed: 2026-10-03 · verified-by: `./scripts/check_docs.sh --strict` (PASSED)._
 
 Карта документации проекта. **Горячий слой** читается всегда; **холодный**
 (`archive/`, `reference/`) — адресно по якорю, только когда нужен конкретный факт
