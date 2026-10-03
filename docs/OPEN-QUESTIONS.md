@@ -27,7 +27,11 @@
 | # | Вопрос | Кто | Триггер | Детали |
 |---|---|---|---|---|
 | B-25 | Выбор починки «Попробовать снова»: (а) сверять `MountedRoot` в `_run`, (б) отказ вторым значением, (в) счётчик на уровне корня | 🔒/К | при взятии в работу | `STATE.md` (B-25) |
-| W33-хвост | Копии `.corrupt-*` сверх окна 3: удалять автоматически (видимо, не молча) или оставить только ручное удаление? Сейчас: перечисляются человеку, не удаляются (п. 11.9). **Отложено владельцем 2026-10-02 на этап гигиены** | 🔒 | этап гигиены (`docs-hygiene-1`) | `lib/core/recovery/recovery_screen.dart` (W33) |
+| DL1 | `tracker/domain/practice.dart:46` `PracticeEntity.fromRow(Practice row)` — домен тянет Drift-строку `core/db`; вынести `fromRow` в data-репозиторий (домен чистый, folder-цикл уходит). Правка кода — отдельным пакетом | 🔒 | при планировании пакета | `docs/research/devlens-fcheck-2026-10-03/README.md`, `docs/reference/facts.md#f-85` |
+| DL2 | `lib/core/recovery/recovery_screen.dart` → `shared/l10n`, `shared/utils` — инверсия `core → shared`; ревизия слоя (обосновать или вынести общее). Правка кода — отдельным пакетом | 🔒 | при планировании пакета | там же |
+| DL3 | Дублирование `_parseDateRule`/`_intInRange` между `content/data/content_pack_parser.dart` и `events/data/event_pack_parser.dart` — кандидат на общий парсер (объём/риск оценить). Правка кода — отдельным пакетом | 🔒 | при планировании пакета | там же |
+| DL4 | `gittoken.md` (148 Б, режим 664, `.gitignore:55`, в индексе и **истории** нет) содержит `ghp_`-подобную строку (1 совпадение) — живость отсюда не проверяема: подтвердить/отозвать токен, стабильность `.gitignore` | 🔒 | гигиена секретов | §5 SEC-1/SEC-2; `docs/reference/facts.md#f-85` |
+| W33-хвост | Копии `.corrupt-*` сверх окна 3: удалять автоматически (видимо, не молча) или оставить только ручное удаление? Сейчас: перечисляются человеку, не удаляются (п. 11.9). Отложено владельцем 2026-10-02 на этап гигиены — **этап наступил (docs-hygiene-1, 2026-10-03): ждёт решения владельца** | 🔒 | docs-hygiene-1 (наступил) | `lib/core/recovery/recovery_screen.dart` (W33) |
 | Н5 | Release-signing gate: подпись release debug-ключом; финальный `applicationId` (TODO-комментарий не удалять) | 🔒 | до Этапа 10 | `docs/REMEDIATION-PLAN-2026-09-30.md#pre-stage-8` |
 | Н6 | `allowBackup` (итоговый манифест) + имя приложения | 🔒 | до Этапа 9/10 | `docs/REMEDIATION-PLAN-2026-09-30.md#pre-stage-8` |
 | S15 | Русское имя приложения: конкретное имя выбирает владелец (не выдумываем). После решения техчасть — `strings.xml` + `android:label="@string/app_name"` вместо `dharma_toolkit` | 🔒 | до выпуска | `docs/REMEDIATION-PLAN-2026-09-30.md#suggestion-1` |
@@ -52,6 +56,7 @@
 | D-42/D-19 | Возврат целевой модели `qwen3.8-flash` (xhigh) — по условию пересмотра (фикс опенкод-бага + A/B) | 🔒 | по факту фикса | `docs/reference/decisions.md#d-42` |
 | D-47 | `trace-mcp` отложен; условие пересмотра — спайк docs-vault / смена стека | 🔒 | по условию | `docs/reference/decisions.md#d-47` |
 | Н3 | Старые пакеты 9/12: имена утеряны — идентифицировать при взятии | К | до `pre-stage-8` | `docs/REMEDIATION-PLAN-2026-09-30.md#pre-stage-8` |
+| SO-1 | `stage-orchestrator` (home-профиль) ссылается на несуществующий `stage-cli.ts` (`.opencode/skill/task-management/scripts/…`, 7 вызовов) — оставить / удалить / воссоздать? | 🔒 | при чистке обвязки | home-профиль `stage-orchestrator.md` (вне репо; `agent/subagents/core`) |
 
 ## 5. Среда и обвязка (🔒; контекст — `docs/REMEDIATION-PLAN-2026-09-30.md#env`)
 
@@ -69,7 +74,7 @@
 - **H-04** — `opencode.json`: инструкции с непинованного `trunk` — зафиксировать ревизию/локально.
 - **H-07** — `scripts/ci_status.sh`: предсказуемый временный файл без trap/timeout — `mktemp`+trap.
 - **JEV** — `opencode.json`: абсолютный путь к `jev-mcp` — переносимо или явно локально.
-- **P21** — `task-cli.ts` не запускается (ts-node + TypeScript 7) — пин `typescript@5.x`.
+- **P21** — `task-cli.ts` не запускается (ts-node + TypeScript 7) — пин `typescript@5.x`. **Среда 2026-10-03:** канонический вызов — `router.sh` (нативный Node); `status`/`validate` по `docs-hygiene-1` зелёные (свидетельство пакета). Перевод в «закрыт» — за владельцем.
 - **LUNA** — `gpt-6-luna` (vision/ревью): TPM-лимит — входной контекст ~55k токенов уводит в rate limit/зависание, обход не найден (F-84).
 
 ## 6. Ждут действия (не решение)
