@@ -8,6 +8,10 @@
 #   4) ссылки §N резолвятся в заголовок «N.» актуального БФТ (для БФТ — в нём самом);
 #   5) provenance freshness-строки STATE.md: хэш lock в сертификате совпадает с
 #      фактическим sha256 pubspec.lock (v2.18, P1 repro-restore; урок C10).
+#   6) полнота обратного индекса: каждый отслеживаемый .md под docs/ покрыт
+#      docs/README.md (точно, диапазоном версий БФТ или README своей папки);
+#   7) с флагом --strict: нет неигнорируемых untracked .md (иначе документ
+#      молча выпадает из linkcheck, который читает лишь `git ls-files`).
 #
 # Exit 0 = чисто, exit 1 = есть находки. Скрипт read-only, ничего не пишет.
 # Аттестован по уроку 1 (I-8): посадка битой ссылки → красный, снятие → зелёный.
@@ -16,11 +20,13 @@ set -euo pipefail
 root="$(git rev-parse --show-toplevel)"
 cd "$root"
 
-python3 - <<'PY'
+python3 - "${1:-}" <<'PY'
 import os
 import re
 import subprocess
 import sys
+
+strict = sys.argv[1] == "--strict" if len(sys.argv) > 1 else False
 
 FILES = subprocess.check_output(["git", "ls-files", "*.md"], text=True).split()
 if not FILES:
@@ -163,6 +169,53 @@ if "STATE.md" in FILES:
         errors.append("STATE.md: [provenance] сертификат устарел: в freshness-строке нет «lock sha256:<16>» — сертификат не привязан к дереву (v2.18)")
     elif not actual_lock.startswith(m.group(1)):
         errors.append(f"STATE.md: [provenance] сертификат устарел: lock sha256:{m.group(1)}… != фактический {actual_lock[:16]}…")
+
+# 6) полнота обратного индекса (D5, docs-hygiene-1): каждый отслеживаемый .md
+#    под docs/ покрыт docs/README.md — точно, диапазоном версий БФТ или
+#    README своей (вложенной) папки.
+if "docs/README.md" in FILES:
+    index_text = open("docs/README.md", encoding="utf-8").read().replace("`", "")
+    ranges = [
+        ((int(m.group(1)), int(m.group(2))), (int(m.group(3)), int(m.group(4))))
+        for m in re.finditer(
+            r"BFT-v(\d+)\.(\d+)\.md\s*…\s*BFT-v(\d+)\.(\d+)\.md", index_text)
+    ]
+
+    def index_covered(f):
+        if f == "docs/README.md":
+            return True
+        rel = os.path.relpath(f, "docs")
+        if rel in index_text:
+            return True
+        bft = re.search(r"BFT-v(\d+)\.(\d+)\.md$", rel)
+        if bft:
+            v = (int(bft.group(1)), int(bft.group(2)))
+            if any(lo <= v <= hi for lo, hi in ranges):
+                return True
+        parent = os.path.dirname(f)
+        while parent and parent != "docs":
+            if (os.path.relpath(parent, "docs") + "/README.md") in index_text:
+                return True
+            parent = os.path.dirname(parent)
+        return False
+
+    for f in FILES:
+        if f.startswith("docs/") and f.endswith(".md") and not index_covered(f):
+            errors.append(
+                f"{f}: [index] не покрыт индексом docs/README.md "
+                "(добавь строку или README папки)")
+
+# 7) скан неигнорируемых untracked markdown (D5, docs-hygiene-1; --strict):
+#    linkcheck читает лишь `git ls-files`, поэтому новый .md вне git молча
+#    выпадает. В CI дерево чистое; флаг ловит дыру локально/на грязном дереве.
+if strict:
+    untracked = subprocess.check_output(
+        ["git", "ls-files", "--others", "--exclude-standard", "*.md"],
+        text=True).split()
+    for u in untracked:
+        errors.append(
+            f"{u}: [untracked] .md вне git — linkcheck его не видит "
+            "(git add или .gitignore)")
 
 if errors:
     for e in errors:
