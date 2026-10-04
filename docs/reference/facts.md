@@ -1302,3 +1302,40 @@
   `drift-2.34.3/lib/src/runtime/executor/stream_queries.dart`
   (`StreamQueryStore.close`, `markAsClosed`); Riverpod 3.4.3 guide/changelog
 - **Дата**: 2026-10-03
+
+<a id="f-88"></a>
+### F-88: sqlite3 v3 — Tier-0 перехода на нативные хуки (пакет `pre-stage-8`/Н2)
+- **Что**:
+  - **Версии/lock**: `sqlite3` **3.5.2** (transitive; drift 2.34.3 требует
+    `sqlite3: ^3.4.0`), `sqlite3_flutter_libs` **0.5.42** (direct main, `^0.5.28`).
+    На pub.dev: `sqlite3` latest — 3.7.0; `sqlite3_flutter_libs` latest —
+    **`0.6.0+eol`** (2026-02-15), маркер **EOL**.
+  - **Статус `sqlite3_flutter_libs`**: obsolete после перехода на sqlite3 v3
+    (README: «relates to version 2.x … obsolete after upgrading. It will continue
+    to be maintained until early 2026»). `UPGRADING_TO_V3.md`, шаг 1: «If you depend
+    on `sqlite3_flutter_libs`, stop doing that». **Замена — Dart hooks / native
+    assets**: sqlite3 v3 сам бандлит предкомпилированный SQLite (загрузка из
+    GitHub releases, sha256-сверка; с 3.5.2 — SLSA L3 + SBOM CycloneDX), без
+    platform-плагина и build-конфигов.
+  - **Совместимость с пином**: Flutter **3.47.5** stable — feature `nativeAssets`
+    (`configSetting: enable-native-assets`, `environmentOverride:
+    FLUTTER_NATIVE_ASSETS`) `enabledByDefault: true` для master/beta/stable
+    (`packages/flutter_tools/lib/src/features.dart`) → hooks активны по умолчанию.
+    Dart **3.13.4**; sqlite3 3.5.2 требует `sdk >=3.10.0` — соблюдено.
+  - **drift-сторона**: drift 2.32.0 — «Migrate to version 3.x of the `sqlite3`
+    package»; drift docs (platforms): «It is no longer necessary to depend on
+    `sqlite3_flutter_libs` or `sqlcipher_flutter_libs`, you can remove these
+    dependencies».
+  - **Код проекта**: `open.overrideFor` и
+    `applyWorkaroundToOpenSqlite3OnOldAndroidVersions` не используются (grep по
+    `lib/`, `test/` — 0) → Dart-кода к миграции нет; прод-соединение —
+    `NativeDatabase.createInBackground` (`lib/core/db/app_database.dart:235`).
+  - **Лицензия**: `sqlite3` — MIT (Simon Binder); SQLite — public domain;
+    шифровальные сборки (SQLCipher / SQLite3 Multiple Ciphers) не используются.
+  - **Границы**: на веб (`WasmDatabase`) нужен обновлённый `sqlite3.wasm` от
+    релиза 3.x — проект веб не таргетит (Android MVP); не относится.
+- **Источник**: `UPGRADING_TO_V3.md` и [hook options](https://github.com/simolus3/sqlite3.dart/blob/main/sqlite3/doc/hook.md)
+  (simolus3/sqlite3.dart), README `sqlite3`/`sqlite3_flutter_libs` 0.5.42, drift
+  CHANGELOG 2.32.0 и drift.simonbinder.eu/platforms, `features.dart` пина Flutter
+  3.47.5, pub.dev API (сверено 2026-10-05)
+- **Дата**: 2026-10-05
