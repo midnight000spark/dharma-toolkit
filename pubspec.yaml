@@ -42,9 +42,10 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   
-  # Drift (SQLite) for local database
+  # Drift (SQLite) for local database.
+  # sqlite3 v3 (транзитивно через drift, ^3.4.0) сам бандлит SQLite через Dart
+  # hooks/native assets; sqlite3_flutter_libs obsolete и удалён (F-88, pre-stage-8/Н2).
   drift: ^2.24.0
-  sqlite3_flutter_libs: ^0.5.28
   path_provider: ^2.1.5
   path: ^1.9.1
   
