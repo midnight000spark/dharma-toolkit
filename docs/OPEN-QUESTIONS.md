@@ -1,6 +1,6 @@
 # Реестр нерешённых вопросов (открытые решения)
 
-> _Freshness — owner: пользователь · reviewed: 2026-10-01 · verified-by: `./scripts/check_docs.sh` (PASSED)._
+> _Freshness — owner: пользователь · reviewed: 2026-10-05 · verified-by: `./scripts/check_docs.sh --strict` (PASSED)._
 
 > **Назначение.** Единая точка входа «что ждёт решения»: продуктовые, технические,
 > процессные и средовые вопросы. Это **индекс**: детали, приёмки и тела — у владельцев
@@ -79,9 +79,12 @@
 
 ## 6. Ждут действия (не решение)
 
-- **Push**: локальные коммиты (`account-1` и закрытие долгов) не запушены; пуш — только владелец (D-41).
-- **Приёмка account-1**: команды — `wc -c STATE.md`, `./scripts/check_docs.sh`, `rg -n REMEDIATION-PLAN STATE.md`, `flutter analyze --fatal-infos` / `flutter test`.
-- **`critical-1`**: исполнен 2026-10-01 (приёмка владельца ⏳); файлы пакета — `.tmp/tasks/critical-1/README.md`; следующий — `warning-3a` (свежая сессия, D-42).
+- **Push**: локальные коммиты не запушены (main ahead от `origin/main`); пуш — только владелец (D-41).
+- **Приёмка `pre-stage-8`/Н1 (`riverpod-3`)**: исполнен 2026-10-03 (F-86/F-87; `85b9cc0`, freshness `c8c8d3c`); приёмка владельца ⏳ — `flutter analyze --fatal-infos` (0), `flutter test` (**723/723**), `./scripts/check_docs.sh --strict` (PASSED), APK-сборка/прогон.
+- **Приёмка `pre-stage-8`/Н2 (`sqlite3-v3-native`)**: Tier-0 (F-88) 2026-10-05; приёмка владельца ⏳ после исполнения — APK-прогон (FK, каскад `count_history`, `quick_check`).
+- **T9** (`tests-quality-1`): blocked — ждёт **P16/§10** (воспроизводимость обвязки, 🔒).
+- **Блок 10** (контент/праздники паков): blocked — ждёт решения по экстраполяции (**ЭКСТР**, 🔒) и **C8в** (Антоха).
+- **H-doc-3** (предложено 2026-10-05, owner-gated): пометить Н1 исполненным и снять устаревшее «тесты 533+» → **723** в `docs/REMEDIATION-PLAN-2026-09-30.md#pre-stage-8` §9; запись в ROADMAP changelog.
 
 ## 7. Отложено решениями (сейчас решений не требует)
 
