@@ -1,6 +1,6 @@
 # Состояние проекта "Дхарма-тулкит"
 
-> _Freshness — owner: пользователь · reviewed: 2026-10-05 (пакет `pre-stage-8`/Н2 `sqlite3-v3-native`: удалён obsolete `sqlite3_flutter_libs`, SQLite бандлится Dart-хуками native assets, приёмка на APK — FK/каскад/`quick_check`; F-88; хвост доковой гигиены Н1 — H-doc-1/2) · verified-by: `flutter analyze --fatal-infos` (0) / `flutter test` (**723/723**, 2026-10-05) / `./scripts/check_docs.sh --strict` (PASSED, 60 файлов) / `build apk --debug|--release` (exit 0) · @ 434833f / lock sha256:1385437dbf7d3065._
+> _Freshness — owner: пользователь · reviewed: 2026-10-05 (пакет `pre-stage-8` **закрыт**: статусы Н1–Н6 в §9 `REMEDIATION-PLAN`, ROADMAP v1.29; разгрузка hot-истории D-38 → `docs/archive/state-journal-pre-stage-8.md`; H-doc-3) · verified-by: `flutter analyze --fatal-infos` (0) / `flutter test` (**723/723**, 2026-10-05) / `./scripts/check_docs.sh --strict` (PASSED, 61 файл) / `build apk --debug|--release` (exit 0; docs-only пакет — не пересобирался) · @ ba23fb4 / lock sha256:1385437dbf7d3065._
 
 ## Текущий статус
 **Этап**: 7 «Контент» — ⏳ в работе; 7.0 ✅ (данные/домен, тег `stage-7.0` на `67dc4cc`); предыдущие: этап 6 ✅ (тег `stage-6`), этап 5 ✅ (тег `stage-5b`). Критерий этапа 7 не закрыт — нужен UI чтения дня (SCR-13).
