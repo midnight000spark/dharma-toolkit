@@ -28,6 +28,7 @@
 | `archive/state-journal-post-7.md` | хроника журнала после 7.0 (2026-09-18…24: state-unload-3 … linkcheck-инцидент) | адресно | archive (read-only) |
 | `archive/state-journal-fix-1.md` | хроника пакета FIX-1 (воспроизводимость + целостность данных) | адресно | archive (read-only) |
 | `archive/state-journal-packages-2026-09-30.md` | хроника журнала: пакеты account-1 … tests-quality-1 (2026-09-30…2026-10-03) | адресно | archive (read-only) |
+| `archive/state-journal-pre-stage-8.md` | хроника журнала: пакеты docs-hygiene-1 … pre-stage-8/Н1–Н2 (2026-10-03…10-05) | адресно | archive (read-only) |
 | `archive/state-closed-hypotheses.md` | тела завершённых гипотез H- | адресно по якорю | archive (read-only) |
 | `archive/r18-chronicle.md` | хроника обрывов сессий R-18 (#12–#16) | адресно | archive (read-only) |
 | `archive/state-closed-risks.md` | тела закрытых угроз R- | адресно по якорю | archive (read-only) |
