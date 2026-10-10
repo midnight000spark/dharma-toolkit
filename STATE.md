@@ -1,6 +1,6 @@
 # Состояние проекта "Дхарма-тулкит"
 
-> _Freshness — owner: пользователь · reviewed: 2026-10-05 (пакет `pre-stage-8` **закрыт**: статусы Н1–Н6 в §9 `REMEDIATION-PLAN`, ROADMAP v1.29; разгрузка hot-истории D-38 → `docs/archive/state-journal-pre-stage-8.md`; H-doc-3) · verified-by: `flutter analyze --fatal-infos` (0) / `flutter test` (**723/723**, 2026-10-05) / `./scripts/check_docs.sh --strict` (PASSED, 61 файл) / `build apk --debug|--release` (exit 0; docs-only пакет — не пересобирался) · @ ba23fb4 / lock sha256:1385437dbf7d3065._
+> _Freshness — owner: пользователь · reviewed: 2026-10-10 (**owner-sync гейтов**: UI этапа 7 (SCR-13/SCR-7) отложен до финальной беты юзерфлоу; Q3/лицензии — на переговорах, паки и FR-CNT-4 заблокированы; ENCE-44) · verified-by: `flutter analyze --fatal-infos` (0) / `flutter test` (**723/723**, 2026-10-10) / `./scripts/check_docs.sh --strict` (PASSED, 61 файл) / `build apk` не пересобирался (docs-only) · @ 2f4e2c2 / lock sha256:1385437dbf7d3065._
 
 ## Текущий статус
 **Этап**: 7 «Контент» — ⏳ в работе; 7.0 ✅ (данные/домен, тег `stage-7.0` на `67dc4cc`); предыдущие: этап 6 ✅ (тег `stage-6`), этап 5 ✅ (тег `stage-5b`). Критерий этапа 7 не закрыт — нужен UI чтения дня (SCR-13), **отложен до финальной беты юзерфлоу** (решение владельца 2026-10-10: юзерфлоу переосмысляется, опора — на него; UI-задачи SCR-13, дашборд SCR-7 и биндинг `contentSourceProvider` не начинать до фиксации юзерфлоу).
